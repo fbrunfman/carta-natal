@@ -7,7 +7,7 @@ async function call(url, options) {
   const res = await fetch(url, options);
   let data = {};
   try { data = await res.json(); } catch { /* respuesta sin cuerpo */ }
-  if (!res.ok) throw new Error(data.error || "No se pudo completar la operación.");
+  if (!res.ok) throw Object.assign(new Error(data.error || "No se pudo completar la operación."), { status: res.status });
   return data;
 }
 
@@ -44,7 +44,19 @@ export const charts = {
 const post = (url, body) => call(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
 export const compute = {
-  chart: (natal) => post("/api/chart", natal),
+  chart: async (natal) => {
+    try {
+      return await post("/api/chart", natal);
+    } catch (err) {
+      // Un servidor local de una versión anterior (que seguía abierto al actualizar los archivos) no conoce el
+      // pedido POST: se pide como antes, por la URL. En la versión pública esa ruta no existe y no se usa.
+      if (err.status !== 404 || isPublic()) throw err;
+      const qs = new URLSearchParams({ name: natal.name, place: natal.place, date: natal.date, time: natal.time,
+        lat: natal.lat, lon: natal.lon, tz: natal.tz, hsys: natal.hsys, node: natal.node });
+      if (natal.offset !== undefined) qs.set("offset", natal.offset);
+      return call(`/api/chart?${qs}`);
+    }
+  },
   transits: (natal, at) => post("/api/transits", { natal, at }),
   synastry: (a, b) => post("/api/synastry", { a, b }),
   calendar: (natal, start, months, scope) => post("/api/transit-calendar", { natal, start, months, scope }),
