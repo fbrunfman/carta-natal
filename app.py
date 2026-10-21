@@ -41,7 +41,9 @@ LIMITER = None                 # por IP
 GLOBAL_LIMITER = None          # entre todos
 HEAVY = Slots(3)               # cálculos pesados a la vez
 TRUSTED_PROXIES = 1            # cuántos proxies hay delante; la IP es la que anotó el último
-COST = {"/api/chart": 1, "/api/transits": 2, "/api/synastry": 2, "/api/transit-calendar": 20, "/api/validate-chart": 0.5}
+COST = {"/api/chart": 1, "/api/transits": 2, "/api/synastry": 2, "/api/transit-calendar": 20, "/api/validate-chart": 0.5,
+        "/api/featured": 6, "/api/upcoming": 8}
+HEAVY_PATHS = {"/api/transit-calendar", "/api/featured", "/api/upcoming"}     # los que recorren años o meses
 
 
 def _obj(data, key):
@@ -59,6 +61,8 @@ COMPUTE = {
     "/api/transit-calendar": lambda d: astro.transit_calendar(
         _obj(d, "natal"), _obj(d, "start"), d.get("months"), d.get("scope", "slow")),
     "/api/chart": lambda d: astro.compute_chart(d),
+    "/api/featured": lambda d: astro.featured_transits(_obj(d, "natal"), _obj(d, "at")),
+    "/api/upcoming": lambda d: astro.upcoming_events(_obj(d, "natal"), _obj(d, "at"), d.get("days", 30)),
 }
 
 
@@ -275,7 +279,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
         try:
             data = self._read_json()
-            if path == "/api/transit-calendar" and PUBLIC:
+            if path in HEAVY_PATHS and PUBLIC:
                 with HEAVY:
                     result = run(data)
             else:

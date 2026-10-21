@@ -471,3 +471,210 @@ def transit_calendar(natal: dict, start: dict, months: int, scope: str = "slow")
         "from": utc0.strftime("%Y-%m-%d %H:%M"), "to": utc1.strftime("%Y-%m-%d %H:%M"),
         "months": months, "scope": scope, "events": out, "truncated": truncated, "warnings": warnings,
     }
+
+
+# ======================================================================
+# Resumen: tránsitos destacados y próximos eventos
+# ======================================================================
+
+def _swe_at(code: int, jd: float) -> tuple[float, float]:
+    """Longitud y velocidad (°/día) de un cuerpo. Llamar con _lock tomado."""
+    xx, _ = swe.calc_ut(jd, code, FLAGS)
+    return float(xx[0]), float(xx[3])
+
+
+def _bisect(f, lo: float, hi: float, flo: float, rounds: int = 28) -> float:
+    """Raíz de `f` entre `lo` y `hi`, sabiendo que `f(lo)` y `f(hi)` tienen distinto signo (flo = f(lo))."""
+    for _ in range(rounds):
+        mid = (lo + hi) / 2
+        fm = f(mid)
+        if (fm < 0) == (flo < 0):
+            lo, flo = mid, fm
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def _local_str(jd: float, tz) -> str:
+    u = _jd_to_utc(jd).replace(tzinfo=timezone.utc)
+    return u.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+
+
+# -- tránsitos destacados: planetas lentos con un aspecto cerrado a un punto personal de la carta
+
+FEATURED_BODIES = ["pluto", "neptune", "uranus", "saturn", "jupiter"]            # del más al menos «pesado»
+FEATURED_TARGETS = ["sun", "moon", "asc", "mc", "mercury", "venus", "mars", "jupiter", "saturn"]
+# (clave, ángulo, orbe máximo): los de armonía duran más, así que se miran con menos orbe
+FEATURED_ASPECTS = [("conjunction", 0, 3.0), ("opposition", 180, 3.0), ("square", 90, 3.0),
+                    ("trine", 120, 2.0), ("sextile", 60, 2.0)]
+FEATURED_PEAK = 1.0                      # dentro de este orbe el tránsito está «en su punto máximo»
+FEATURED_SPAN = {"jupiter": (3, 2), "saturn": (4, 3), "uranus": (6, 4), "neptune": (9, 6), "pluto": (12, 8)}
+FEATURED_GAP = 450                       # días: tramos separados por menos que esto son el mismo tránsito (retrogradación)
+FEATURED_MAX = 12
+
+
+def _transit_window(code: int, grid: list[float], lons: list[float], i0: int, goal: float, orb: float) -> dict:
+    """Cuándo empieza y termina el tránsito que está activo en grid[i0], y sus momentos exactos.
+    `grid` y `lons` son el recorrido del planeta; todo en días julianos."""
+    near = [abs(_norm180(x - goal)) <= orb for x in lons]
+    runs, start = [], None
+    for i, ok in enumerate(near):
+        if ok and start is None:
+            start = i
+        elif not ok and start is not None:
+            runs.append([start, i - 1])
+            start = None
+    if start is not None:
+        runs.append([start, len(near) - 1])
+    merged: list[list[int]] = []
+    for a, b in runs:
+        if merged and grid[a] - grid[merged[-1][1]] <= FEATURED_GAP:
+            merged[-1][1] = b
+        else:
+            merged.append([a, b])
+    a, b = next(m for m in merged if m[0] <= i0 <= m[1])
+
+    def edge(i_out: int, i_in: int) -> float:
+        f = lambda jd: abs(_norm180(_swe_at(code, jd)[0] - goal)) - orb
+        return _bisect(f, grid[i_out], grid[i_in], f(grid[i_out]), 22)
+
+    since = edge(a - 1, a) if a > 0 else None             # None: empezó antes de lo que se recorre
+    until = edge(b + 1, b) if b < len(grid) - 1 else None
+
+    exacts = []
+    g = lambda jd: _norm180(_swe_at(code, jd)[0] - goal)
+    for i in range(a, b):
+        d0, d1 = _norm180(lons[i] - goal), _norm180(lons[i + 1] - goal)
+        if (d0 < 0) != (d1 < 0) and abs(d0) < 40 and abs(d1) < 40:
+            jd = _bisect(g, grid[i], grid[i + 1], d0)
+            exacts.append((jd, _swe_at(code, jd)[1] < 0))
+    return {"since": since, "until": until, "exacts": exacts}
+
+
+def featured_transits(natal: dict, at: dict) -> dict:
+    """Tránsitos de Júpiter a Plutón que en el instante `at` forman un aspecto cerrado con el Sol, la Luna,
+    los ángulos o los planetas hasta Saturno de la carta natal. De cada uno: orbe, fase, desde y hasta cuándo
+    dura (con las retrogradaciones) y los momentos exactos."""
+    chart = compute_chart(natal)
+    utc, off_h, _, warnings = _resolve_utc(_parse_naive(at), at)
+    tz = _tz_for_display(at.get("tz"), off_h)
+    pts = {b["id"]: b["lon"] for b in chart["bodies"]}
+    pts["asc"], pts["mc"] = chart["angles"]["asc"], chart["angles"]["mc"]
+
+    items = []
+    with _lock:
+        jd0 = _julday(utc)
+        for t in FEATURED_BODIES:
+            code = _CODE[t]
+            lon0, speed0 = _swe_at(code, jd0)
+            active = []
+            for n in FEATURED_TARGETS:
+                for key, angle, orb in FEATURED_ASPECTS:
+                    offs = (float(angle),) if angle in (0, 180) else (float(angle), -float(angle))
+                    for off in offs:
+                        goal = (pts[n] + off) % 360.0
+                        d = _norm180(lon0 - goal)
+                        if abs(d) <= orb:
+                            active.append((n, key, goal, orb, d))
+            if not active:
+                continue
+
+            years, step = FEATURED_SPAN[t]
+            half = int(years * 365.25 / step)
+            grid = [jd0 + (i - half) * step for i in range(2 * half + 1)]
+            lons = [lon0 if i == half else _swe_at(code, g)[0] for i, g in enumerate(grid)]
+            for n, key, goal, orb, d in active:
+                w = _transit_window(code, grid, lons, half, goal, orb)
+                ex = w["exacts"]
+                nxt = [e for e in ex if e[0] > jd0]
+                applying = bool(nxt) if ex else d * speed0 < 0
+                items.append({
+                    "t": t, "n": n, "type": key, "orb": round(abs(d), 4), "retro": speed0 < 0,
+                    "applying": applying, "peak": abs(d) <= FEATURED_PEAK,
+                    "since": _local_str(w["since"], tz) if w["since"] is not None else None,
+                    "until": _local_str(w["until"], tz) if w["until"] is not None else None,
+                    "exacts": [{"local": _local_str(jd, tz), "retro": r, "past": jd <= jd0} for jd, r in ex],
+                })
+
+    items.sort(key=lambda it: (not it["peak"], FEATURED_BODIES.index(it["t"]), FEATURED_TARGETS.index(it["n"]), it["orb"]))
+    return {
+        "at": {"date": at["date"], "time": at["time"], "tz": at.get("tz") or None, "utc": utc.strftime("%Y-%m-%d %H:%M")},
+        "items": items[:FEATURED_MAX], "total": len(items), "warnings": warnings,
+    }
+
+
+# -- próximos eventos: ingresos a signos, estaciones y entradas a las casas natales
+
+UPCOMING_BODIES = ["sun", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]
+UPCOMING_MAX_DAYS = 400
+UPCOMING_MAX_EVENTS = 400
+
+
+def upcoming_events(natal: dict, at: dict, days: int) -> dict:
+    """Desde el instante `at` y durante `days` días: cuándo cada planeta (sin la Luna) cambia de signo, cuándo
+    se detiene para retrogradar o volver a directo, y cuándo entra en una casa de la carta natal.
+    Se busca el cruce día a día y se afina por bisección."""
+    if not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= UPCOMING_MAX_DAYS:
+        raise ChartError(f"El período tiene que ser de 1 a {UPCOMING_MAX_DAYS} días.")
+    chart = compute_chart(natal)
+    cusps = chart["houses"]["cusps"]
+    utc0, off_h, _, warnings = _resolve_utc(_parse_naive(at), at)
+    tz = _tz_for_display(at.get("tz"), off_h)
+    signs = [30.0 * k for k in range(12)]
+
+    found = []
+    with _lock:
+        jd0 = _julday(utc0)
+        grid = [jd0 + i for i in range(days + 1)]
+        for bid in UPCOMING_BODIES:
+            code = _CODE[bid]
+            series = [_swe_at(code, g) for g in grid]
+            lons = [s[0] for s in series]
+            speeds = [s[1] for s in series]
+            f_speed = lambda jd, c=code: _swe_at(c, jd)[1]
+
+            def crossing(i: int, boundary: float):
+                """Instante en que el planeta pasa por `boundary` entre grid[i] y grid[i+1], o None."""
+                d0 = _norm180(lons[i] - boundary)
+                if abs(d0) > 3.0:                        # en un día no se mueve tanto
+                    return None
+                d1 = _norm180(lons[i + 1] - boundary)
+                if (d0 < 0) == (d1 < 0):
+                    return None
+                f = lambda jd, c=code: _norm180(_swe_at(c, jd)[0] - boundary)
+                return _bisect(f, grid[i], grid[i + 1], d0), d0 < 0       # (jd, avanzando)
+
+            for i in range(len(grid) - 1):
+                for idx, b in enumerate(signs):
+                    hit = crossing(i, b)
+                    if hit:
+                        jd, fwd = hit
+                        lon, sp = _swe_at(code, jd)
+                        found.append({"jd": jd, "kind": "sign", "body": bid, "retro": sp < 0,
+                                      "sign": idx if fwd else (idx - 1) % 12, "house": _house_of(lon, cusps)})
+                for idx, b in enumerate(cusps):
+                    hit = crossing(i, b)
+                    if hit:
+                        jd, fwd = hit
+                        lon, sp = _swe_at(code, jd)
+                        found.append({"jd": jd, "kind": "house", "body": bid, "retro": sp < 0,
+                                      "sign": int(lon // 30) % 12, "house": idx + 1 if fwd else (idx if idx else 12)})
+                s0, s1 = speeds[i], speeds[i + 1]
+                if bid != "sun" and s0 != 0 and (s0 < 0) != (s1 < 0):
+                    jd = _bisect(f_speed, grid[i], grid[i + 1], s0)
+                    lon, _ = _swe_at(code, jd)
+                    found.append({"jd": jd, "kind": "station", "body": bid, "to": "retro" if s0 > 0 else "direct",
+                                  "retro": s0 > 0, "sign": int(lon // 30) % 12, "house": _house_of(lon, cusps)})
+
+    found.sort(key=lambda e: e["jd"])
+    truncated = len(found) > UPCOMING_MAX_EVENTS
+    out = []
+    for e in found[:UPCOMING_MAX_EVENTS]:
+        u = _jd_to_utc(e.pop("jd"))
+        e["utc"] = u.strftime("%Y-%m-%d %H:%M")
+        e["local"] = u.replace(tzinfo=timezone.utc).astimezone(tz).strftime("%Y-%m-%d %H:%M")
+        out.append(e)
+    return {
+        "from": utc0.strftime("%Y-%m-%d %H:%M"), "days": days, "events": out, "truncated": truncated,
+        "warnings": warnings,
+    }

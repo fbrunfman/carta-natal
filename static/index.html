@@ -13,7 +13,12 @@
   <link rel="stylesheet" href="style.css">
   <script>
     try { var t = localStorage.getItem("carta:theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-    try { if (localStorage.getItem("carta:side") === "hidden") document.documentElement.dataset.side = "hidden"; } catch (e) {}
+    // menú lateral: oculto si así se eligió; sin elección, oculto en pantallas angostas (el menú se abre encima)
+    (function () {
+      var s = null;
+      try { s = localStorage.getItem("carta:side"); } catch (e) {}
+      if (s === "hidden" || (s !== "shown" && matchMedia("(max-width: 820px)").matches)) document.documentElement.dataset.side = "hidden";
+    })();
     // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo
     try {
       var c = JSON.parse(localStorage.getItem("carta:cfg") || "null"), d = document.documentElement;
@@ -33,7 +38,7 @@
 <body>
 <div class="shell">
 
-  <aside class="side">
+  <aside class="side" id="side" aria-label="Menú" tabindex="-1">
     <div class="brand">
       <h1>Carta natal</h1>
       <div class="brand-tools">
@@ -44,10 +49,9 @@
       </div>
     </div>
 
-    <section class="saved" aria-labelledby="savedTitle">
+    <section id="savedSec" class="saved" aria-labelledby="savedTitle">
       <div class="saved-head">
         <h2 id="savedTitle">Cartas guardadas<span id="savedCount" class="saved-count" hidden></span></h2>
-        <button id="new" type="button" class="ghost">Nueva carta</button>
       </div>
       <div id="picker" class="picker" hidden>
         <button id="pickBtn" type="button" class="picker-btn" aria-expanded="false" aria-controls="pickPop" aria-label="Elegir una carta guardada">
@@ -60,91 +64,145 @@
           <p id="pickNone" class="picker-none" hidden>Ninguna carta coincide.</p>
         </div>
       </div>
-      <p id="savedEmpty" class="hint">Todavía no guardaste ninguna. Completá los datos y tocá «Guardar carta».</p>
+      <div id="savedEmpty" class="first-run">
+        <p class="hint">Todavía no guardaste ninguna carta.</p>
+        <button id="first" type="button" class="primary with-ic">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Crear mi primera carta
+        </button>
+      </div>
+      <div id="chartActions" class="chart-actions">
+        <button id="edit" type="button" class="secondary compact with-ic" title="Cambiar los datos de la carta abierta">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>Editar
+        </button>
+        <button id="new" type="button" class="secondary compact with-ic" title="Cargar los datos de otra persona">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta
+        </button>
+      </div>
     </section>
 
-    <form id="form" autocomplete="off" novalidate>
-      <label class="field">
-        <span>Nombre</span>
-        <input name="name" type="text" placeholder="Opcional">
-      </label>
-
-      <div class="row2 when">
-        <label class="field">
-          <span>Fecha</span>
-          <input name="date" type="date" required min="1800-01-01" max="2400-12-31">
-        </label>
-        <label class="field">
-          <span>Hora local</span>
-          <input name="time" type="time" required>
-        </label>
+    <section id="formPanel" class="formpanel" aria-labelledby="formTitle" hidden>
+      <div class="fp-head">
+        <h2 id="formTitle">Nueva carta</h2>
+        <button id="formClose" type="button" class="iconbtn plain" aria-label="Cerrar sin cambios" title="Cerrar sin cambios">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
       </div>
-
-      <label class="field">
-        <span>Lugar</span>
-        <input name="place" type="text" list="places" placeholder="Ciudad, país">
-      </label>
-      <datalist id="places"></datalist>
-
-      <div class="row2">
+      <form id="form" autocomplete="off" novalidate>
         <label class="field">
-          <span>Latitud</span>
-          <input name="lat" type="number" step="any" min="-90" max="90" required inputmode="decimal">
+          <span>Nombre</span>
+          <input name="name" type="text" placeholder="Opcional">
         </label>
+
+        <div class="row2 when">
+          <label class="field">
+            <span>Fecha</span>
+            <input name="date" type="date" required min="1800-01-01" max="2400-12-31">
+          </label>
+          <label class="field">
+            <span>Hora local</span>
+            <input name="time" type="time" required>
+          </label>
+        </div>
+
         <label class="field">
-          <span>Longitud</span>
-          <input name="lon" type="number" step="any" min="-180" max="180" required inputmode="decimal">
+          <span>Lugar</span>
+          <input name="place" type="text" list="places" placeholder="Ciudad, país">
         </label>
+        <datalist id="places"></datalist>
+
+        <div class="row2">
+          <label class="field">
+            <span>Latitud</span>
+            <input name="lat" type="number" step="any" min="-90" max="90" required inputmode="decimal">
+          </label>
+          <label class="field">
+            <span>Longitud</span>
+            <input name="lon" type="number" step="any" min="-180" max="180" required inputmode="decimal">
+          </label>
+        </div>
+        <p class="hint">Sur y oeste van en negativo. Si tu lugar no está en la lista, escribí las coordenadas.</p>
+
+        <label class="field">
+          <span>Zona horaria</span>
+          <input name="tz" type="text" list="tzs" placeholder="America/Argentina/Buenos_Aires" spellcheck="false">
+        </label>
+        <datalist id="tzs"></datalist>
+
+        <label class="check">
+          <input type="checkbox" id="manual">
+          <span>Fijar el offset UTC a mano</span>
+        </label>
+        <label class="field" id="offsetField" hidden>
+          <span>Offset en horas (por ejemplo −3)</span>
+          <input name="offset" type="number" step="0.25" min="-14" max="14" inputmode="decimal">
+        </label>
+
+        <div class="actions">
+          <button class="primary" type="submit" id="go">Calcular carta</button>
+          <button class="secondary" type="button" id="save">Guardar carta</button>
+        </div>
+        <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
+      </form>
+    </section>
+    <p class="status" id="saveNote" role="status"></p>
+
+    <details class="cfgbox" id="cfgBox">
+      <summary>
+        <svg class="cfg-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6"/></svg>
+        <span>Configuración</span>
+        <svg class="cfg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+      </summary>
+      <div class="cfg" id="cfg">
+        <h3 class="sub">Cálculo</h3>
+        <div class="row2">
+          <label class="field">
+            <span>Sistema de casas</span>
+            <select name="hsys" form="form">
+              <option value="P">Placidus</option>
+              <option value="K">Koch</option>
+              <option value="O">Porfirio</option>
+              <option value="R">Regiomontano</option>
+              <option value="C">Campanus</option>
+              <option value="E">Casas iguales</option>
+              <option value="W">Signos enteros</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Nodo lunar</span>
+            <select name="node" form="form">
+              <option value="true">Verdadero</option>
+              <option value="mean">Medio</option>
+            </select>
+          </label>
+        </div>
+        <p class="fine" id="cfgCalcNote">Casas y nodo valen para todas las cartas y se aplican al instante.</p>
+
+        <h3 class="sub">Menú lateral</h3>
+        <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
+          <button type="button" data-side="shown" aria-pressed="true">Fijo</button>
+          <button type="button" data-side="hidden" aria-pressed="false">Oculto</button>
+        </div>
+        <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece encima al pasar el mouse por el borde izquierdo o al tocar el botón de la esquina. Con un clic en ese botón queda fijo. En el celular arranca oculto.</p>
+
+        <h3 class="sub">Estilo de los gráficos</h3>
+        <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
+          <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
+          <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
+        </div>
+        <p class="fine">Nuevo: planetas en círculos de color y signos blancos sobre una banda oscura. Clásico: símbolos simples de la fuente del sistema y anillo teñido por elemento, como antes.</p>
+        <label class="check"><input type="checkbox" id="cfgTint"><span>Tinte por elemento en el anillo de signos</span></label>
+
+        <h3 class="sub">Letra</h3>
+        <label class="field"><span>Tipo de letra</span><select id="cfgFont"></select></label>
+        <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
+
+        <h3 class="sub">Mandala</h3>
+        <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
+        <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
+
+        <button type="button" class="secondary compact" id="cfgReset">Restablecer</button>
       </div>
-      <p class="hint">Sur y oeste van en negativo. Si tu lugar no está en la lista, escribí las coordenadas.</p>
-
-      <label class="field">
-        <span>Zona horaria</span>
-        <input name="tz" type="text" list="tzs" placeholder="America/Argentina/Buenos_Aires" spellcheck="false">
-      </label>
-      <datalist id="tzs"></datalist>
-
-      <label class="check">
-        <input type="checkbox" id="manual">
-        <span>Fijar el offset UTC a mano</span>
-      </label>
-      <label class="field" id="offsetField" hidden>
-        <span>Offset en horas (por ejemplo −3)</span>
-        <input name="offset" type="number" step="0.25" min="-14" max="14" inputmode="decimal">
-      </label>
-
-      <div class="row2">
-        <label class="field">
-          <span>Sistema de casas</span>
-          <select name="hsys">
-            <option value="P">Placidus</option>
-            <option value="K">Koch</option>
-            <option value="O">Porfirio</option>
-            <option value="R">Regiomontano</option>
-            <option value="C">Campanus</option>
-            <option value="E">Casas iguales</option>
-            <option value="W">Signos enteros</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Nodo lunar</span>
-          <select name="node">
-            <option value="true">Verdadero</option>
-            <option value="mean">Medio</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="actions">
-        <button class="primary" type="submit" id="go">Calcular carta</button>
-        <button class="secondary" type="button" id="save">Guardar carta</button>
-      </div>
-      <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
-      <p class="status" id="saveNote" role="status"></p>
-    </form>
-
-    <div id="timeNote" class="note" hidden></div>
-    <div id="warnings" class="note warn" hidden></div>
+    </details>
 
     <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato a internet.</p>
     <p class="where" id="savedWhere"></p>
@@ -156,16 +214,22 @@
     </div>
   </aside>
 
+  <div id="scrim" class="scrim" aria-hidden="true"></div>
+
   <main id="main">
     <div id="sideEdge" class="side-edge" aria-hidden="true"></div>
     <button id="sideShow" type="button" class="iconbtn side-show" aria-label="Mostrar el menú" title="Pasá el mouse para ver el menú encima; hacé clic para fijarlo (Ctrl o Cmd + \)">
       <svg class="ic-show" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M14 9.5 16.5 12 14 14.5"/></svg>
       <svg class="ic-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5.2 3 3.3V14H7v-1.5l3-3.3L9 4Z"/><path d="M12 14v6"/></svg>
+      <svg class="ic-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <header class="head">
       <h2 id="title">Carta natal</h2>
       <p id="sub"></p>
     </header>
+
+    <div id="timeNote" class="note" hidden></div>
+    <div id="warnings" class="note warn" hidden></div>
 
     <div class="modebar">
       <div class="seg modes" id="modes" role="group" aria-label="Vista">
@@ -202,8 +266,11 @@
 
     <section id="intro" class="intro" hidden>
       <h3>Calculá una carta natal</h3>
-      <p>Completá la fecha, la hora y el lugar de nacimiento en el menú de la izquierda y tocá «Calcular carta». Después podés guardar tus cartas, ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
+      <p>Cargá la fecha, la hora y el lugar de nacimiento y tocá «Calcular carta». Después podés guardar tus cartas, ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
       <p>Tocá cualquier planeta para leer su signo, su casa y sus aspectos.</p>
+      <button id="introNew" type="button" class="primary with-ic intro-cta">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Crear mi primera carta
+      </button>
       <p class="intro-note">Los datos de nacimiento se usan solo para calcular y no se guardan en el servidor. Las cartas que guardes quedan en este navegador.</p>
     </section>
 
@@ -223,6 +290,7 @@
         <div class="tabs" role="tablist" aria-label="Tablas">
           <button role="tab" id="tab-pos" data-modes="natal" aria-controls="panel-pos" aria-selected="true">Posiciones</button>
           <button role="tab" id="tab-casas" data-modes="natal" aria-controls="panel-casas" aria-selected="false" tabindex="-1">Casas</button>
+          <button role="tab" id="tab-sum" data-modes="transit" aria-controls="panel-sum" aria-selected="false" tabindex="-1" hidden>Resumen</button>
           <button role="tab" id="tab-tpos" data-modes="transit" aria-controls="panel-tpos" aria-selected="false" tabindex="-1" hidden>Tránsitos</button>
           <button role="tab" id="tab-asp" data-modes="natal transit syn" aria-controls="panel-asp" aria-selected="false" tabindex="-1">Aspectos</button>
           <button role="tab" id="tab-stair" data-modes="natal" aria-controls="panel-stair" aria-selected="false" tabindex="-1" title="Cuadro de aspectos">Cuadro</button>
@@ -230,13 +298,17 @@
           <button role="tab" id="tab-cal" data-modes="transit" aria-controls="panel-cal" aria-selected="false" tabindex="-1" hidden>Calendario</button>
           <button role="tab" id="tab-grid" data-modes="transit syn" aria-controls="panel-grid" aria-selected="false" tabindex="-1" hidden title="Cuadro de aspectos">Cuadro</button>
           <button role="tab" id="tab-over" data-modes="syn" aria-controls="panel-over" aria-selected="false" tabindex="-1" hidden>Superposición</button>
-          <button role="tab" id="tab-cfg" class="tab-icon" data-modes="natal transit syn" aria-controls="panel-cfg" aria-selected="false" tabindex="-1" aria-label="Configuración" title="Configuración">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6"/></svg>
-          </button>
         </div>
 
         <div id="panel-pos" role="tabpanel" aria-labelledby="tab-pos"></div>
         <div id="panel-casas" role="tabpanel" aria-labelledby="tab-casas" hidden></div>
+        <div id="panel-sum" role="tabpanel" aria-labelledby="tab-sum" hidden>
+          <div class="seg sumview" id="sumView" role="group" aria-label="Qué mostrar">
+            <button type="button" data-v="feat" aria-pressed="true">Destacados</button>
+            <button type="button" data-v="soon" aria-pressed="false">Próximamente</button>
+          </div>
+          <div id="sumBody"></div>
+        </div>
         <div id="panel-tpos" role="tabpanel" aria-labelledby="tab-tpos" hidden></div>
         <div id="panel-asp" role="tabpanel" aria-labelledby="tab-asp" hidden>
           <div class="seg orb" role="group" aria-label="Orbe máximo">
@@ -287,32 +359,6 @@
           <div id="gridTable"></div>
         </div>
         <div id="panel-over" role="tabpanel" aria-labelledby="tab-over" hidden></div>
-        <div id="panel-cfg" class="cfg" role="tabpanel" aria-labelledby="tab-cfg" hidden>
-          <h3 class="sub">Menú lateral</h3>
-          <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
-            <button type="button" data-side="shown" aria-pressed="true">Fijo</button>
-            <button type="button" data-side="hidden" aria-pressed="false">Oculto</button>
-          </div>
-          <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece flotando encima cuando pasás el mouse por el borde izquierdo o por el botón de la esquina. Con un clic queda fijo.</p>
-
-          <h3 class="sub">Estilo de los gráficos</h3>
-          <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
-            <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
-            <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
-          </div>
-          <p class="fine">Nuevo: planetas en círculos de color y signos blancos sobre una banda oscura. Clásico: símbolos simples de la fuente del sistema y anillo teñido por elemento, como antes.</p>
-          <label class="check"><input type="checkbox" id="cfgTint"><span>Tinte por elemento en el anillo de signos</span></label>
-
-          <h3 class="sub">Letra</h3>
-          <label class="field"><span>Tipo de letra</span><select id="cfgFont"></select></label>
-          <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
-
-          <h3 class="sub">Mandala</h3>
-          <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
-          <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
-
-          <button type="button" class="secondary compact" id="cfgReset">Restablecer</button>
-        </div>
       </section>
     </div>
   </main>

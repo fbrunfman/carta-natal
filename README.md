@@ -60,8 +60,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - Fecha, hora local y lugar → posiciones de Sol a Plutón, nodo norte, Ascendente y Medio Cielo.
 - Zona horaria histórica con la base IANA (cambios de horario de verano incluidos). Avisa si la hora
   fue ambigua o no existió, y permite fijar el offset UTC a mano.
-- Sistemas de casas: Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales y signos enteros.
-- Nodo lunar verdadero o medio.
+- Sistemas de casas: Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales y signos enteros (en Configuración).
+- Nodo lunar verdadero o medio (en Configuración).
 - Aspectos (conjunción, oposición, trígono, cuadratura, sextil, quincuncio) con orbe y fase
   aplicativa o separativa. Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos.
 - **Cuadro** (pestaña en las tres vistas): los aspectos en escalera, con cada planeta como un círculo de
@@ -77,10 +77,24 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Menú lateral, fijo o solapado**: el botón de la esquina superior del menú (o Ctrl/Cmd + \) lo oculta y deja todo
   el ancho para la rueda y las tablas. Con el menú oculto, al **pasar el mouse** por el borde izquierdo o por el botón
   de la esquina, el menú aparece **flotando encima** del gráfico, sin moverlo, y se va solo al alejar el mouse (o con
-  Esc, o tocando afuera; si estás escribiendo en un campo, queda abierto). Un **clic** en ese botón (que mientras
-  flota pasa a ser una chincheta) lo deja **fijo** de nuevo. En pantallas táctiles o angostas no existe «pasar el
-  mouse»: el botón lo muestra fijo de una. Los botones quedan a la vista aunque se desplace la página. Se recuerda.
-- **Configuración** (la pestaña con el engranaje, al final de la fila de pestañas, en todas las vistas):
+  Esc, o tocando afuera; si tenés el formulario abierto o estás escribiendo en un campo, queda abierto). Un **clic** en
+  ese botón (que mientras flota pasa a ser una chincheta) lo deja **fijo** de nuevo. En escritorio el menú es un poco
+  más ancho (352 px) y se recuerda si lo dejaste fijo u oculto.
+- **En el celular y la tableta** el menú arranca **oculto** y no ocupa lugar: el botón de la esquina lo abre
+  **encima** de la carta, como un cajón con una cortina oscura detrás; se cierra tocando la cortina, con Esc, con el
+  botón de ocultar, al elegir una carta o al calcular/guardar. Mientras no haya ninguna carta guardada, ese botón es
+  un **«+»**: lo tocás y se abre el menú con el formulario para crear la primera (la pantalla de bienvenida tiene el
+  mismo botón). Si querés el menú fijo en una pantalla grande o en la tableta, está en Configuración → *Menú lateral*.
+- **Crear y editar cartas**: el formulario está **oculto** y se despliega en el menú al tocar **«Nueva carta»**
+  (en blanco) o **«Editar»** (con los datos de la carta que estás viendo). *Calcular carta* muestra el resultado y
+  deja el formulario abierto; *Guardar* lo guarda, lo cierra y muestra la carta guardada. La **✕** de arriba cierra el
+  formulario y vuelve a como estaba antes de abrirlo (los campos, la carta elegida), salvo lo que ya hayas calculado.
+  *Sistema de casas* y *nodo lunar* ya no están en el formulario: son preferencias de la vista, están en
+  Configuración, valen para todas las cartas y se aplican al instante, sin apretar nada.
+- **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; abierto en pantallas
+  grandes y cerrado en el celular, y se recuerda):
+  - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros) y nodo lunar
+    (verdadero o medio). Recalcula la carta que estás viendo al elegir.
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
   - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
     o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo de signos claro). Al elegir
@@ -110,8 +124,25 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Las lecturas son generales y simbólicas, no calculadas para la persona; al pie de la ventana se aclara que describen
   tendencias y no causas ni predicciones. Los textos están en `static/interp-signs.js`, `interp-houses.js` e
   `interp-aspects.js`, uno por línea, para editarlos a gusto.
+- **Resumen de tránsitos**: la primera pestaña de la vista Tránsitos, para la fecha y la hora elegidas (arranca en «ahora»).
+  - *Profecciones*: el año de la casa en que estás (por edad, con signos enteros desde el Ascendente), su **señor
+    del año** (regente tradicional del signo: Acuario es de Saturno, Piscis de Júpiter…) con dónde está ese planeta
+    ahora, y los señores del **mes** y del **día**. Los tres son botones que abren la lectura del planeta. El año
+    cambia en el cumpleaños; el mes, un signo por mes calendario desde el cumpleaños; el día, un signo por día
+    desde el aniversario del mes. Se calcula en el navegador, no hace falta pedir nada.
+  - *Destacados*: los **tránsitos lentos (Júpiter a Plutón)** que están en aspecto cerrado con tu Sol, Luna,
+    Ascendente, Medio Cielo o planetas hasta Saturno. Orbe de hasta 3° (2° en trígonos y sextiles); «punto máximo»
+    es a menos de 1° del exacto. Cada tarjeta dice de qué se trata (título y texto del par de planetas), hasta cuándo
+    dura, desde cuándo está activo y las fechas exactas (tachadas las pasadas, resaltada la próxima, con «R» si el
+    planeta está retrógrado). Muestra los 12 más importantes. Tocar una tarjeta abre la lectura del planeta en tránsito.
+  - *Próximamente*: lo que viene en **30 días, 90 días o 6 meses**, agrupado por día y con la hora: ingresos de los
+    planetas a un signo (con «R» si están retrógrados), estaciones (cuando un planeta se detiene para cambiar de
+    sentido) y entradas a las casas de tu carta. Sin la Luna. Tocar un evento lleva la rueda a ese momento exacto.
+  Los destacados y lo que viene los calcula el servidor (`/api/featured` y `/api/upcoming`) y solo se piden al abrir
+  cada vista; si cambiás la fecha se recalculan, y si volvés a una vista ya calculada no se vuelve a pedir.
+  Las fechas de «hasta» usan esos orbes de 3° y 2°, así que pueden diferir de las de otras apps que usan otros orbes.
 - **Tránsitos**: pestaña «Tránsitos». La rueda pasa a ser doble: adentro la carta natal, afuera los
-  planetas de la fecha que elijas (arranca en «ahora»). Fecha, hora y zona horaria se editan, y ‹ › mueven
+  planetas de la fecha que elijas (arranca en «ahora»). La pestaña «Tránsitos» es la tabla de posiciones. Fecha, hora y zona horaria se editan, y ‹ › mueven
   el momento de a 1 hora, día, semana, mes o año. Tres tablas: dónde está cada planeta y qué casa natal
   recorre; aspectos del tránsito a la carta natal con orbe y fase (aplicativo / separativo); y un
   **calendario** de aspectos exactos con fecha y hora, para 3, 6, 12 o 24 meses desde la fecha que quieras
@@ -123,8 +154,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   casa de cada una cae cada planeta de la otra. Al ser dos fechas de nacimiento, no se calcula fase.
 - En las dos vistas el filtro de orbe (1° / 3° / todos) también decide qué líneas se dibujan en la rueda.
 - **Cartas guardadas**: guardá todas las que quieras con nombre. En el menú de la izquierda hay un
-  selector que muestra la carta abierta (con su fecha); al tocarlo se despliega la lista, flotando sobre el
-  formulario, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
+  selector que muestra la carta abierta (con su fecha); al tocarlo se despliega la lista, flotando sobre los
+  botones, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
   ni mayúsculas, también por fecha). Con teclado: flecha abajo abre, flechas se mueven, Enter elige y Esc
   cierra. Se cierra también al tocar afuera. «Guardar cambios» actualiza la abierta y «Guardar como carta
   nueva» la duplica. Eliminar (la × al pasar el mouse por una carta de la lista) pide confirmación (dos toques).
@@ -179,7 +210,7 @@ Es la misma app con tres diferencias:
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
   repositorio y que la versión pública no sirve (devuelve 404).
 - **Límites**: hasta 60 pedidos seguidos por persona y después 2 por segundo (el calendario de tránsitos cuesta
-  20 pedidos), 3 calendarios a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
+  20 pedidos; los destacados, 6; lo que viene, 8), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
   un mensaje. No hay `/api/charts` ni `/api/presence`, y `/healthz` responde `ok` para el hosting.
 
 **Pasos en Render** (el plan gratis alcanza para compartir con amigos):
@@ -215,11 +246,12 @@ Cosas a saber:
 ## Estructura
 
 ```
-astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, tránsitos, sinastría, calendario
+astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, tránsitos, sinastría, calendario,
+                  tránsitos destacados y próximos eventos (ingresos, estaciones, casas)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
 app.py            servidor (local: solo 127.0.0.1; con --public, para alojarla): /api/chart, /api/timezones,
-                  /api/charts, /api/transits, /api/synastry, /api/transit-calendar, /api/validate-chart,
-                  /api/ping, /api/presence, /healthz
+                  /api/charts, /api/transits, /api/featured, /api/upcoming, /api/synastry, /api/transit-calendar,
+                  /api/validate-chart, /api/ping, /api/presence, /healthz
 presence.py       cuándo cerrar el servidor: cuando no queda ninguna ventana abierta (--idle-exit)
 limits.py         límites de la versión pública: pedidos por persona y cálculos pesados a la vez
 Dockerfile, render.yaml, .dockerignore, .gitignore   para alojarla en Render
@@ -230,7 +262,8 @@ static/           interfaz
   wheel.js                          dibujo de la rueda
   layout.js                         planetas dentro de su casa; separación del anillo exterior
   astro-data.js                     nombres, aspectos, formato de posiciones, círculos de color de cada cuerpo
-  settings.js                       pestaña Configuración: estilo, tinte, letra, tamaños (se guarda y se aplica)
+  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños (se guarda y se aplica)
+  summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
   planet-dialog.js                  ventana de lectura que se abre al tocar un planeta
   reading.js                        qué muestra esa ventana según la vista (natal, tránsitos, sinastría)
   interp.js                         junta los textos: signo, casa, dignidades, aspectos
@@ -262,7 +295,8 @@ lista carpetas, y manda `X-Frame-Options`, `nosniff`, `no-referrer` y `noindex`.
 - Lista de lugares incluida: Argentina (capitales provinciales y ciudades grandes) y ~45 ciudades
   del mundo. Para otro lugar, escribí latitud y longitud.
 - Efemérides Moshier: no incluye Quirón ni asteroides (requieren los archivos `.se1`).
-- Tránsitos: los planetas en tránsito son Sol a Plutón y el nodo; el calendario deja afuera la Luna (cambia
-  de aspecto cada pocas horas). No hay progresiones, retornos ni revoluciones solares todavía.
+- Tránsitos: los planetas en tránsito son Sol a Plutón y el nodo; el calendario y «Próximamente» dejan afuera
+  la Luna (cambia de aspecto y de signo cada pocas horas). Los destacados son solo de Júpiter a Plutón.
+- Profecciones: signos enteros y regentes tradicionales; el nacido un 29/2 cumple el 28/2 en años comunes. No hay progresiones, retornos ni revoluciones solares todavía.
 - Sinastría: aspectos y casas cruzadas; falta la carta compuesta.
 - El calendario muestra como máximo 800 aspectos; con «Todos» y 24 meses se llega a ese tope.

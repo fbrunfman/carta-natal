@@ -7,6 +7,7 @@ import { compute, config, isPublic } from "./api.js";
 import { localCharts } from "./local-charts.js";
 import { initSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
+import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form");
@@ -114,13 +115,30 @@ $("#manual").addEventListener("change", (e) => {
   }
 });
 
-form.addEventListener("submit", (e) => { e.preventDefault(); calculate(); });
+// Casas y nodo lunar viven en Configuración (fuera del formulario, pero asociados a él): valen para todas las
+// cartas y se aplican al instante sobre la carta que se está viendo.
+for (const name of ["hsys", "node"]) {
+  form.elements[name].addEventListener("change", () => {
+    remember();
+    if (!birth) return;
+    const v = readForm();
+    birth = { ...birth, hsys: v.hsys, node: v.node };
+    run(load);
+  });
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await calculate();
+  closeDrawer();                       // en el celular, el menú se cierra para ver la carta
+});
 
 // ---------- cartas guardadas ---------------------------------------------
 const saved = createSaved({
-  list: $("#savedList"), empty: $("#savedEmpty"), where: $("#savedWhere"),
+  list: $("#savedList"), where: $("#savedWhere"),
   picker: { root: $("#picker"), btn: $("#pickBtn"), pop: $("#pickPop"), q: $("#pickQ"), none: $("#pickNone"), count: $("#savedCount") },
-  onOpen: openSaved, onChange: syncPartners,
+  onOpen: openSaved,
+  onChange: () => { syncPartners(); syncActions(); },
 });
 
 let noteTimer = 0;
@@ -140,10 +158,12 @@ function syncSaveButtons() {
 }
 
 async function openSaved(item) {
+  closeForm(false);
   saved.setActive(item.id);
   fillForm(item);
   note("");
   syncSaveButtons();
+  closeDrawer();
   await calculate();
 }
 
@@ -159,7 +179,10 @@ async function persist(asNew) {
     const rec = updating ? await saved.update(saved.activeId, birthData) : await saved.create(birthData);
     saved.setActive(rec.id);
     syncSaveButtons();
+    closeForm(false);
     note(updating ? "Cambios guardados." : "Carta guardada.");
+    await calculate();                  // lo que se ve es lo que se guardó
+    closeDrawer();
   } catch (err) {
     note(err.message, true);
   }
@@ -167,12 +190,68 @@ async function persist(asNew) {
 
 $("#save").addEventListener("click", () => persist(false));
 $("#saveAs").addEventListener("click", () => persist(true));
-$("#new").addEventListener("click", () => {
-  saved.setActive(null);
-  fillForm(BLANK);
+
+// ---------- el formulario aparece con «Nueva carta» o «Editar» ----------------
+// Oculto, el menú muestra solo la carta abierta y los botones. Al cerrarlo con la ✕ todo vuelve a como estaba;
+// al calcular, lo que se ve pasa a ser el nuevo punto de partida de esa ✕.
+const formPanel = $("#formPanel");
+let editing = null;                     // { values, active } de antes de abrir; null con el formulario cerrado
+const formOpen = () => !formPanel.hidden;
+const hasChart = () => !!birth;
+
+/** Qué se ve en «Cartas guardadas»: la lista y sus botones, o el primer paso si no hay ninguna. */
+function syncActions() {
+  const none = saved.items.length === 0;
+  const open = formOpen();
+  $("#savedSec").hidden = none && open;          // sin cartas y con el formulario abierto, el aviso sobra
+  $("#savedEmpty").hidden = !none || open;
+  $("#chartActions").hidden = none || open;
+  $("#edit").hidden = !hasChart();
+  if (none) root.dataset.nocharts = ""; else delete root.dataset.nocharts;
+  paintSideBtn();
+}
+
+/** kind: "new" (en blanco) o "edit" (los datos de la carta que se está viendo). */
+function openForm(kind) {
+  if (!formOpen()) editing = { values: readForm(), active: saved.activeId };
+  saved.closePicker();
+  if (kind === "new") {
+    saved.setActive(null);
+    fillForm(BLANK);
+  }
   note("");
   syncSaveButtons();
-  form.elements.name.focus();
+  $("#formTitle").textContent = kind === "new" ? "Nueva carta" : saved.activeId ? "Editar carta" : "Carta sin guardar";
+  formPanel.hidden = false;
+  syncActions();
+  revealSide();
+  form.elements.name.focus({ preventScroll: true });
+  formPanel.scrollIntoView({ block: "nearest" });
+}
+
+/** cancel: vuelve a los datos de antes de abrir (la ✕). Guardar o elegir otra carta la cierran sin volver atrás. */
+function closeForm(cancel) {
+  if (!formOpen()) return;
+  if (cancel && editing) {
+    fillForm(editing.values);
+    saved.setActive(editing.active);
+    syncSaveButtons();
+  }
+  editing = null;
+  formPanel.hidden = true;
+  syncActions();
+}
+
+/** El primer paso: con una carta ya a la vista (sin guardar) se guarda esa; si no, una en blanco. */
+const createFirst = () => openForm(hasChart() ? "edit" : "new");
+
+$("#new").addEventListener("click", () => openForm("new"));
+$("#edit").addEventListener("click", () => openForm("edit"));
+$("#first").addEventListener("click", createFirst);
+$("#introNew").addEventListener("click", createFirst);
+$("#formClose").addEventListener("click", () => {
+  closeForm(true);
+  [$("#edit"), $("#new"), $("#first")].find((b) => b.offsetParent !== null)?.focus();
 });
 
 // ---------- sinastría: elegir la otra carta -------------------------------
@@ -318,6 +397,8 @@ async function calculate() {
   try { await run(load); } finally {
     btn.disabled = false;
     btn.textContent = "Calcular carta";
+    if (formOpen()) editing = { values: readForm(), active: saved.activeId };   // la ✕ ya no vuelve más atrás de esto
+    syncActions();
   }
 }
 
@@ -683,6 +764,101 @@ for (const [sel, key, attr] of [["#calMonths", "months", "m"], ["#calScope", "sc
   }));
 }
 
+// ---------- resumen: profecciones, destacados y próximamente ---------------------
+// Las profecciones salen de la carta y la fecha; los destacados y los próximos eventos los calcula el servidor
+// para el momento elegido en la barra de tránsitos y se piden recién al abrir cada vista.
+const sum = { view: "feat", days: 30, feat: null, featKey: "", featSeq: 0, soon: null, soonKey: "", soonSeq: 0, err: null };
+
+function sumProfection() {
+  if (!chart || !transit) return "";
+  const p = profection(chart.input.date, transit.at.date, Math.floor(chart.angles.asc / 30) % 12);
+  return profectionHTML(p, transit.bodies);
+}
+
+function sumError(err) {
+  // un servidor local de antes de esta versión no conoce los pedidos nuevos
+  if (err && err.status === 404 && !isPublic()) {
+    return "Este servidor local es de una versión anterior y no tiene esta función. Cerrá la app (Cmd+Q) y volvé a abrirla.";
+  }
+  return err?.message || "No se pudo calcular.";
+}
+
+function renderSummary() {
+  const body = $("#sumBody");
+  document.querySelectorAll("#sumView button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === sum.view));
+  if (!(mode === "transit" && transit)) { body.replaceChildren(); return; }
+  let html;
+  if (sum.view === "feat") {
+    const list = sum.err ? `<p class="muted pad">${esc(sumError(sum.err))}</p>`
+      : sum.feat ? featuredHTML(sum.feat)
+      : `<p class="muted pad">Calculando…</p>`;
+    html = sumProfection() + `<h3 class="sum-h sum-h2">Tránsitos destacados</h3>` + list;
+  } else {
+    html = sum.err ? `<p class="muted pad">${esc(sumError(sum.err))}</p>`
+      : sum.soon ? upcomingHTML(sum.soon, sum.days)
+      : `<p class="muted pad">Calculando…</p>`;
+    if (sum.err || !sum.soon) {          // el selector de período se ve igual mientras carga
+      html = `<div class="seg soonseg" role="group" aria-label="Período">${SOON_PERIODS.map(([d, label]) =>
+        `<button type="button" data-days="${d}" aria-pressed="${d === sum.days}">${label}</button>`).join("")}</div>` + html;
+    }
+  }
+  body.innerHTML = html;
+}
+
+async function ensureSummary() {
+  if (mode !== "transit" || !birth || !transit) return;
+  const at = atFromControls();
+  if (!at) { renderSummary(); return; }
+  const natal = natalBody(birth);
+  const feat = sum.view === "feat";
+  const key = JSON.stringify(feat ? [natal, at] : [natal, at, sum.days]);
+  if (key === (feat ? sum.featKey : sum.soonKey) && (feat ? sum.feat : sum.soon)) { renderSummary(); return; }
+  if (feat) { sum.featKey = key; sum.feat = null; } else { sum.soonKey = key; sum.soon = null; }
+  const my = feat ? ++sum.featSeq : ++sum.soonSeq;
+  sum.err = null;
+  renderSummary();
+  try {
+    const data = feat ? await compute.featured(natal, at) : await compute.upcoming(natal, at, sum.days);
+    if (my !== (feat ? sum.featSeq : sum.soonSeq)) return;
+    if (feat) sum.feat = data; else sum.soon = data;
+  } catch (err) {
+    if (my !== (feat ? sum.featSeq : sum.soonSeq)) return;
+    if (feat) sum.featKey = ""; else sum.soonKey = "";
+    sum.err = err;
+  }
+  if (feat === (sum.view === "feat")) renderSummary();
+}
+
+document.querySelectorAll("#sumView button").forEach((b) => b.addEventListener("click", () => {
+  if (sum.view === b.dataset.v) return;
+  sum.view = b.dataset.v;
+  sum.err = null;
+  ensureSummary();
+}));
+$("#sumBody").addEventListener("click", (e) => {
+  const days = e.target.closest("[data-days]");
+  if (days) { sum.days = Number(days.dataset.days); sum.err = null; ensureSummary(); return; }
+  const go = e.target.closest("[data-go]");
+  if (go) { jumpToLocal(go.dataset.go); return; }
+  const el = e.target.closest("[data-id]");
+  if (el) openReading(el.dataset.id);
+});
+$("#sumBody").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const el = e.target.closest(".soon-ev[data-go], .fcard[data-id]");
+  if (!el) return;
+  e.preventDefault();
+  if (el.dataset.go) jumpToLocal(el.dataset.go); else openReading(el.dataset.id);
+});
+
+/** Lleva la barra de tránsitos a un instante «AAAA-MM-DD HH:MM» (en la zona elegida) y vuelve a calcular. */
+function jumpToLocal(local) {
+  const [date, time] = local.split(" ");
+  tDate.value = date;
+  tTime.value = time;
+  loadSoon();
+}
+
 // ---------- interacción rueda ↔ tablas -----------------------------------
 function highlightRows(id) {
   document.querySelectorAll("tr.hl").forEach((r) => r.classList.remove("hl"));
@@ -743,7 +919,7 @@ $("#panel-elem").addEventListener("click", (e) => {
 
 // ---------- pestañas, modos y filtro -------------------------------------
 const tabs = [...document.querySelectorAll("[role=tab]")];
-const lastTab = { natal: "tab-pos", transit: "tab-tpos", syn: "tab-asp" };
+const lastTab = { natal: "tab-pos", transit: "tab-sum", syn: "tab-asp" };
 const visibleTabs = () => tabs.filter((t) => t.dataset.modes.split(" ").includes(mode));
 
 function selectTab(tab) {
@@ -756,6 +932,7 @@ function selectTab(tab) {
   }
   wheel?.clear();
   if (tab.id === "tab-cal") ensureCalendar();
+  if (tab.id === "tab-sum") ensureSummary();
 }
 
 function applyTabs() {
@@ -803,26 +980,45 @@ document.querySelectorAll(".seg.orb button").forEach((b) => b.addEventListener("
 }));
 
 // ---------- menú lateral: fijo, u oculto y solapado --------------------------
-// Oculto: no ocupa lugar; al pasar el mouse por el borde izquierdo o por el botón de la esquina aparece flotando
-// encima del contenido («peek»). Con un clic en el botón queda fijo. En pantallas táctiles o angostas no hay
-// «pasar el mouse»: el botón fija el menú directamente.
+// Oculto: no ocupa lugar. Con mouse, al pasar por el borde izquierdo o por el botón de la esquina aparece flotando
+// encima del contenido («peek»); con un clic en el botón queda fijo. En el celular o la tableta no hay «pasar el
+// mouse»: el botón abre el menú encima, como un cajón con una cortina detrás, y se cierra al tocar afuera.
+// Sin cartas guardadas, el botón de la esquina es un «+» que abre el menú con el formulario para la primera.
 const root = document.documentElement;
 const sideShowBtn = $("#sideShow");
 const sideHidden = () => root.dataset.side === "hidden";
-const canPeek = () => sideHidden() && matchMedia("(hover: hover) and (pointer: fine) and (min-width: 821px)").matches;
+const hoverMode = () => matchMedia("(hover: hover) and (pointer: fine) and (min-width: 821px)").matches;
+const canPeek = () => sideHidden() && hoverMode();      // abrir pasando el mouse
 const peeking = () => "peek" in root.dataset;
 let peekTimer = 0;
 let sideChangedAt = 0;      // al ocultar con el mouse quieto sobre la esquina, el menú no tiene que reaparecer solo
 
+function paintSideBtn() {
+  const none = "nocharts" in root.dataset;
+  const label = peeking() ? "Fijar el menú" : none ? "Crear la primera carta" : "Mostrar el menú";
+  sideShowBtn.setAttribute("aria-label", label);
+  if (!peeking()) sideShowBtn.title = none
+    ? "Crear la primera carta"
+    : "Pasá el mouse para ver el menú encima; hacé clic para fijarlo (Ctrl o Cmd + \\)";
+}
+
 function peek(on) {
   clearTimeout(peekTimer);
-  if (on && !canPeek()) on = false;
+  if (on && !sideHidden()) on = false;
   if (on) root.dataset.peek = ""; else { delete root.dataset.peek; saved.closePicker(); }
-  sideShowBtn.setAttribute("aria-label", on ? "Fijar el menú" : "Mostrar el menú");
+  paintSideBtn();
 }
 const peekSoon = (on, ms) => { clearTimeout(peekTimer); peekTimer = setTimeout(() => peek(on), ms); };
-// no se cierra solo mientras se escribe en un campo ni mientras está abierta la lista de cartas
-const sideBusy = () => saved.pickerOpen || ($(".side").contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
+/** Para que se vea lo que se acaba de abrir (el formulario): muestra el menú si está oculto. */
+function revealSide() {
+  if (!sideHidden() || peeking()) return;
+  peek(true);
+  if (!hoverMode()) $(".side").focus({ preventScroll: true });
+}
+/** En el celular o la tableta el menú abierto tapa la carta: se cierra al elegir o al calcular. */
+function closeDrawer() { if (peeking() && !hoverMode()) peek(false); }
+// no se cierra solo mientras se escribe en un campo, ni con la lista de cartas o el formulario abiertos
+const sideBusy = () => saved.pickerOpen || formOpen() || ($(".side").contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
 
 function paintSideCfg() {
   document.querySelectorAll("#cfgSide button").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.side === "hidden") === sideHidden()));
@@ -838,18 +1034,25 @@ function setSide(hidden, focus = true) {
   if (focus) (hidden ? sideShowBtn : $("#sideHide")).focus();
 }
 $("#sideHide").addEventListener("click", () => setSide(true));
-sideShowBtn.addEventListener("click", () => setSide(false));
+sideShowBtn.addEventListener("click", () => {
+  if (peeking() && hoverMode()) { setSide(false); return; }       // flotando con el mouse: el botón es «fijar»
+  if ("nocharts" in root.dataset) { createFirst(); return; }
+  if (!hoverMode()) { revealSide(); return; }
+  setSide(false);
+});
 document.querySelectorAll("#cfgSide button").forEach((b) => b.addEventListener("click", () => {
-  if ((b.dataset.side === "hidden") !== sideHidden()) setSide(b.dataset.side === "hidden", false);
+  // al ocultar desde adentro del menú, el botón apretado se va con él: el foco pasa al botón de la esquina
+  if ((b.dataset.side === "hidden") !== sideHidden()) setSide(b.dataset.side === "hidden", b.dataset.side === "hidden");
 }));
 paintSideCfg();
 
 for (const el of [sideShowBtn, $("#sideEdge")]) {
   el.addEventListener("mouseenter", () => { if (canPeek() && !peeking() && performance.now() - sideChangedAt > 350) peekSoon(true, 90); });
-  el.addEventListener("mouseleave", () => { if (peeking() && !sideBusy()) peekSoon(false, 320); else clearTimeout(peekTimer); });
+  el.addEventListener("mouseleave", () => { if (hoverMode() && peeking() && !sideBusy()) peekSoon(false, 320); else clearTimeout(peekTimer); });
 }
+// el cajón del celular no se cierra «al salir el mouse» (los toques lo simulan): solo con la cortina, Esc o la ✕
 $(".side").addEventListener("mouseenter", () => { if (peeking()) clearTimeout(peekTimer); });
-$(".side").addEventListener("mouseleave", () => { if (peeking() && !sideBusy()) peekSoon(false, 320); });
+$(".side").addEventListener("mouseleave", () => { if (hoverMode() && peeking() && !sideBusy()) peekSoon(false, 320); });
 // tocar fuera del menú flotante lo cierra; Esc también
 document.addEventListener("pointerdown", (e) => {
   if (peeking() && !e.target.closest(".side, #sideShow")) peek(false);
@@ -866,6 +1069,16 @@ addEventListener("keydown", (e) => {
     setSide(!sideHidden());
   }
 });
+
+// la configuración dentro del menú: abierta en pantallas grandes, cerrada en el celular, y se recuerda lo que se elija
+const cfgBox = $("#cfgBox");
+try {
+  const v = localStorage.getItem("carta:cfgopen");
+  cfgBox.open = v === null ? !matchMedia("(max-width: 820px)").matches : v === "1";
+} catch { cfgBox.open = true; }
+cfgBox.querySelector("summary").addEventListener("click", () => setTimeout(() => {
+  try { localStorage.setItem("carta:cfgopen", cfgBox.open ? "1" : "0"); } catch {}
+}));
 
 // ---------- tema ----------------------------------------------------------
 const themeBtn = $("#theme");
@@ -889,7 +1102,11 @@ setClassic(initSettings((cfg, what) => {
     if (chart) render();
   }
 }).gfx === "classic");
-$("#cfgReset").addEventListener("click", () => { if (sideHidden()) setSide(false, false); });   // «Restablecer» deja el menú fijo
+// «Restablecer» deja el menú como viene de fábrica: fijo en pantallas grandes, oculto en el celular
+$("#cfgReset").addEventListener("click", () => {
+  const hidden = matchMedia("(max-width: 820px)").matches;
+  if (sideHidden() !== hidden) setSide(hidden, false);
+});
 
 // ---------- arranque ------------------------------------------------------
 // ---------- versión alojada en internet ------------------------------------

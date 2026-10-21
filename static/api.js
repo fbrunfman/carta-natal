@@ -58,6 +58,8 @@ export const compute = {
     }
   },
   transits: (natal, at) => post("/api/transits", { natal, at }),
+  featured: (natal, at) => post("/api/featured", { natal, at }),
+  upcoming: (natal, at, days) => post("/api/upcoming", { natal, at, days }),
   synastry: (a, b) => post("/api/synastry", { a, b }),
   calendar: (natal, start, months, scope) => post("/api/transit-calendar", { natal, start, months, scope }),
 };

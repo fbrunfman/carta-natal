@@ -5,12 +5,12 @@ import { charts } from "./api.js";
 const SEARCH_FROM = 7;   // desde cuántas cartas aparece el buscador
 
 /**
- * @param list/empty/where  <ul> de la lista, aviso de «no hay cartas» y párrafo con la ruta del archivo
+ * @param list/where        <ul> de la lista y párrafo con la ruta del archivo (el aviso de «no hay cartas» lo maneja quien llama, con onChange)
  * @param picker            { root, btn, pop, q, none, count } los elementos del desplegable
  * @param onOpen            se llama con la carta elegida
  * @param onChange          se llama con la lista cada vez que se redibuja
  */
-export function createSaved({ list, empty, where, picker, onOpen, onChange = () => {} }) {
+export function createSaved({ list, where, picker, onOpen, onChange = () => {} }) {
   const { root, btn, pop, q, none, count } = picker;
   let items = [];
   let activeId = null;
@@ -60,7 +60,6 @@ export function createSaved({ list, empty, where, picker, onOpen, onChange = () 
 
   function render() {
     const sorted = [...items].sort(byName);
-    empty.hidden = items.length > 0;
     root.hidden = items.length === 0;
     count.hidden = items.length === 0;
     count.textContent = items.length;
