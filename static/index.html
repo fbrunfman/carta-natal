@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Carta natal</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0D161C">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    try { var t = localStorage.getItem("carta:theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    try { if (localStorage.getItem("carta:side") === "hidden") document.documentElement.dataset.side = "hidden"; } catch (e) {}
+    // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo
+    try {
+      var c = JSON.parse(localStorage.getItem("carta:cfg") || "null"), d = document.documentElement;
+      if (c) {
+        if (c.tint === true) d.dataset.tint = "on";
+        if (c.font && /^[a-z]+$/.test(c.font) && c.font !== "system") d.dataset.font = c.font;
+        if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
+        if (+c.wheel > 0 && +c.wheel !== 1) {
+          var w = Math.min(1.4, Math.max(0.6, +c.wheel));
+          d.style.setProperty("--wheel", w);
+          if (w > 1) d.dataset.big = "";
+        }
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand">
+      <h1>Carta natal</h1>
+      <div class="brand-tools">
+        <button id="theme" type="button" class="ghost">Modo oscuro</button>
+        <button id="sideHide" type="button" class="iconbtn" aria-label="Ocultar el menú" title="Ocultar el menú: después aparece al pasar el mouse por el borde izquierdo (Ctrl o Cmd + \)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M16 9.5 13.5 12l2.5 2.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <section class="saved" aria-labelledby="savedTitle">
+      <div class="saved-head">
+        <h2 id="savedTitle">Cartas guardadas<span id="savedCount" class="saved-count" hidden></span></h2>
+        <button id="new" type="button" class="ghost">Nueva carta</button>
+      </div>
+      <div id="picker" class="picker" hidden>
+        <button id="pickBtn" type="button" class="picker-btn" aria-expanded="false" aria-controls="pickPop" aria-label="Elegir una carta guardada">
+          <span id="pickLabel" class="pk-label"><span class="pk-nm"></span><span class="pk-dt"></span></span>
+          <svg class="pk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+        </button>
+        <div id="pickPop" class="picker-pop" hidden>
+          <input id="pickQ" type="search" class="picker-q" placeholder="Buscar carta…" aria-label="Buscar entre las cartas guardadas" autocomplete="off" spellcheck="false" hidden>
+          <ul id="savedList" class="saved-list"></ul>
+          <p id="pickNone" class="picker-none" hidden>Ninguna carta coincide.</p>
+        </div>
+      </div>
+      <p id="savedEmpty" class="hint">Todavía no guardaste ninguna. Completá los datos y tocá «Guardar carta».</p>
+    </section>
+
+    <form id="form" autocomplete="off" novalidate>
+      <label class="field">
+        <span>Nombre</span>
+        <input name="name" type="text" placeholder="Opcional">
+      </label>
+
+      <div class="row2 when">
+        <label class="field">
+          <span>Fecha</span>
+          <input name="date" type="date" required min="1800-01-01" max="2400-12-31">
+        </label>
+        <label class="field">
+          <span>Hora local</span>
+          <input name="time" type="time" required>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Lugar</span>
+        <input name="place" type="text" list="places" placeholder="Ciudad, país">
+      </label>
+      <datalist id="places"></datalist>
+
+      <div class="row2">
+        <label class="field">
+          <span>Latitud</span>
+          <input name="lat" type="number" step="any" min="-90" max="90" required inputmode="decimal">
+        </label>
+        <label class="field">
+          <span>Longitud</span>
+          <input name="lon" type="number" step="any" min="-180" max="180" required inputmode="decimal">
+        </label>
+      </div>
+      <p class="hint">Sur y oeste van en negativo. Si tu lugar no está en la lista, escribí las coordenadas.</p>
+
+      <label class="field">
+        <span>Zona horaria</span>
+        <input name="tz" type="text" list="tzs" placeholder="America/Argentina/Buenos_Aires" spellcheck="false">
+      </label>
+      <datalist id="tzs"></datalist>
+
+      <label class="check">
+        <input type="checkbox" id="manual">
+        <span>Fijar el offset UTC a mano</span>
+      </label>
+      <label class="field" id="offsetField" hidden>
+        <span>Offset en horas (por ejemplo −3)</span>
+        <input name="offset" type="number" step="0.25" min="-14" max="14" inputmode="decimal">
+      </label>
+
+      <div class="row2">
+        <label class="field">
+          <span>Sistema de casas</span>
+          <select name="hsys">
+            <option value="P">Placidus</option>
+            <option value="K">Koch</option>
+            <option value="O">Porfirio</option>
+            <option value="R">Regiomontano</option>
+            <option value="C">Campanus</option>
+            <option value="E">Casas iguales</option>
+            <option value="W">Signos enteros</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Nodo lunar</span>
+          <select name="node">
+            <option value="true">Verdadero</option>
+            <option value="mean">Medio</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="primary" type="submit" id="go">Calcular carta</button>
+        <button class="secondary" type="button" id="save">Guardar carta</button>
+      </div>
+      <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
+      <p class="status" id="saveNote" role="status"></p>
+    </form>
+
+    <div id="timeNote" class="note" hidden></div>
+    <div id="warnings" class="note warn" hidden></div>
+
+    <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato a internet.</p>
+    <p class="where" id="savedWhere"></p>
+    <div class="backup" id="backup" hidden>
+      <button type="button" class="ghost" id="exportCharts">Exportar cartas</button>
+      <button type="button" class="ghost" id="importCharts">Importar cartas…</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <p class="status" id="backupNote" role="status"></p>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="sideEdge" class="side-edge" aria-hidden="true"></div>
+    <button id="sideShow" type="button" class="iconbtn side-show" aria-label="Mostrar el menú" title="Pasá el mouse para ver el menú encima; hacé clic para fijarlo (Ctrl o Cmd + \)">
+      <svg class="ic-show" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M14 9.5 16.5 12 14 14.5"/></svg>
+      <svg class="ic-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5.2 3 3.3V14H7v-1.5l3-3.3L9 4Z"/><path d="M12 14v6"/></svg>
+    </button>
+    <header class="head">
+      <h2 id="title">Carta natal</h2>
+      <p id="sub"></p>
+    </header>
+
+    <div class="modebar">
+      <div class="seg modes" id="modes" role="group" aria-label="Vista">
+        <button type="button" data-mode="natal" aria-pressed="true">Natal</button>
+        <button type="button" data-mode="transit" aria-pressed="false">Tránsitos</button>
+        <button type="button" data-mode="syn" aria-pressed="false">Sinastría</button>
+      </div>
+    </div>
+
+    <div class="tools" id="toolsTransit" hidden>
+      <label class="tf"><span>Fecha</span><input type="date" id="tDate" min="1800-01-01" max="2400-12-31"></label>
+      <label class="tf"><span>Hora</span><input type="time" id="tTime"></label>
+      <label class="tf tz"><span>Zona horaria</span><input type="text" id="tTz" list="tzs" spellcheck="false" autocomplete="off"></label>
+      <div class="stepper" role="group" aria-label="Mover la fecha">
+        <button type="button" id="tPrev" aria-label="Retroceder" title="Retroceder">‹</button>
+        <select id="tStep" aria-label="Tamaño del paso">
+          <option value="h">1 hora</option>
+          <option value="d" selected>1 día</option>
+          <option value="w">1 semana</option>
+          <option value="m">1 mes</option>
+          <option value="y">1 año</option>
+        </select>
+        <button type="button" id="tNext" aria-label="Avanzar" title="Avanzar">›</button>
+      </div>
+      <button type="button" id="tNow" class="secondary compact">Ahora</button>
+    </div>
+
+    <div class="tools" id="toolsSyn" hidden>
+      <label class="tf partner"><span>Comparar con</span><select id="partner"></select></label>
+      <p class="hint" id="partnerHint"></p>
+    </div>
+
+    <div id="error" class="error" role="alert" hidden></div>
+
+    <section id="intro" class="intro" hidden>
+      <h3>Calculá una carta natal</h3>
+      <p>Completá la fecha, la hora y el lugar de nacimiento en el menú de la izquierda y tocá «Calcular carta». Después podés guardar tus cartas, ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
+      <p>Tocá cualquier planeta para leer su signo, su casa y sus aspectos.</p>
+      <p class="intro-note">Los datos de nacimiento se usan solo para calcular y no se guardan en el servidor. Las cartas que guardes quedan en este navegador.</p>
+    </section>
+
+    <div class="stage" id="stage" hidden>
+      <figure class="wheel-fig">
+        <svg id="wheel" class="wheel" viewBox="-345 -345 690 690" role="img"></svg>
+        <figcaption class="legend">
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-soft"/></svg>Trígono y sextil</span>
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
+          <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
+                  <span class="hint">Tocá un planeta para ver su signo, su casa y sus aspectos.</span>
+        </figcaption>
+      </figure>
+
+      <section class="data" aria-label="Datos de la carta">
+        <div class="tabs" role="tablist" aria-label="Tablas">
+          <button role="tab" id="tab-pos" data-modes="natal" aria-controls="panel-pos" aria-selected="true">Posiciones</button>
+          <button role="tab" id="tab-casas" data-modes="natal" aria-controls="panel-casas" aria-selected="false" tabindex="-1">Casas</button>
+          <button role="tab" id="tab-tpos" data-modes="transit" aria-controls="panel-tpos" aria-selected="false" tabindex="-1" hidden>Tránsitos</button>
+          <button role="tab" id="tab-asp" data-modes="natal transit syn" aria-controls="panel-asp" aria-selected="false" tabindex="-1">Aspectos</button>
+          <button role="tab" id="tab-stair" data-modes="natal" aria-controls="panel-stair" aria-selected="false" tabindex="-1" title="Cuadro de aspectos">Cuadro</button>
+          <button role="tab" id="tab-elem" data-modes="natal" aria-controls="panel-elem" aria-selected="false" tabindex="-1">Elementos</button>
+          <button role="tab" id="tab-cal" data-modes="transit" aria-controls="panel-cal" aria-selected="false" tabindex="-1" hidden>Calendario</button>
+          <button role="tab" id="tab-grid" data-modes="transit syn" aria-controls="panel-grid" aria-selected="false" tabindex="-1" hidden title="Cuadro de aspectos">Cuadro</button>
+          <button role="tab" id="tab-over" data-modes="syn" aria-controls="panel-over" aria-selected="false" tabindex="-1" hidden>Superposición</button>
+          <button role="tab" id="tab-cfg" class="tab-icon" data-modes="natal transit syn" aria-controls="panel-cfg" aria-selected="false" tabindex="-1" aria-label="Configuración" title="Configuración">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6"/></svg>
+          </button>
+        </div>
+
+        <div id="panel-pos" role="tabpanel" aria-labelledby="tab-pos"></div>
+        <div id="panel-casas" role="tabpanel" aria-labelledby="tab-casas" hidden></div>
+        <div id="panel-tpos" role="tabpanel" aria-labelledby="tab-tpos" hidden></div>
+        <div id="panel-asp" role="tabpanel" aria-labelledby="tab-asp" hidden>
+          <div class="seg orb" role="group" aria-label="Orbe máximo">
+            <button type="button" data-orb="1">Hasta 1°</button>
+            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
+            <button type="button" data-orb="99">Todos</button>
+          </div>
+          <p class="count" id="aspCount"></p>
+          <div id="aspTable"></div>
+        </div>
+        <div id="panel-stair" role="tabpanel" aria-labelledby="tab-stair" hidden>
+          <div class="seg orb" role="group" aria-label="Orbe máximo">
+            <button type="button" data-orb="1">Hasta 1°</button>
+            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
+            <button type="button" data-orb="99">Todos</button>
+          </div>
+          <div id="stairTable"></div>
+        </div>
+        <div id="panel-elem" role="tabpanel" aria-labelledby="tab-elem" hidden></div>
+        <div id="panel-cal" role="tabpanel" aria-labelledby="tab-cal" hidden>
+          <div class="calbar">
+            <label class="tf"><span>Desde</span><input type="date" id="calFrom" min="1800-01-01" max="2400-12-31"></label>
+            <div class="grp"><span class="lbl">Período</span>
+              <div class="seg" id="calMonths" role="group" aria-label="Período">
+                <button type="button" data-m="3">3 m</button>
+                <button type="button" data-m="6">6 m</button>
+                <button type="button" data-m="12" aria-pressed="true">12 m</button>
+                <button type="button" data-m="24">24 m</button>
+              </div>
+            </div>
+            <div class="grp"><span class="lbl">Planetas</span>
+              <div class="seg" id="calScope" role="group" aria-label="Planetas en tránsito">
+                <button type="button" data-s="slow" aria-pressed="true" title="Júpiter, Saturno, Urano, Neptuno y Plutón">Lentos</button>
+                <button type="button" data-s="mars" aria-pressed="false" title="Lentos y Marte">+ Marte</button>
+                <button type="button" data-s="all" aria-pressed="false" title="Del Sol a Plutón, sin la Luna">Todos</button>
+              </div>
+            </div>
+          </div>
+          <p class="count" id="calCount"></p>
+          <div id="calTable"></div>
+        </div>
+        <div id="panel-grid" role="tabpanel" aria-labelledby="tab-grid" hidden>
+          <div class="seg orb" role="group" aria-label="Orbe máximo">
+            <button type="button" data-orb="1">Hasta 1°</button>
+            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
+            <button type="button" data-orb="99">Todos</button>
+          </div>
+          <div id="gridTable"></div>
+        </div>
+        <div id="panel-over" role="tabpanel" aria-labelledby="tab-over" hidden></div>
+        <div id="panel-cfg" class="cfg" role="tabpanel" aria-labelledby="tab-cfg" hidden>
+          <h3 class="sub">Menú lateral</h3>
+          <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
+            <button type="button" data-side="shown" aria-pressed="true">Fijo</button>
+            <button type="button" data-side="hidden" aria-pressed="false">Oculto</button>
+          </div>
+          <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece flotando encima cuando pasás el mouse por el borde izquierdo o por el botón de la esquina. Con un clic queda fijo.</p>
+
+          <h3 class="sub">Estilo de los gráficos</h3>
+          <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
+            <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
+            <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
+          </div>
+          <p class="fine">Nuevo: planetas en círculos de color y signos blancos sobre una banda oscura. Clásico: símbolos simples de la fuente del sistema y anillo teñido por elemento, como antes.</p>
+          <label class="check"><input type="checkbox" id="cfgTint"><span>Tinte por elemento en el anillo de signos</span></label>
+
+          <h3 class="sub">Letra</h3>
+          <label class="field"><span>Tipo de letra</span><select id="cfgFont"></select></label>
+          <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
+
+          <h3 class="sub">Mandala</h3>
+          <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
+          <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
+
+          <button type="button" class="secondary compact" id="cfgReset">Restablecer</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+</div>
+<dialog id="planetDlg" class="pdlg" aria-labelledby="pdlTitle">
+  <div class="pdl-head">
+    <button type="button" class="pdl-icon" id="pdlBack" aria-label="Volver al planeta anterior" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+    </button>
+    <span id="pdlBadge" class="pdl-badge"></span>
+    <div class="pdl-titles">
+      <p class="pdl-ctx" id="pdlCtx" hidden></p>
+      <h2 id="pdlTitle" tabindex="-1"></h2>
+      <p class="pdl-sub" id="pdlSub"></p>
+    </div>
+    <button type="button" class="pdl-icon" id="pdlClose" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="pdl-body" id="pdlBody"></div>
+</dialog>
+
+<script type="module" src="app.js"></script>
+<script type="module" src="presence.js"></script>
+</body>
+</html>

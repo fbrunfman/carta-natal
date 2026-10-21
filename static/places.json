@@ -1,0 +1,548 @@
+[
+{
+"name": "Buenos Aires",
+"country": "Argentina",
+"lat": -34.6,
+"lon": -58.4167,
+"tz": "America/Argentina/Buenos_Aires"
+},
+{
+"name": "La Plata",
+"country": "Argentina",
+"lat": -34.9215,
+"lon": -57.9545,
+"tz": "America/Argentina/Buenos_Aires"
+},
+{
+"name": "Mar del Plata",
+"country": "Argentina",
+"lat": -38.0055,
+"lon": -57.5426,
+"tz": "America/Argentina/Buenos_Aires"
+},
+{
+"name": "Bahía Blanca",
+"country": "Argentina",
+"lat": -38.7196,
+"lon": -62.2724,
+"tz": "America/Argentina/Buenos_Aires"
+},
+{
+"name": "Tandil",
+"country": "Argentina",
+"lat": -37.3217,
+"lon": -59.1332,
+"tz": "America/Argentina/Buenos_Aires"
+},
+{
+"name": "Córdoba",
+"country": "Argentina",
+"lat": -31.4201,
+"lon": -64.1888,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Río Cuarto",
+"country": "Argentina",
+"lat": -33.1307,
+"lon": -64.3499,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Rosario",
+"country": "Argentina",
+"lat": -32.9468,
+"lon": -60.6393,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Santa Fe",
+"country": "Argentina",
+"lat": -31.6333,
+"lon": -60.7,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Paraná",
+"country": "Argentina",
+"lat": -31.7413,
+"lon": -60.5115,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Corrientes",
+"country": "Argentina",
+"lat": -27.4692,
+"lon": -58.8306,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Resistencia",
+"country": "Argentina",
+"lat": -27.4511,
+"lon": -58.9867,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Posadas",
+"country": "Argentina",
+"lat": -27.3671,
+"lon": -55.8961,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Formosa",
+"country": "Argentina",
+"lat": -26.1775,
+"lon": -58.1781,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Santiago del Estero",
+"country": "Argentina",
+"lat": -27.7951,
+"lon": -64.2615,
+"tz": "America/Argentina/Cordoba"
+},
+{
+"name": "Mendoza",
+"country": "Argentina",
+"lat": -32.8895,
+"lon": -68.8458,
+"tz": "America/Argentina/Mendoza"
+},
+{
+"name": "San Juan",
+"country": "Argentina",
+"lat": -31.5375,
+"lon": -68.5364,
+"tz": "America/Argentina/San_Juan"
+},
+{
+"name": "San Luis",
+"country": "Argentina",
+"lat": -33.295,
+"lon": -66.3356,
+"tz": "America/Argentina/San_Luis"
+},
+{
+"name": "La Rioja",
+"country": "Argentina",
+"lat": -29.4111,
+"lon": -66.8507,
+"tz": "America/Argentina/La_Rioja"
+},
+{
+"name": "Catamarca",
+"country": "Argentina",
+"lat": -28.4696,
+"lon": -65.7795,
+"tz": "America/Argentina/Catamarca"
+},
+{
+"name": "San Miguel de Tucumán",
+"country": "Argentina",
+"lat": -26.8083,
+"lon": -65.2176,
+"tz": "America/Argentina/Tucuman"
+},
+{
+"name": "Salta",
+"country": "Argentina",
+"lat": -24.7821,
+"lon": -65.4232,
+"tz": "America/Argentina/Salta"
+},
+{
+"name": "San Salvador de Jujuy",
+"country": "Argentina",
+"lat": -24.1858,
+"lon": -65.2995,
+"tz": "America/Argentina/Jujuy"
+},
+{
+"name": "Santa Rosa",
+"country": "Argentina",
+"lat": -36.6203,
+"lon": -64.2906,
+"tz": "America/Argentina/Salta"
+},
+{
+"name": "Neuquén",
+"country": "Argentina",
+"lat": -38.9516,
+"lon": -68.0591,
+"tz": "America/Argentina/Salta"
+},
+{
+"name": "San Carlos de Bariloche",
+"country": "Argentina",
+"lat": -41.1335,
+"lon": -71.3103,
+"tz": "America/Argentina/Salta"
+},
+{
+"name": "Trelew",
+"country": "Argentina",
+"lat": -43.2489,
+"lon": -65.3051,
+"tz": "America/Argentina/Catamarca"
+},
+{
+"name": "Comodoro Rivadavia",
+"country": "Argentina",
+"lat": -45.8641,
+"lon": -67.4966,
+"tz": "America/Argentina/Catamarca"
+},
+{
+"name": "Río Gallegos",
+"country": "Argentina",
+"lat": -51.623,
+"lon": -69.2168,
+"tz": "America/Argentina/Rio_Gallegos"
+},
+{
+"name": "Ushuaia",
+"country": "Argentina",
+"lat": -54.8019,
+"lon": -68.303,
+"tz": "America/Argentina/Ushuaia"
+},
+{
+"name": "Montevideo",
+"country": "Uruguay",
+"lat": -34.9011,
+"lon": -56.1645,
+"tz": "America/Montevideo"
+},
+{
+"name": "Santiago",
+"country": "Chile",
+"lat": -33.4489,
+"lon": -70.6693,
+"tz": "America/Santiago"
+},
+{
+"name": "Asunción",
+"country": "Paraguay",
+"lat": -25.2637,
+"lon": -57.5759,
+"tz": "America/Asuncion"
+},
+{
+"name": "La Paz",
+"country": "Bolivia",
+"lat": -16.4897,
+"lon": -68.1193,
+"tz": "America/La_Paz"
+},
+{
+"name": "Lima",
+"country": "Perú",
+"lat": -12.0464,
+"lon": -77.0428,
+"tz": "America/Lima"
+},
+{
+"name": "Bogotá",
+"country": "Colombia",
+"lat": 4.711,
+"lon": -74.0721,
+"tz": "America/Bogota"
+},
+{
+"name": "Caracas",
+"country": "Venezuela",
+"lat": 10.4806,
+"lon": -66.9036,
+"tz": "America/Caracas"
+},
+{
+"name": "Quito",
+"country": "Ecuador",
+"lat": -0.1807,
+"lon": -78.4678,
+"tz": "America/Guayaquil"
+},
+{
+"name": "São Paulo",
+"country": "Brasil",
+"lat": -23.5505,
+"lon": -46.6333,
+"tz": "America/Sao_Paulo"
+},
+{
+"name": "Río de Janeiro",
+"country": "Brasil",
+"lat": -22.9068,
+"lon": -43.1729,
+"tz": "America/Sao_Paulo"
+},
+{
+"name": "Brasilia",
+"country": "Brasil",
+"lat": -15.7939,
+"lon": -47.8828,
+"tz": "America/Sao_Paulo"
+},
+{
+"name": "Ciudad de México",
+"country": "México",
+"lat": 19.4326,
+"lon": -99.1332,
+"tz": "America/Mexico_City"
+},
+{
+"name": "Ciudad de Panamá",
+"country": "Panamá",
+"lat": 8.9824,
+"lon": -79.5199,
+"tz": "America/Panama"
+},
+{
+"name": "La Habana",
+"country": "Cuba",
+"lat": 23.1136,
+"lon": -82.3666,
+"tz": "America/Havana"
+},
+{
+"name": "Nueva York",
+"country": "Estados Unidos",
+"lat": 40.7128,
+"lon": -74.006,
+"tz": "America/New_York"
+},
+{
+"name": "Miami",
+"country": "Estados Unidos",
+"lat": 25.7617,
+"lon": -80.1918,
+"tz": "America/New_York"
+},
+{
+"name": "Chicago",
+"country": "Estados Unidos",
+"lat": 41.8781,
+"lon": -87.6298,
+"tz": "America/Chicago"
+},
+{
+"name": "Los Ángeles",
+"country": "Estados Unidos",
+"lat": 34.0522,
+"lon": -118.2437,
+"tz": "America/Los_Angeles"
+},
+{
+"name": "Toronto",
+"country": "Canadá",
+"lat": 43.6532,
+"lon": -79.3832,
+"tz": "America/Toronto"
+},
+{
+"name": "Madrid",
+"country": "España",
+"lat": 40.4168,
+"lon": -3.7038,
+"tz": "Europe/Madrid"
+},
+{
+"name": "Barcelona",
+"country": "España",
+"lat": 41.3874,
+"lon": 2.1686,
+"tz": "Europe/Madrid"
+},
+{
+"name": "Lisboa",
+"country": "Portugal",
+"lat": 38.7223,
+"lon": -9.1393,
+"tz": "Europe/Lisbon"
+},
+{
+"name": "París",
+"country": "Francia",
+"lat": 48.8566,
+"lon": 2.3522,
+"tz": "Europe/Paris"
+},
+{
+"name": "Londres",
+"country": "Reino Unido",
+"lat": 51.5074,
+"lon": -0.1278,
+"tz": "Europe/London"
+},
+{
+"name": "Roma",
+"country": "Italia",
+"lat": 41.9028,
+"lon": 12.4964,
+"tz": "Europe/Rome"
+},
+{
+"name": "Milán",
+"country": "Italia",
+"lat": 45.4642,
+"lon": 9.19,
+"tz": "Europe/Rome"
+},
+{
+"name": "Berlín",
+"country": "Alemania",
+"lat": 52.52,
+"lon": 13.405,
+"tz": "Europe/Berlin"
+},
+{
+"name": "Ámsterdam",
+"country": "Países Bajos",
+"lat": 52.3676,
+"lon": 4.9041,
+"tz": "Europe/Amsterdam"
+},
+{
+"name": "Zúrich",
+"country": "Suiza",
+"lat": 47.3769,
+"lon": 8.5417,
+"tz": "Europe/Zurich"
+},
+{
+"name": "Viena",
+"country": "Austria",
+"lat": 48.2082,
+"lon": 16.3738,
+"tz": "Europe/Vienna"
+},
+{
+"name": "Atenas",
+"country": "Grecia",
+"lat": 37.9838,
+"lon": 23.7275,
+"tz": "Europe/Athens"
+},
+{
+"name": "Moscú",
+"country": "Rusia",
+"lat": 55.7558,
+"lon": 37.6173,
+"tz": "Europe/Moscow"
+},
+{
+"name": "Estambul",
+"country": "Turquía",
+"lat": 41.0082,
+"lon": 28.9784,
+"tz": "Europe/Istanbul"
+},
+{
+"name": "Tel Aviv",
+"country": "Israel",
+"lat": 32.0853,
+"lon": 34.7818,
+"tz": "Asia/Jerusalem"
+},
+{
+"name": "El Cairo",
+"country": "Egipto",
+"lat": 30.0444,
+"lon": 31.2357,
+"tz": "Africa/Cairo"
+},
+{
+"name": "Johannesburgo",
+"country": "Sudáfrica",
+"lat": -26.2041,
+"lon": 28.0473,
+"tz": "Africa/Johannesburg"
+},
+{
+"name": "Dubái",
+"country": "Emiratos Árabes",
+"lat": 25.2048,
+"lon": 55.2708,
+"tz": "Asia/Dubai"
+},
+{
+"name": "Bombay",
+"country": "India",
+"lat": 19.076,
+"lon": 72.8777,
+"tz": "Asia/Kolkata"
+},
+{
+"name": "Nueva Delhi",
+"country": "India",
+"lat": 28.6139,
+"lon": 77.209,
+"tz": "Asia/Kolkata"
+},
+{
+"name": "Bangkok",
+"country": "Tailandia",
+"lat": 13.7563,
+"lon": 100.5018,
+"tz": "Asia/Bangkok"
+},
+{
+"name": "Singapur",
+"country": "Singapur",
+"lat": 1.3521,
+"lon": 103.8198,
+"tz": "Asia/Singapore"
+},
+{
+"name": "Hong Kong",
+"country": "China",
+"lat": 22.3193,
+"lon": 114.1694,
+"tz": "Asia/Hong_Kong"
+},
+{
+"name": "Pekín",
+"country": "China",
+"lat": 39.9042,
+"lon": 116.4074,
+"tz": "Asia/Shanghai"
+},
+{
+"name": "Tokio",
+"country": "Japón",
+"lat": 35.6762,
+"lon": 139.6503,
+"tz": "Asia/Tokyo"
+},
+{
+"name": "Seúl",
+"country": "Corea del Sur",
+"lat": 37.5665,
+"lon": 126.978,
+"tz": "Asia/Seoul"
+},
+{
+"name": "Sídney",
+"country": "Australia",
+"lat": -33.8688,
+"lon": 151.2093,
+"tz": "Australia/Sydney"
+},
+{
+"name": "Melbourne",
+"country": "Australia",
+"lat": -37.8136,
+"lon": 144.9631,
+"tz": "Australia/Melbourne"
+},
+{
+"name": "Auckland",
+"country": "Nueva Zelanda",
+"lat": -36.8485,
+"lon": 174.7633,
+"tz": "Pacific/Auckland"
+}
+]

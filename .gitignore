@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+venv/
+
+# verificar.py trae fechas de nacimiento de personas reales (para comprobar el motor): no se sube a internet
+verificar.py
+
+# tu carta de arranque en la versión local (nombre, fecha y hora de nacimiento)
+static/defaults-local.js
+
+# por las dudas: las cartas guardadas viven fuera de esta carpeta, pero si alguna vez caen acá, que no se suban
+cartas*.json

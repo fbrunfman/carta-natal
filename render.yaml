@@ -1,0 +1,9 @@
+# Blueprint de Render: con esto, «New + → Blueprint» crea el servicio solo.
+# Documentación: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: carta-natal
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true

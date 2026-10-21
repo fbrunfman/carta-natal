@@ -1,0 +1,13 @@
+.git
+.gitignore
+.dockerignore
+.DS_Store
+__pycache__
+*.pyc
+*.command
+assets
+verificar.py
+README.md
+render.yaml
+Dockerfile
+static/defaults-local.js
