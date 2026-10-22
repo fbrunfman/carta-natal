@@ -1,8 +1,8 @@
 // Poemas para la tarjeta de la Luna del inicio: al azar entre los del signo en que está la Luna.
-// Los textos son los que pegó Federico en «Poemas de lunas»; acá solo se ordenan por signo. «Brahma», «Entrégalo todo al amor» y «Adiós» (Emerson) van en español, en la traducción que se hizo para esta app; «El triunfo de ella» (Yeats), en la versión en español que pegó Federico. Los versos van tal cual,
+// Los textos son los que pegó Federico en «Poemas de lunas»; acá solo se ordenan por signo. «Brahma», «Entrégalo todo al amor» y «Adiós» (Emerson) van en español, en la traducción que se hizo para esta app; «El triunfo de ella» (Yeats) y la letra de «By This River» (Eno), en la versión en español que pegó Federico. Los versos van tal cual,
 // una estrofa por bloque (línea en blanco entre estrofas); los espacios al principio de un verso son sangría.
 // Agregar un poema: sumar un objeto al signo que corresponda (0 Aries … 11 Piscis). Un poema sin `autor` no se muestra.
-// Campos: autor, obra (título o libro), trad (traducción, opcional) y texto.
+// Campos: autor, obra (título o libro), trad (traducción, opcional), prosa (opcional: true si los renglones son párrafos corridos, sin sangría francesa) y texto.
 
 export const POEMS = [
   // Aries
@@ -598,6 +598,14 @@ cuando los semidioses se van,
 los dioses llegan.`,
     },
     {
+      autor: "Brian Eno", obra: "By This River", prosa: true,
+      texto: `Aquí estamos, atrapados junto a este río, vos y yo, bajo un cielo que no deja de caer, caer, caer, que no deja de desplomarse.
+
+A lo largo del día, como si estuviéramos en un océano, esperamos aquí, sin lograr recordar nunca por qué vinimos, vinimos, vinimos. Me pregunto por qué vinimos.
+
+Me hablás como si estuvieras lejos, y yo te respondo con impresiones escogidas de otro tiempo, tiempo, tiempo, de otro tiempo.`,
+    },
+    {
       autor: "Juan L. Ortiz", obra: null,
       texto: `Canta la calandria... canta...
 Toda criatura canta, no es cierto? canta para "ser" aún en el misterio
@@ -668,7 +676,7 @@ export function verseHTML(p) {
   return stanzas(p).map((s) => `<p class="mp-st">${s.map((v) => {
     const ind = Math.min(12, v.length - v.trimStart().length);
     const t = v.trim();
-    return `<span class="v${ind ? ` in${ind}` : ""}${t.length > PROSE ? " pr" : ""}">${esc(t)}</span>`;
+    return `<span class="v${ind ? ` in${ind}` : ""}${p.prosa || t.length > PROSE ? " pr" : ""}">${esc(t)}</span>`;
   }).join("")}</p>`).join("");
 }
 

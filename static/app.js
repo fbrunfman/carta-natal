@@ -10,6 +10,7 @@ import { initPlanetDialog } from "./planet-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 import { moonCardHTML, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { pickPoem, poemHTML } from "./poems.js";
+import { showCombine, refreshCombine } from "./combinar.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form");
@@ -1108,6 +1109,7 @@ setClassic(initSettings((cfg, what) => {
   }
   if (what === "gfx") {
     setClassic(cfg.gfx === "classic");
+    refreshCombine();
     if (chart) render();
   }
 }).gfx === "classic");
@@ -1175,7 +1177,7 @@ const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v
 const moon = { now: null, nowAt: 0, nowSeq: 0, err: null, months: new Map(), cal: null, calSeq: 0, timer: 0, south: true,
   poem: null, poemSign: -1, poemShown: null, poemOpen: false };       // poema de la tarjeta: se elige al entrar al inicio
 try { moon.south = localStorage.getItem("carta:hemi") !== "n"; } catch {}
-let page = "";                       // "home" | "lunar" | "chart"
+let page = "";                       // "home" | "lunar" | "combine" | "chart"
 let chartStarted = false;            // ya se pidió la carta (al entrar a «Carta» o al elegir una)
 const moonTz = () => browserTz() || "UTC";
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -1204,6 +1206,7 @@ function startChart() {
 function parseRoute() {
   const h = location.hash.replace(/^#\/?/, "");
   if (h === "carta") return { page: "chart" };
+  if (h === "combinar") return { page: "combine" };
   const m = /^luna(?:\/(.*))?$/.exec(h);
   if (m) {                                            // #luna/AAAA-M; con cualquier otra cosa, el mes actual
     const ym = /^(\d{4})-(\d{1,2})$/.exec(m[1] || "");
@@ -1217,8 +1220,9 @@ function setPage(r) {
   page = r.page;
   $("#home").hidden = page !== "home";
   $("#lunar").hidden = page !== "lunar";
+  $("#combine").hidden = page !== "combine";
   $("#chartPage").hidden = page !== "chart";
-  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"]]) {
+  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }
   if (prev !== page) {
@@ -1228,6 +1232,7 @@ function setPage(r) {
   }
   if (page === "home") startHome();
   else if (page === "lunar") showLunar(r.y, r.m);
+  else if (page === "combine") showCombine();
   else if (!chartStarted) startChart();
 }
 

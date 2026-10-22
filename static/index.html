@@ -59,6 +59,7 @@
       <a href="#inicio" id="navHome">Inicio</a>
       <a href="#luna" id="navMoon">Luna</a>
       <a href="#carta" id="navChart">Carta</a>
+      <a href="#combinar" id="navCombine" title="Combinar planetas (beta, en construcción)">Combinar</a>
     </nav>
 
     <section id="savedSec" class="saved" aria-labelledby="savedTitle">
@@ -277,6 +278,23 @@
       <div id="mErr" class="error" role="alert" hidden></div>
       <div id="mPhases"></div>
       <div id="mGrid" aria-busy="false"></div>
+    </section>
+
+    <!-- Combinar (beta): se pintan dos o más planetas y sale un texto que los junta -->
+    <section id="combine" class="page" aria-labelledby="combineTitle" hidden>
+      <header class="head">
+        <h2 id="combineTitle">Combinar planetas <span class="beta-pill">Beta</span></h2>
+        <p>Pintá dos o más planetas y buscá un texto que los junte.</p>
+      </header>
+      <p class="beta-note" role="note"><strong>En construcción.</strong> Esta sección es una beta: por ahora hay <span id="cmbCount"></span> y las combinaciones pueden cambiar.</p>
+      <div id="cmbPick" class="cmb-pick" role="group" aria-label="Planetas para combinar"></div>
+      <p id="cmbHint" class="cmb-hint"></p>
+      <div class="cmb-actions">
+        <button type="button" id="cmbGo" class="cmb-go" disabled>Buscar un texto</button>
+        <button type="button" id="cmbClear" class="secondary compact" disabled>Limpiar</button>
+      </div>
+      <p id="cmbStatus" class="vh" role="status"></p>
+      <div id="cmbOut" class="cmb-out" tabindex="-1" hidden></div>
     </section>
 
     <div id="chartPage">

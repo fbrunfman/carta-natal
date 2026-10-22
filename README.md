@@ -57,8 +57,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 
 ## Qué hace
 
-- **Tres páginas**, que se cambian desde el menú lateral (Inicio · Luna · Carta). La dirección lleva la página
-  (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`): el botón «atrás» del celular vuelve del calendario al inicio y al
+- **Cuatro páginas**, que se cambian desde el menú lateral (Inicio · Luna · Carta · Combinar). La dirección lleva la página
+  (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
   - **Inicio**: la Luna ahora: signo y grado, fase y porcentaje iluminado, desde cuándo está en ese signo, cuándo
     pasa al siguiente (y en cuánto tiempo) y la próxima fase principal. Se actualiza solo cada 5 minutos y al volver
@@ -75,6 +75,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     **Sur / Norte** (en el hemisferio sur la Luna creciente se ve iluminada a la izquierda; se recuerda). Las horas
     son las de la zona horaria del navegador.
   - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre.
+  - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
+    se pintan con su color. Con dos o más pintados se habilita «Buscar un texto» y sale uno al azar entre los que
+    tienen **todos** los planetas elegidos (elegir de más acota). Si no hay ninguno, lo dice y ofrece las
+    combinaciones que sí tienen texto. «Otro texto» (si hay más de uno para esa combinación) no repite el último.
+    Se ve también con «Solo datos», porque es una búsqueda que se pide a propósito. Los textos y sus planetas están
+    en `static/combos.js` (un objeto por texto: `planetas`, `titulo`, `autor`, `tipo` y `texto`; los párrafos se
+    separan con una línea en blanco; uno sin título, autor o texto, o con menos de dos planetas, no sale). Por
+    ahora hay uno de prueba: Kafka, «Ante la ley» (Saturno + Plutón), con el texto que pasó Federico. La
+    pantalla está en `static/combinar.js`.
 - Fecha, hora local y lugar → posiciones de Sol a Plutón, nodo norte, Ascendente y Medio Cielo.
 - Zona horaria histórica con la base IANA (cambios de horario de verano incluidos). Avisa si la hora
   fue ambigua o no existió, y permite fijar el offset UTC a mano.
@@ -304,6 +313,7 @@ static/           interfaz
   elements.js                       balance de elementos y regente del Ascendente (moderno)
   moon.js                           inicio y calendario lunar: tarjeta de la Luna, grilla del mes, íconos de fase
   poems.js                          los poemas de la tarjeta de la Luna (por signo) y cómo se eligen y se dibujan
+  combos.js, combinar.js            la pestaña Combinar (beta): los textos por combinación de planetas y la pantalla
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
   places.json                       lugares incluidos
