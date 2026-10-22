@@ -3,11 +3,12 @@
 // El mismo código de aplicar() está resumido en el <script> del <head> de index.html para que no haya parpadeo.
 
 export const KEY = "carta:cfg";
+export const VERSION = 2;       // las configuraciones guardadas llevan `v`; sin `v` son de cuando los valores de fábrica eran otros
 
 export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
-  tint: false,       // tinte por elemento en el anillo de signos
-  font: "system",    // ver FONTS
+  tint: true,        // tinte por elemento en el anillo de signos
+  font: "rounded",   // ver FONTS
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
   interp: true,      // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
@@ -25,13 +26,22 @@ export const FONTS = {
 export const LIMITS = { fs: [0.85, 1.3], wheel: [0.6, 1.4] };
 const clamp = (v, [lo, hi], d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, Math.round(+v * 100) / 100)) : d);
 
-/** Lee la configuración guardada; lo que falte o esté mal vuelve al valor de fábrica. */
+/**
+ * Lee la configuración guardada; lo que falte o esté mal vuelve al valor de fábrica.
+ * Una configuración guardada antes de que cambiaran los valores de fábrica (sin `v`) que quedó en los de entonces (letra del
+ * sistema, banda de signos lisa en el estilo nuevo) se toma como «sin elegir» y pasa a los de ahora.
+ */
 export function load() {
   let raw = {};
   try { raw = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { raw = {}; }
+  if (typeof raw !== "object" || Array.isArray(raw)) raw = {};
+  if (raw.v !== VERSION) {
+    if (raw.font === "system") delete raw.font;
+    if (raw.tint === false && raw.gfx !== "classic") delete raw.tint;
+  }
   return {
     gfx: raw.gfx === "classic" ? "classic" : "new",
-    tint: raw.tint === true,
+    tint: typeof raw.tint === "boolean" ? raw.tint : DEFAULTS.tint,
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     fs: clamp(raw.fs ?? DEFAULTS.fs, LIMITS.fs, DEFAULTS.fs),
     wheel: clamp(raw.wheel ?? DEFAULTS.wheel, LIMITS.wheel, DEFAULTS.wheel),
@@ -40,7 +50,7 @@ export function load() {
 }
 
 export function save(cfg) {
-  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* sin almacenamiento: queda solo en esta sesión */ }
+  try { localStorage.setItem(KEY, JSON.stringify({ v: VERSION, ...cfg })); } catch { /* sin almacenamiento: queda solo en esta sesión */ }
 }
 
 /** Pone la configuración en <html>: atributos para la CSS y variables de escala. */
@@ -94,8 +104,8 @@ export function initSettings(onChange) {
 
   for (const b of el.gfx) b.addEventListener("click", () => {
     if (b.dataset.gfx === cfg.gfx) return;
-    // cada estilo trae su tinte: el nuevo, banda lisa; el clásico, anillo teñido como antes
-    change({ gfx: b.dataset.gfx, tint: b.dataset.gfx === "classic" }, "gfx");
+    // los dos estilos vienen con el tinte por elemento (se puede sacar después)
+    change({ gfx: b.dataset.gfx, tint: true }, "gfx");
   });
   for (const b of el.interp) b.addEventListener("click", () => {
     const on = b.dataset.interp === "on";

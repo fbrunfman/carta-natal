@@ -9,6 +9,7 @@ import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 import { moonCardHTML, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
+import { pickPoem, poemHTML } from "./poems.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form");
@@ -1171,7 +1172,8 @@ const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v
 // ---------- páginas: inicio (la Luna), calendario lunar y carta ----------------------------------------------
 // Se navega con el # de la dirección (#inicio, #luna, #luna/2026-10, #carta): el botón «atrás» del celular vuelve del
 // calendario al inicio y al recargar queda la misma página. Sin # se abre el inicio.
-const moon = { now: null, nowAt: 0, nowSeq: 0, err: null, months: new Map(), cal: null, calSeq: 0, timer: 0, south: true };
+const moon = { now: null, nowAt: 0, nowSeq: 0, err: null, months: new Map(), cal: null, calSeq: 0, timer: 0, south: true,
+  poem: null, poemSign: -1, poemShown: null, poemOpen: false };       // poema de la tarjeta: se elige al entrar al inicio
 try { moon.south = localStorage.getItem("carta:hemi") !== "n"; } catch {}
 let page = "";                       // "home" | "lunar" | "chart"
 let chartStarted = false;            // ya se pidió la carta (al entrar a «Carta» o al elegir una)
@@ -1256,8 +1258,10 @@ function renderHome() {
     card.classList.remove("is-loading");
     card.innerHTML = moonCardHTML(moon.now, moon.south, todayIn(tz));
     err.hidden = true;
+    renderPoem();
   } else if (moon.err) {
     card.hidden = true;
+    $("#moonPoem").hidden = true;
     const offline = moon.err instanceof TypeError;
     err.hidden = false;
     err.replaceChildren(
@@ -1273,9 +1277,44 @@ function renderHome() {
     card.classList.add("is-loading");
     card.innerHTML = `<span class="mc-wait">Calculando la Luna…</span>`;
     err.hidden = true;
+    $("#moonPoem").hidden = true;
   }
   renderHomeCharts();
 }
+
+/**
+ * Un poema para la Luna en su signo, al azar entre los de ese signo. Se elige al entrar al inicio (o si la Luna cambia de
+ * signo mientras se mira) y no cambia con cada actualización de la tarjeta; el botón «Leer completo» recuerda su estado.
+ */
+function renderPoem() {
+  const box = $("#moonPoem"), sign = moon.now.sign;
+  if (moon.poemSign !== sign) {
+    moon.poem = pickPoem(sign, moon.poem);
+    moon.poemSign = sign;
+    moon.poemShown = null; moon.poemOpen = false;
+  }
+  if (!moon.poem) { box.hidden = true; return; }
+  if (moon.poemShown !== moon.poem) {
+    box.innerHTML = poemHTML(moon.poem);
+    box.dataset.el = ["fire", "earth", "air", "water"][sign % 4];
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", `Poema para la Luna en ${SIGNS[sign]}`);
+    moon.poemShown = moon.poem;
+  }
+  box.classList.toggle("is-long", !!box.querySelector(".mp-more"));
+  paintPoem();
+  box.hidden = false;
+}
+function paintPoem() {
+  const box = $("#moonPoem"), more = box.querySelector(".mp-more");
+  box.classList.toggle("is-open", moon.poemOpen);
+  if (more) { more.setAttribute("aria-expanded", String(moon.poemOpen)); more.textContent = moon.poemOpen ? "Leer menos" : "Leer completo"; }
+}
+$("#moonPoem").addEventListener("click", (e) => {
+  if (!e.target.closest(".mp-more")) return;
+  moon.poemOpen = !moon.poemOpen;
+  paintPoem();
+});
 
 async function loadMoon() {
   const my = ++moon.nowSeq;
@@ -1291,6 +1330,7 @@ async function loadMoon() {
 }
 
 function startHome() {
+  moon.poemSign = -1;                                  // cada vez que se entra al inicio sale otro poema (si hay más de uno)
   renderHome();
   if (!moon.now || Date.now() - moon.nowAt > 120000) loadMoon();
   clearInterval(moon.timer);

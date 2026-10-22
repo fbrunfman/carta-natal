@@ -19,19 +19,24 @@
       try { s = localStorage.getItem("carta:side"); } catch (e) {}
       if (s === "hidden" || (s !== "shown" && matchMedia("(max-width: 820px)").matches)) document.documentElement.dataset.side = "hidden";
     })();
-    // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo
+    // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo.
+    // Sin configuración guardada: letra redondeada y tinte por elemento (los valores de fábrica).
     try {
-      var c = JSON.parse(localStorage.getItem("carta:cfg") || "null"), d = document.documentElement;
-      if (c) {
-        if (c.tint === true) d.dataset.tint = "on";
-        if (c.interp === false) d.dataset.nointerp = "";
-        if (c.font && /^[a-z]+$/.test(c.font) && c.font !== "system") d.dataset.font = c.font;
-        if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
-        if (+c.wheel > 0 && +c.wheel !== 1) {
-          var w = Math.min(1.4, Math.max(0.6, +c.wheel));
-          d.style.setProperty("--wheel", w);
-          if (w > 1) d.dataset.big = "";
-        }
+      var c = JSON.parse(localStorage.getItem("carta:cfg") || "null") || {}, d = document.documentElement;
+      if (typeof c !== "object" || c instanceof Array) c = {};
+      if (c.v !== 2) {                       // guardada con los valores de fábrica de antes: cuenta como «sin elegir»
+        if (c.font === "system") delete c.font;
+        if (c.tint === false && c.gfx !== "classic") delete c.tint;
+      }
+      if (c.tint !== false) d.dataset.tint = "on";
+      if (c.interp === false) d.dataset.nointerp = "";
+      var f = typeof c.font === "string" && /^[a-z]+$/.test(c.font) ? c.font : "rounded";
+      if (f !== "system") d.dataset.font = f;
+      if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
+      if (+c.wheel > 0 && +c.wheel !== 1) {
+        var w = Math.min(1.4, Math.max(0.6, +c.wheel));
+        d.style.setProperty("--wheel", w);
+        if (w > 1) d.dataset.big = "";
       }
     } catch (e) {}
   </script>
@@ -244,6 +249,7 @@
         <p id="homeSub"></p>
       </header>
       <button type="button" id="moonCard" class="moon-card" aria-label="Ver el calendario lunar"><span class="mc-wait">Calculando la Luna…</span></button>
+      <div id="moonPoem" class="moon-poem interp" hidden></div>
       <div id="homeErr" class="error" role="alert" hidden></div>
       <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
         <h3 id="homeChartsTitle">Tus cartas</h3>

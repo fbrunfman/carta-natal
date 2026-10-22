@@ -62,7 +62,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
   - **Inicio**: la Luna ahora: signo y grado, fase y porcentaje iluminado, desde cuándo está en ese signo, cuándo
     pasa al siguiente (y en cuánto tiempo) y la próxima fase principal. Se actualiza solo cada 5 minutos y al volver
-    a la pestaña. Tocar la tarjeta abre el calendario. Abajo: «Continuar con…» la carta que estabas viendo y atajos
+    a la pestaña. Tocar la tarjeta abre el calendario. Debajo de la tarjeta, **un poema para la Luna en ese signo**,
+    con el nombre del autor y la obra: sale uno al azar entre los de ese signo (cada vez que se entra al inicio sale
+    otro, sin repetir el anterior; las actualizaciones de la tarjeta no lo cambian). Los largos se ven recortados con
+    «Leer completo»; la barra de la izquierda lleva el color del elemento del signo y «Solo datos» lo oculta. Los
+    poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale). Abajo: «Continuar con…» la carta que estabas viendo y atajos
     a las otras cartas guardadas (o «Crear mi primera carta»). No se calcula ninguna carta hasta entrar a **Carta**.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
@@ -116,17 +120,21 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     orbes, fechas y horas. Es un modo: se recuerda, se aplica antes de dibujar y se puede cambiar en cualquier momento.
   - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
     o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo de signos claro). Al elegir
-    Clásico se activa también el tinte por elemento, como era antes; se puede apagar.
+    Clásico se activa también el tinte por elemento; se puede apagar.
   - *Tinte por elemento*: pinta cada signo de la banda con el color de su elemento (fuego, tierra, aire,
-    agua). Funciona en los dos estilos y en modo claro y oscuro.
+    agua). Funciona en los dos estilos y en modo claro y oscuro. **Viene activado de fábrica.**
   - *Tipo de letra*: Sistema (SF Pro), Helvetica Neue, Avenir Next, Redondeada, Serif (New York) o
-    Monoespaciada. Usan las fuentes que ya trae macOS.
+    Monoespaciada. Usan las fuentes que ya trae macOS. **De fábrica: Redondeada.**
   - *Tamaño de la letra*: 85 % a 130 %. Escala todo el texto de la página; el de la rueda sube con un tope
     (×1,25) para que no se pise con los símbolos.
   - *Tamaño del mandala*: 60 % a 140 %. Por encima de 100 % el mandala pasa a ocupar todo el ancho y las
     tablas bajan debajo de él.
-  - «Restablecer» vuelve a los valores de fábrica. Todo se recuerda en el navegador (clave `carta:cfg`) y
-    se aplica antes de dibujar la página, así que no hay parpadeo al abrir.
+  - «Restablecer» vuelve a los valores de fábrica (estilo Nuevo, con tinte por elemento, letra Redondeada, tamaños al
+    100 %, con lecturas). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
+    página, así que no hay parpadeo al abrir. Mientras nadie toque la configuración no se guarda nada y rige lo de
+    fábrica. Una configuración guardada antes de este cambio (sin `v`) que seguía en los valores de entonces (letra del
+    sistema, sin tinte en el estilo Nuevo) cuenta como «sin elegir» y pasa a los de ahora; lo que se haya elegido de
+    verdad (otra letra, el estilo Clásico sin tinte, tamaños, «Solo datos») se respeta.
 - **Lectura de cada planeta**: tocá un planeta en la rueda (o su fila en Posiciones, Tránsitos y Superposición, o su
   casilla en Elementos; también «Asc» y «MC» en la rueda) y se abre una ventana con:
   - *el signo*: elemento, modalidad, dignidad clásica (domicilio, exaltación, exilio, caída) y la lectura del planeta
@@ -295,6 +303,7 @@ static/           interfaz
   stair.js                          cuadro de aspectos en escalera
   elements.js                       balance de elementos y regente del Ascendente (moderno)
   moon.js                           inicio y calendario lunar: tarjeta de la Luna, grilla del mes, íconos de fase
+  poems.js                          los poemas de la tarjeta de la Luna (por signo) y cómo se eligen y se dibujan
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
   places.json                       lugares incluidos
