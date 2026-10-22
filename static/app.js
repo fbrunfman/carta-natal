@@ -1016,7 +1016,16 @@ function revealSide() {
   if (!hoverMode()) $(".side").focus({ preventScroll: true });
 }
 /** En el celular o la tableta el menú abierto tapa la carta: se cierra al elegir o al calcular. */
-function closeDrawer() { if (peeking() && !hoverMode()) peek(false); }
+function closeDrawer() {
+  if (peeking() && !hoverMode()) peek(false);
+  showResult();
+}
+/** Con el menú fijo arriba de todo (pantalla angosta), la carta queda más abajo: si no se ve, lleva la vista hasta ella. */
+function showResult() {
+  if (!matchMedia("(max-width: 820px)").matches || sideHidden()) return;
+  const t = $("#title").getBoundingClientRect();
+  if (t.top < 0 || t.top > innerHeight - 80) $("main").scrollIntoView({ block: "start" });
+}
 // no se cierra solo mientras se escribe en un campo, ni con la lista de cartas o el formulario abiertos
 const sideBusy = () => saved.pickerOpen || formOpen() || ($(".side").contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
 

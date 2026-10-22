@@ -36,6 +36,21 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     const dt = Object.assign(document.createElement("span"), { className: "dt", textContent: shortDate(it.date) });
     open.append(nm, dt);
     open.addEventListener("click", () => choose(it));
+    // En el iPhone el clic puede no llegar nunca (si el sistema toma el toque como «pasar el dedo por encima»): con el
+    // dedo se elige al levantarlo, sin esperar el clic, y se cancela el clic para que no caiga sobre lo que quede debajo.
+    let down = null;
+    open.addEventListener("touchstart", (e) => {
+      down = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    }, { passive: true });
+    open.addEventListener("touchend", (e) => {
+      const t = e.changedTouches[0];
+      const tap = down && e.cancelable && e.touches.length === 0 && Math.hypot(t.clientX - down.x, t.clientY - down.y) < 10;
+      down = null;
+      if (!tap) return;                // arrastrar para desplazar la lista no elige nada
+      e.preventDefault();
+      choose(it);
+    }, { passive: false });
+    open.addEventListener("touchcancel", () => { down = null; });
 
     const isArmed = armed === it.id;
     const del = document.createElement("button");
@@ -85,7 +100,10 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     root.classList.add("open");
     const cur = list.querySelector('[aria-current="true"]');
     cur?.scrollIntoView({ block: "nearest" });
-    (q.hidden ? cur || list.querySelector(".chart-btn") : q)?.focus({ preventScroll: true });
+    // En el celular, enfocar el buscador abre el teclado (y en el iPhone hace zoom): tapa la lista y no se puede elegir.
+    // Ahí el foco va a la carta elegida; el buscador se usa tocándolo.
+    const touch = matchMedia("(pointer: coarse)").matches;
+    (q.hidden || touch ? cur || list.querySelector(".chart-btn") : q)?.focus({ preventScroll: true });
   }
 
   function close(refocus = true) {
