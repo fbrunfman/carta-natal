@@ -5,15 +5,15 @@ import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { compute, config, isPublic } from "./api.js";
 import { localCharts } from "./local-charts.js";
-import { initSettings } from "./settings.js";
+import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
+import { moonCardHTML, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form");
 const STORE = "carta:last";
 const VIEW = "carta:view";
-const RULER_KEY = "carta:ruler";
 const SIDE_KEY = "carta:side";
 
 // Datos iniciales: en tu computadora, tu carta (están en defaults-local.js, que la versión pública no sirve).
@@ -28,14 +28,13 @@ const BLANK = {
 let PLACES = [];
 let mode = "natal";        // natal | transit | syn
 let birth = null;          // lo que había en el formulario al calcular (los tránsitos y la sinastría parten de acá)
+let interpOn = loadSettings().interp;      // false = «solo datos»: ninguna lectura ni descripción (Configuración)
 let chart = null;          // carta natal mostrada (en sinastría, la carta A)
 let transit = null;        // respuesta de /api/transits
 let syn = null;            // respuesta de /api/synastry
 let partnerId = null;      // carta guardada con la que se compara
 let wheel = null;
 let orbMax = 3;
-let rulerSystem = "modern";   // regencia usada para el regente del Ascendente en «Elementos»
-try { if (localStorage.getItem(RULER_KEY) === "traditional") rulerSystem = "traditional"; } catch {}
 
 // ---------- formulario ----------------------------------------------------
 function readForm() {
@@ -129,6 +128,7 @@ for (const name of ["hsys", "node"]) {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  showChart();
   await calculate();
   closeDrawer();                       // en el celular, el menú se cierra para ver la carta
 });
@@ -138,7 +138,7 @@ const saved = createSaved({
   list: $("#savedList"), where: $("#savedWhere"),
   picker: { root: $("#picker"), btn: $("#pickBtn"), pop: $("#pickPop"), q: $("#pickQ"), none: $("#pickNone"), count: $("#savedCount") },
   onOpen: openSaved,
-  onChange: () => { syncPartners(); syncActions(); },
+  onChange: () => { syncPartners(); syncActions(); if (page === "home") renderHomeCharts(); },
 });
 
 let noteTimer = 0;
@@ -158,6 +158,7 @@ function syncSaveButtons() {
 }
 
 async function openSaved(item) {
+  showChart();
   closeForm(false);
   saved.setActive(item.id);
   fillForm(item);
@@ -181,6 +182,7 @@ async function persist(asNew) {
     syncSaveButtons();
     closeForm(false);
     note(updating ? "Cambios guardados." : "Carta guardada.");
+    showChart();
     await calculate();                  // lo que se ve es lo que se guardó
     closeDrawer();
   } catch (err) {
@@ -389,6 +391,7 @@ async function run(fn) {
 }
 
 async function calculate() {
+  primeChart();
   birth = readForm();
   remember();
   const btn = $("#go");
@@ -473,7 +476,7 @@ function outerRing() {
 
 function drawWheel() {
   const outer = outerRing();
-  wheel = renderWheel($("#wheel"), chart, { outer, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: openReading });
+  wheel = renderWheel($("#wheel"), chart, { outer, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
   $("#outKey").hidden = !outer;
   if (outer) $("#outKeyText").textContent = mode === "transit" ? "Tránsitos" : outer.short;
 }
@@ -610,7 +613,7 @@ function renderStair() {
 
 // -- natal: balance de elementos
 function renderElements() {
-  $("#panel-elem").innerHTML = chart ? elementsHTML(chart, rulerSystem) : "";
+  $("#panel-elem").innerHTML = chart ? elementsHTML(chart) : "";
 }
 
 // -- sinastría y tránsitos: cuadrícula de aspectos. Filas: la carta de adentro (A o la natal).
@@ -772,7 +775,7 @@ const sum = { view: "feat", days: 30, feat: null, featKey: "", featSeq: 0, soon:
 function sumProfection() {
   if (!chart || !transit) return "";
   const p = profection(chart.input.date, transit.at.date, Math.floor(chart.angles.asc / 30) % 12);
-  return profectionHTML(p, transit.bodies);
+  return profectionHTML(p, transit.bodies, interpOn);
 }
 
 function sumError(err) {
@@ -790,12 +793,12 @@ function renderSummary() {
   let html;
   if (sum.view === "feat") {
     const list = sum.err ? `<p class="muted pad">${esc(sumError(sum.err))}</p>`
-      : sum.feat ? featuredHTML(sum.feat)
+      : sum.feat ? featuredHTML(sum.feat, interpOn)
       : `<p class="muted pad">Calculando…</p>`;
     html = sumProfection() + `<h3 class="sum-h sum-h2">Tránsitos destacados</h3>` + list;
   } else {
     html = sum.err ? `<p class="muted pad">${esc(sumError(sum.err))}</p>`
-      : sum.soon ? upcomingHTML(sum.soon, sum.days)
+      : sum.soon ? upcomingHTML(sum.soon, sum.days, interpOn)
       : `<p class="muted pad">Calculando…</p>`;
     if (sum.err || !sum.soon) {          // el selector de período se ve igual mientras carga
       html = `<div class="seg soonseg" role="group" aria-label="Período">${SOON_PERIODS.map(([d, label]) =>
@@ -883,7 +886,7 @@ hoverFocus("#panel-over", false);
 
 // Tocar un planeta (en la rueda, en una tabla o en la cruz de elementos) abre su lectura.
 const reading = initPlanetDialog(() => ({ mode, chart, transit, syn, orbMax }), () => { wheel?.clear(); highlightRows(null); });
-function openReading(id) { if (chart) reading.open(id); }
+function openReading(id) { if (chart && interpOn) reading.open(id); }
 for (const sel of ["#panel-pos", "#panel-tpos", "#panel-over", "#panel-elem"]) {
   $(sel).addEventListener("click", (e) => {
     const el = e.target.closest("tr[data-id], li.chip[data-id]");
@@ -906,16 +909,6 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
     if (info) info.textContent = STAIR_HINT;
   });
 }
-
-// regencia del Ascendente (moderna o tradicional)
-$("#panel-elem").addEventListener("click", (e) => {
-  const b = e.target.closest("#rulerSys button");
-  if (!b || b.dataset.r === rulerSystem) return;
-  rulerSystem = b.dataset.r;
-  try { localStorage.setItem(RULER_KEY, rulerSystem); } catch {}
-  renderElements();
-  $(`#rulerSys button[data-r="${rulerSystem}"]`)?.focus();
-});
 
 // ---------- pestañas, modos y filtro -------------------------------------
 const tabs = [...document.querySelectorAll("[role=tab]")];
@@ -1022,7 +1015,7 @@ function closeDrawer() {
 }
 /** Con el menú fijo arriba de todo (pantalla angosta), la carta queda más abajo: si no se ve, lleva la vista hasta ella. */
 function showResult() {
-  if (!matchMedia("(max-width: 820px)").matches || sideHidden()) return;
+  if (page !== "chart" || !matchMedia("(max-width: 820px)").matches || sideHidden()) return;
   const t = $("#title").getBoundingClientRect();
   if (t.top < 0 || t.top > innerHeight - 80) $("main").scrollIntoView({ block: "start" });
 }
@@ -1106,6 +1099,12 @@ paintThemeBtn();
 // ---------- configuración: estilo, letra, mandala --------------------------
 // Solo cambiar el estilo de los gráficos obliga a volver a dibujar; lo demás lo resuelve la CSS.
 setClassic(initSettings((cfg, what) => {
+  const interpChanged = cfg.interp !== interpOn;
+  interpOn = cfg.interp;
+  if (interpChanged) {                  // «solo datos»: se cierra la ventana de lectura y se redibuja lo que la ofrecía
+    reading.close();
+    if (chart) { drawWheel(); renderSummary(); }
+  }
   if (what === "gfx") {
     setClassic(cfg.gfx === "classic");
     if (chart) render();
@@ -1169,6 +1168,238 @@ function setupPublic() {
 const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v.lon) !== "" &&
   (v.manual ? String(v.offset ?? "") !== "" : v.tz));
 
+// ---------- páginas: inicio (la Luna), calendario lunar y carta ----------------------------------------------
+// Se navega con el # de la dirección (#inicio, #luna, #luna/2026-10, #carta): el botón «atrás» del celular vuelve del
+// calendario al inicio y al recargar queda la misma página. Sin # se abre el inicio.
+const moon = { now: null, nowAt: 0, nowSeq: 0, err: null, months: new Map(), cal: null, calSeq: 0, timer: 0, south: true };
+try { moon.south = localStorage.getItem("carta:hemi") !== "n"; } catch {}
+let page = "";                       // "home" | "lunar" | "chart"
+let chartStarted = false;            // ya se pidió la carta (al entrar a «Carta» o al elegir una)
+const moonTz = () => browserTz() || "UTC";
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/** Prepara la primera carta de la visita (en tránsitos, la fecha de «ahora»). */
+function primeChart() {
+  if (chartStarted) return;
+  chartStarted = true;
+  if (mode === "transit") setNow();
+}
+/** Va a la página de la carta antes de calcular, para que se dibuje con el contenedor a la vista. */
+function showChart() {
+  primeChart();
+  go("#carta");
+}
+function startChart() {
+  primeChart();
+  if (!formReady(readForm())) {                       // formulario vacío: nada que calcular todavía
+    $("#intro").hidden = false;
+    $(".intro-note").hidden = !isPublic();
+    return;
+  }
+  calculate();
+}
+
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, "");
+  if (h === "carta") return { page: "chart" };
+  const m = /^luna(?:\/(.*))?$/.exec(h);
+  if (m) {                                            // #luna/AAAA-M; con cualquier otra cosa, el mes actual
+    const ym = /^(\d{4})-(\d{1,2})$/.exec(m[1] || "");
+    return { page: "lunar", y: ym ? +ym[1] : null, m: ym ? +ym[2] : null };
+  }
+  return { page: "home" };
+}
+
+function setPage(r) {
+  const prev = page;
+  page = r.page;
+  $("#home").hidden = page !== "home";
+  $("#lunar").hidden = page !== "lunar";
+  $("#chartPage").hidden = page !== "chart";
+  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"]]) {
+    if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
+  }
+  if (prev !== page) {
+    if (prev === "home") stopHome();
+    if (peeking() && !hoverMode()) peek(false);       // el menú del celular se cierra al cambiar de sección
+    if (prev) scrollTo(0, 0);
+  }
+  if (page === "home") startHome();
+  else if (page === "lunar") showLunar(r.y, r.m);
+  else if (!chartStarted) startChart();
+}
+
+function route() {
+  const r = parseRoute();
+  if (page === r.page && !(r.page === "lunar" && r.y && (moon.cal?.y !== r.y || moon.cal?.m !== r.m))) return;
+  setPage(r);
+}
+function go(hash) {
+  if (location.hash !== hash) location.hash = hash;
+  route();
+}
+addEventListener("hashchange", route);
+document.querySelectorAll("#sidenav a").forEach((a) => a.addEventListener("click", (e) => {
+  if (peeking() && !hoverMode()) peek(false);
+  if (a.id === "navMoon" && page === "lunar") { e.preventDefault(); lunarTo(0, 0, true); }     // ya estás en el calendario: vuelve a este mes
+}));
+
+// -- inicio: la Luna ahora
+function renderHome() {
+  const tz = moonTz();
+  try {
+    $("#homeSub").textContent = cap(new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date()));
+  } catch { $("#homeSub").textContent = ""; }
+  const card = $("#moonCard"), err = $("#homeErr");
+  if (moon.now) {
+    card.hidden = false;
+    card.classList.remove("is-loading");
+    card.innerHTML = moonCardHTML(moon.now, moon.south, todayIn(tz));
+    err.hidden = true;
+  } else if (moon.err) {
+    card.hidden = true;
+    const offline = moon.err instanceof TypeError;
+    err.hidden = false;
+    err.replaceChildren(
+      Object.assign(document.createElement("strong"), { textContent: offline ? "No se pudo conectar con el servidor" : "No se pudo calcular la Luna" }),
+      document.createTextNode(offline ? (isPublic() ? "Si hace un rato que nadie la usa, la página puede tardar hasta un minuto en despertar." : "Volvé a abrir la app.") : moon.err.message),
+    );
+    const retry = Object.assign(document.createElement("button"), { type: "button", className: "secondary compact", textContent: "Reintentar" });
+    retry.style.marginTop = "10px";
+    retry.addEventListener("click", () => { moon.err = null; renderHome(); loadMoon(); });
+    err.append(document.createElement("br"), retry);
+  } else {
+    card.hidden = false;
+    card.classList.add("is-loading");
+    card.innerHTML = `<span class="mc-wait">Calculando la Luna…</span>`;
+    err.hidden = true;
+  }
+  renderHomeCharts();
+}
+
+async function loadMoon() {
+  const my = ++moon.nowSeq;
+  try {
+    const d = await compute.moon(moonTz());
+    if (my !== moon.nowSeq) return;
+    moon.now = d; moon.nowAt = Date.now(); moon.err = null;
+  } catch (e) {
+    if (my !== moon.nowSeq) return;
+    if (!moon.now) moon.err = e;                       // si ya había una lectura, se sigue mostrando esa
+  }
+  if (page === "home") renderHome();
+}
+
+function startHome() {
+  renderHome();
+  if (!moon.now || Date.now() - moon.nowAt > 120000) loadMoon();
+  clearInterval(moon.timer);
+  moon.timer = setInterval(() => { if (!document.hidden) loadMoon(); }, 300000);
+}
+function stopHome() { clearInterval(moon.timer); }
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && page === "home" && Date.now() - moon.nowAt > 120000) loadMoon();
+});
+$("#moonCard").addEventListener("click", () => { if (moon.now) go("#luna"); });
+
+/** «Continuar con …» y las demás cartas guardadas. Los nombres los escribe quien usa la app: todo con DOM. */
+function renderHomeCharts() {
+  const body = $("#homeChartBody");
+  const items = saved.items;
+  const act = saved.activeId ? saved.find(saved.activeId) : null;
+  const v = readForm();
+  const make = (tag, props, fn) => {
+    const el = Object.assign(document.createElement(tag), props);
+    if (fn) el.addEventListener("click", fn);
+    return el;
+  };
+  const nodes = [];
+  if (act) nodes.push(make("button", { type: "button", className: "home-continue", textContent: `Continuar con ${act.name}` }, () => go("#carta")));
+  else if (formReady(v)) nodes.push(make("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
+  else if (!items.length) {
+    nodes.push(make("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
+    nodes.push(make("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
+  }
+  const others = items.filter((it) => !act || it.id !== act.id);
+  if (others.length) {
+    nodes.push(make("div", { className: "home-chips" }));
+    nodes[nodes.length - 1].append(...others.map((it) => make("button", { type: "button", className: "home-chip", textContent: it.name, title: `Abrir la carta de ${it.name}` }, () => openSaved(it))));
+  }
+  body.replaceChildren(...nodes);
+}
+
+// -- calendario lunar
+function paintHemi() {
+  document.querySelectorAll("#hemi button").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.h === "s") === moon.south));
+}
+function paintMonth(data) {
+  $("#mPhases").innerHTML = phasesHTML(data, moon.south);
+  $("#mGrid").innerHTML = calendarHTML(data, moon.south, todayIn(moonTz()));
+}
+
+async function showLunar(y, m) {
+  const tz = moonTz();
+  if (!y || !m || m < 1 || m > 12 || y < 1800 || y > 2400) [y, m] = todayIn(tz).slice(0, 7).split("-").map(Number);
+  moon.cal = { y, m };
+  paintHemi();
+  $("#mTitle").textContent = cap(monthTitle(y, m));
+  $("#lunarSub").textContent = `Fase y signo de la Luna día por día · horas de ${tz}`;
+  $("#mPrev").disabled = y === 1800 && m === 1;
+  $("#mNext").disabled = y === 2400 && m === 12;
+  $("#mErr").hidden = true;
+  const key = `${tz}|${y}-${m}`;
+  const grid = $("#mGrid");
+  const my = ++moon.calSeq;
+  let data = moon.months.get(key);
+  if (!data) {
+    grid.setAttribute("aria-busy", "true");
+    $("#mPhases").replaceChildren();
+    grid.innerHTML = `<p class="muted pad">Calculando…</p>`;
+    try {
+      data = await compute.moonMonth(y, m, tz);
+    } catch (e) {
+      if (my !== moon.calSeq) return;
+      grid.setAttribute("aria-busy", "false");
+      grid.replaceChildren();
+      const err = $("#mErr");
+      err.hidden = false;
+      err.replaceChildren(
+        Object.assign(document.createElement("strong"), { textContent: e instanceof TypeError ? "No se pudo conectar con el servidor" : "No se pudo calcular el mes" }),
+        document.createTextNode(e instanceof TypeError ? "Probá de nuevo en unos segundos." : e.message),
+      );
+      return;
+    }
+    if (my !== moon.calSeq) return;
+    if (moon.months.size > 36) moon.months.clear();
+    moon.months.set(key, data);
+  }
+  grid.setAttribute("aria-busy", "false");
+  paintMonth(data);
+}
+
+/** Cambiar de mes no suma pasos al historial: «atrás» sigue volviendo al inicio. */
+function lunarTo(y, m, isToday = false) {
+  history.replaceState(null, "", isToday ? "#luna" : `#luna/${y}-${m}`);
+  showLunar(y, m);
+}
+function stepMonth(d) {
+  const { y, m } = moon.cal;
+  const t = y * 12 + (m - 1) + d;
+  lunarTo(Math.floor(t / 12), (t % 12) + 1);
+}
+$("#mPrev").addEventListener("click", () => stepMonth(-1));
+$("#mNext").addEventListener("click", () => stepMonth(1));
+$("#mToday").addEventListener("click", () => lunarTo(0, 0, true));
+document.querySelectorAll("#hemi button").forEach((b) => b.addEventListener("click", () => {
+  const south = b.dataset.h === "s";
+  if (south === moon.south) return;
+  moon.south = south;
+  try { localStorage.setItem("carta:hemi", south ? "s" : "n"); } catch {}
+  paintHemi();
+  if (page === "lunar") { const d = moon.months.get(`${moonTz()}|${moon.cal.y}-${moon.cal.m}`); if (d) paintMonth(d); }
+  if (page === "home" && moon.now) renderHome();
+}));
+
 async function init() {
   await config();
   if (isPublic()) setupPublic();
@@ -1188,6 +1419,8 @@ async function init() {
     $("#places").replaceChildren(...places.map((p) => Object.assign(document.createElement("option"), { value: placeLabel(p) })));
     $("#tzs").replaceChildren(...tzs.map((z) => Object.assign(document.createElement("option"), { value: z })));
   } catch (err) {
+    chartStarted = true;
+    setPage({ page: "chart" });
     showError(err instanceof TypeError ? err : new TypeError("offline"));
     return;
   }
@@ -1195,12 +1428,6 @@ async function init() {
   syncSaveButtons();
   syncPartners();
   paintMode();
-  if (mode === "transit") setNow();
-  if (!formReady(last)) {                         // formulario vacío: nada que calcular todavía
-    $("#intro").hidden = false;
-    $(".intro-note").hidden = !isPublic();
-    return;
-  }
-  calculate();
+  route();                                        // sin # abre el inicio; #carta, la carta de antes
 }
 init();

@@ -43,6 +43,13 @@ export const charts = {
 // Cálculos que viajan como JSON (los datos de nacimiento no van en la URL).
 const post = (url, body) => call(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
 
+// Un servidor local de una versión anterior (que seguía abierto al actualizar los archivos) no conoce la Luna:
+// en vez de «No encontrado», se dice qué hacer. En la versión pública el servidor y la página se actualizan juntos.
+const staleServer = (err) => {
+  if (err.status !== 404 || isPublic()) throw err;
+  throw Object.assign(new Error("El servidor de la app es de una versión anterior. Cerrá la ventana de Carta natal, esperá unos segundos y volvé a abrirla."), { status: 404 });
+};
+
 export const compute = {
   chart: async (natal) => {
     try {
@@ -61,5 +68,7 @@ export const compute = {
   featured: (natal, at) => post("/api/featured", { natal, at }),
   upcoming: (natal, at, days) => post("/api/upcoming", { natal, at, days }),
   synastry: (a, b) => post("/api/synastry", { a, b }),
+  moon: (tz) => post("/api/moon", { tz }).catch(staleServer),
+  moonMonth: (year, month, tz) => post("/api/moon-calendar", { year, month, tz }).catch(staleServer),
   calendar: (natal, start, months, scope) => post("/api/transit-calendar", { natal, start, months, scope }),
 };

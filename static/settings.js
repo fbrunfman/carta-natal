@@ -1,5 +1,5 @@
-// Configuración de la vista: estilo de los gráficos, tipo y tamaño de letra, tamaño del mandala y tinte por
-// elemento. Se guarda en el navegador (localStorage) y se aplica como atributos y variables CSS en <html>.
+// Configuración de la vista: estilo de los gráficos, tipo y tamaño de letra, tamaño del mandala, tinte por
+// elemento y modo «solo datos» (sin interpretación). Se guarda en el navegador (localStorage) y se aplica como atributos y variables CSS en <html>.
 // El mismo código de aplicar() está resumido en el <script> del <head> de index.html para que no haya parpadeo.
 
 export const KEY = "carta:cfg";
@@ -10,6 +10,7 @@ export const DEFAULTS = Object.freeze({
   font: "system",    // ver FONTS
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
+  interp: true,      // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
 });
 
 export const FONTS = {
@@ -34,6 +35,7 @@ export function load() {
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     fs: clamp(raw.fs ?? DEFAULTS.fs, LIMITS.fs, DEFAULTS.fs),
     wheel: clamp(raw.wheel ?? DEFAULTS.wheel, LIMITS.wheel, DEFAULTS.wheel),
+    interp: raw.interp !== false,
   };
 }
 
@@ -50,6 +52,7 @@ export function apply(cfg, root = document.documentElement) {
   if (cfg.wheel !== 1) root.style.setProperty("--wheel", cfg.wheel); else root.style.removeProperty("--wheel");
   // más de 100 %: el mandala crece y las tablas pasan debajo
   if (cfg.wheel > 1) root.dataset.big = ""; else delete root.dataset.big;
+  if (cfg.interp === false) root.dataset.nointerp = ""; else delete root.dataset.nointerp;
 }
 
 const pct = (v) => `${Math.round(v * 100)} %`;
@@ -66,6 +69,7 @@ export function initSettings(onChange) {
     tint: $("#cfgTint"), font: $("#cfgFont"),
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
     big: $("#cfgBig"), reset: $("#cfgReset"),
+    interp: [...document.querySelectorAll("#cfgInterp button")],
   };
 
   el.font.replaceChildren(...Object.entries(FONTS).map(([v, label]) =>
@@ -80,6 +84,7 @@ export function initSettings(onChange) {
     el.fs.value = Math.round(cfg.fs * 100); el.fsV.textContent = pct(cfg.fs);
     el.wheel.value = Math.round(cfg.wheel * 100); el.wheelV.textContent = pct(cfg.wheel);
     el.big.hidden = !(cfg.wheel > 1);
+    for (const b of el.interp) b.setAttribute("aria-pressed", (b.dataset.interp === "on") === cfg.interp);
   }
   function change(patch, what) {
     cfg = { ...cfg, ...patch };
@@ -91,6 +96,10 @@ export function initSettings(onChange) {
     if (b.dataset.gfx === cfg.gfx) return;
     // cada estilo trae su tinte: el nuevo, banda lisa; el clásico, anillo teñido como antes
     change({ gfx: b.dataset.gfx, tint: b.dataset.gfx === "classic" }, "gfx");
+  });
+  for (const b of el.interp) b.addEventListener("click", () => {
+    const on = b.dataset.interp === "on";
+    if (on !== cfg.interp) change({ interp: on }, "interp");
   });
   el.tint.addEventListener("change", () => change({ tint: el.tint.checked }, "tint"));
   el.font.addEventListener("change", () => change({ font: el.font.value }, "font"));

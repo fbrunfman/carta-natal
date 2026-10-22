@@ -57,8 +57,9 @@ export function profection(birthIso, atIso, ascSign) {
   };
 }
 
-/** Tarjeta de profecciones. `bodies` = planetas en tránsito en ese momento (para decir dónde está el señor del año). */
-export function profectionHTML(p, bodies) {
+/** Tarjeta de profecciones. `bodies` = planetas en tránsito en ese momento (para decir dónde está el señor del año).
+ *  `interp` = false («solo datos»): sin el tema de la casa y sin que se pueda tocar un planeta para leerlo. */
+export function profectionHTML(p, bodies, interp = true) {
   if (!p) return "";
   const lordNow = bodies.find((b) => b.id === p.lord);
   let where = "";
@@ -66,19 +67,22 @@ export function profectionHTML(p, bodies) {
     const s = split(lordNow.lon);
     where = `${BODY[p.lord].name} ahora: ${SIGNS[s.sign]}, casa natal ${lordNow.house}${lordNow.retro ? " · retrógrado" : ""}`;
   }
-  const mini = (id, label, sign) => `<button type="button" class="prof-mini" data-id="o:${id}">${badge(id, "s")}` +
-    `<span><strong>${esc(BODY[id].name)}</strong><span class="prof-sub">${label} · ${esc(SIGNS[sign])}</span></span></button>`;
+  // con lecturas son botones (abren la ventana del planeta); sin ellas, solo datos
+  const open = (id) => (interp ? ` data-id="o:${id}"` : "");
+  const tag = interp ? "button" : "div";
+  const mini = (id, label, sign) => `<${tag}${interp ? ' type="button"' : ""} class="prof-mini${interp ? "" : " static"}"${open(id)}>${badge(id, "s")}` +
+    `<span><strong>${esc(BODY[id].name)}</strong><span class="prof-sub">${label} · ${esc(SIGNS[sign])}</span></span></${tag}>`;
   return `<section class="sum-card prof" aria-label="Profecciones">
     <h3 class="sum-h">Profecciones</h3>
     <div class="prof-year">
       <span class="prof-ic" aria-hidden="true">${signHTML(p.sign)}</span>
       <div><strong>Año de la casa ${p.house} · ${esc(SIGNS[p.sign])}</strong>
-        <span class="prof-sub">${esc(cap(HOUSE_THEME[p.house - 1]))}</span></div>
+        ${interp ? `<span class="prof-sub">${esc(cap(HOUSE_THEME[p.house - 1]))}</span>` : ""}</div>
     </div>
-    <button type="button" class="prof-row" data-id="o:${p.lord}" title="Ver la lectura de ${esc(BODY[p.lord].name)}">
+    <${tag}${interp ? ` type="button"` : ""} class="prof-row${interp ? "" : " static"}"${open(p.lord)}${interp ? ` title="Ver la lectura de ${esc(BODY[p.lord].name)}"` : ""}>
       ${badge(p.lord, "s")}
       <span><strong>Señor del año: ${esc(BODY[p.lord].name)}</strong>${where ? `<span class="prof-sub">${esc(where)}</span>` : ""}</span>
-    </button>
+    </${tag}>
     <div class="prof-pair">${mini(p.monthLord, "señor del mes", p.monthSign)}${mini(p.dayLord, "señor del día", p.daySign)}</div>
     <p class="fine tight">${p.age} años cumplidos. Signos enteros desde el Ascendente y regencias tradicionales; el mes cuenta desde el cumpleaños y el día, un signo por día desde el aniversario del mes.</p>
   </section>`;
@@ -92,9 +96,9 @@ function splitTheme(theme) {
   return i < 0 ? { title: "", body: theme } : { title: theme.slice(0, i), body: cap(theme.slice(i + 1).trim()) };
 }
 
-function featuredCard(it) {
+function featuredCard(it, interp) {
   const A = ASPECT[it.type];
-  const read = pairReading(it.t, it.n, it.type);
+  const read = interp ? pairReading(it.t, it.n, it.type) : null;
   const th = read ? splitTheme(read.theme) : { title: "", body: "" };
   const phase = it.peak ? "En su punto máximo" : it.applying ? "Se acerca" : "Se aleja";
   const exacts = it.exacts.map((e, i) => {
@@ -103,7 +107,8 @@ function featuredCard(it) {
   }).join("");
   const until = it.until ? `hasta ${monthYear(it.until)}` : "por varios años";
   const range = it.since ? `Activo desde ${monthYear(it.since)}` : "";
-  return `<article class="fcard" tabindex="0" data-id="o:${it.t}" title="Tocá para leer ${esc(BODY[it.t].name)} en tránsito">
+  const link = interp ? ` tabindex="0" data-id="o:${it.t}" title="Tocá para leer ${esc(BODY[it.t].name)} en tránsito"` : "";
+  return `<article class="fcard${interp ? "" : " static"}"${link}>
     <div class="fc-top">
       <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.glyph}</span>${badge(it.n, "s")}</span>
       <span class="fc-until">${esc(until)}</span>
@@ -118,19 +123,19 @@ function featuredCard(it) {
   </article>`;
 }
 
-export function featuredHTML(data) {
+export function featuredHTML(data, interp = true) {
   if (!data.items.length) {
     return `<p class="muted pad">Ningún planeta lento (de Júpiter a Plutón) forma un aspecto cerrado con tu Sol, tu Luna, tus ángulos o tus planetas hasta Saturno en este momento.</p>`;
   }
   const more = data.total > data.items.length ? ` Se muestran los ${data.items.length} más importantes de ${data.total}.` : "";
-  return data.items.map(featuredCard).join("") +
+  return data.items.map((it) => featuredCard(it, interp)).join("") +
     `<p class="fine tight">Planetas lentos (de Júpiter a Plutón) con orbe de hasta 3° (2° en trígonos y sextiles) a tu Sol, Luna, Ascendente, Medio Cielo y planetas hasta Saturno. ` +
     `«Hasta» es cuando sale de ese orbe por última vez, contando las retrogradaciones; «punto máximo», a menos de 1° del exacto.${more}</p>`;
 }
 
 // ---------- próximamente ----------------------------------------------------------------------------
 
-function eventRow(e) {
+function eventRow(e, interp) {
   const name = BODY[e.body].name;
   const rx = e.retro && e.kind !== "station" ? '<span class="rx-t" title="Retrógrado">R</span>' : "";
   let title, sub;
@@ -142,7 +147,7 @@ function eventRow(e) {
     sub = `en ${esc(SIGNS[e.sign])} · casa ${e.house}`;
   } else {
     title = `${name} entra en tu casa ${e.house}${rx}`;
-    sub = esc(cap(HOUSE_THEME[e.house - 1]));
+    sub = interp ? esc(cap(HOUSE_THEME[e.house - 1])) : "";
   }
   return `<li class="soon-ev" tabindex="0" data-go="${esc(e.local)}" title="Tocá para llevar la rueda a este momento">
     ${badge(e.body, "s")}
@@ -153,7 +158,7 @@ function eventRow(e) {
 
 export const SOON_PERIODS = [[30, "30 días"], [90, "90 días"], [180, "6 meses"]];
 
-export function upcomingHTML(data, days) {
+export function upcomingHTML(data, days, interp = true) {
   const seg = `<div class="seg soonseg" role="group" aria-label="Período">${SOON_PERIODS.map(([d, label]) =>
     `<button type="button" data-days="${d}" aria-pressed="${d === days}">${label}</button>`).join("")}</div>`;
   if (!data.events.length) return seg + `<p class="muted pad">No hay ingresos, estaciones ni entradas a casas en este período.</p>`;
@@ -168,7 +173,7 @@ export function upcomingHTML(data, days) {
       html += `<h4 class="soon-day">${weekdayOf(e.local)} ${p.day} ${MONTHS[p.m - 1]}${p.y !== parts(data.events[0].local).y ? " " + p.y : ""}</h4><ul class="soon-list">`;
       open = true;
     }
-    html += eventRow(e);
+    html += eventRow(e, interp);
   }
   const n = data.events.length;
   return html + `</ul><p class="fine tight">${n === 1 ? "1 evento" : `${n} eventos`}${data.truncated ? " (hay más: elegí un período más corto)" : ""}. ` +

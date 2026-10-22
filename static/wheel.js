@@ -52,6 +52,8 @@ const stackSign = (i, x, y, size) => (look.classic
 
 export function renderWheel(svg, chart, hooks = {}) {
   const outer = hooks.outer || null;     // { bodies, angles?, aspects (a: interior, b: exterior), short, houseWord }
+  // con lecturas, tocar un planeta abre su ventana; en «solo datos» (sin onPick) son solo imágenes con foco
+  const act = hooks.onPick ? ' role="button" aria-haspopup="dialog"' : ' role="img"';
   const V = outer ? OUT.view : 345;
   svg.setAttribute("viewBox", `${-V} ${-V} ${2 * V} ${2 * V}`);
   svg.classList.toggle("bi", !!outer);
@@ -120,7 +122,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     const [lx, ly] = pt(outer ? OUT.label : R.label, a);
     const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
     // Asc y MC se pueden tocar para ver su lectura; Dsc e IC son solo rótulos
-    const pick = text === "Asc" || text === "MC";
+    const pick = (text === "Asc" || text === "MC") && !!hooks.onPick;
     s += `<text class="axis-label${pick ? " pick" : ""}" x="${lx}" y="${ly}" dy=".35em" text-anchor="${anchor}"` +
       `${pick ? ` data-pick="${text.toLowerCase()}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${text === "Asc" ? "Ascendente" : "Medio Cielo"}"` : ""}>${text}</text>`;
   }
@@ -160,7 +162,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     const [h1x, h1y] = at(R.glyph + 14), [h2x, h2y] = at(b.retro ? R.retro - 7 : R.min - 7);
     const moved = Math.abs(((disp - phi(b.lon) + 540) % 360) - 180) > 0.6;
     planets +=
-      `<g class="pl" data-id="${b.id}" data-house="${b.house}" data-disp="${n2(disp)}" tabindex="0" role="button" aria-haspopup="dialog" ` +
+      `<g class="pl" data-id="${b.id}" data-house="${b.house}" data-disp="${n2(disp)}" tabindex="0"${act} ` +
       `aria-label="${BODY[b.id].name}, ${sp.deg} grados ${sp.min} minutos de ${SIGNS[sp.sign]}, casa ${b.house}${b.retro ? ", retrógrado" : ""}">` +
       (moved ? `<line class="link" x1="${tx}" y1="${ty}" x2="${lx}" y2="${ly}"/>` : "") +
       `<line class="hit" x1="${h1x}" y1="${h1y}" x2="${h2x}" y2="${h2y}"/>` +
@@ -189,7 +191,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       const moved = Math.abs(((disp - real + 540) % 360) - 180) > 0.6;
       const [h1x, h1y] = at(OUT.glyph + 8), [h2x, h2y] = at(OUT.min - 6);
       ring +=
-        `<g class="pl out" data-id="${OUTER}${b.id}" data-disp="${n2(disp)}" ${b.house ? `data-house="${b.house}" ` : ""}tabindex="0" role="button" aria-haspopup="dialog" ` +
+        `<g class="pl out" data-id="${OUTER}${b.id}" data-disp="${n2(disp)}" ${b.house ? `data-house="${b.house}" ` : ""}tabindex="0"${act} ` +
         `aria-label="${BODY[b.id].name} (${short}), ${sp.deg} grados ${sp.min} minutos de ${SIGNS[sp.sign]}${b.house ? `, ${esc(outer.houseWord)} ${b.house}` : ""}${b.retro ? ", retrógrado" : ""}">` +
         `<line class="tickreal" x1="${t1x}" y1="${t1y}" x2="${t2x}" y2="${t2y}"/>` +
         (moved ? `<line class="link" x1="${t2x}" y1="${t2y}" x2="${l1x}" y2="${l1y}"/>` : "") +

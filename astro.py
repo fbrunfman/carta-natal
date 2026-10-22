@@ -678,3 +678,160 @@ def upcoming_events(natal: dict, at: dict, days: int) -> dict:
         "from": utc0.strftime("%Y-%m-%d %H:%M"), "days": days, "events": out, "truncated": truncated,
         "warnings": warnings,
     }
+
+
+# ======================================================================
+# Luna: dónde está ahora y calendario del mes
+# ======================================================================
+
+MOON_QUARTERS = [(0, "new", "Luna nueva"), (90, "first", "Cuarto creciente"), (180, "full", "Luna llena"),
+                 (270, "last", "Cuarto menguante")]
+# nombre según la elongación (Luna − Sol), en sectores de 45° centrados en las fases principales
+MOON_SECTORS = ["Luna nueva", "Luna creciente", "Cuarto creciente", "Gibosa creciente",
+                "Luna llena", "Gibosa menguante", "Cuarto menguante", "Luna menguante"]
+MOON_MIN_YEAR, MOON_MAX_YEAR = 1800, 2400
+
+
+def _zone(name) -> ZoneInfo:
+    try:
+        return ZoneInfo(name or "UTC")
+    except Exception:
+        raise ChartError(f"Zona horaria desconocida: «{name}». Usá un nombre como America/Argentina/Buenos_Aires.")
+
+
+def _moon_lon(jd: float) -> float:
+    return _swe_at(swe.MOON, jd)[0]
+
+
+def _elong(jd: float) -> float:
+    """Elongación de la Luna al Sol, 0..360 (0 = nueva, 180 = llena). Llamar con _lock tomado."""
+    return _norm360(_swe_at(swe.MOON, jd)[0] - _swe_at(swe.SUN, jd)[0])
+
+
+def _first_crossing(f, jd0: float, step: float, limit: float, backwards: bool = False) -> float | None:
+    """Instante en que `f` (ángulo ya centrado: negativo antes del cruce, positivo después) pasa de − a +,
+    buscando desde `jd0` hacia adelante (o hacia atrás) de a `step` días hasta `limit` días."""
+    sgn = -1.0 if backwards else 1.0
+    a, fa = jd0, f(jd0)
+    t = 0.0
+    while t < limit:
+        b = jd0 + sgn * (t + step)
+        fb = f(b)
+        lo, hi, flo, fhi = (a, b, fa, fb) if not backwards else (b, a, fb, fa)
+        if flo < 0 <= fhi and abs(flo) < 90 and abs(fhi) < 90:
+            return _bisect(f, lo, hi, flo)
+        a, fa = b, fb
+        t += step
+    return None
+
+
+def _utc_str(jd: float) -> str:
+    return _jd_to_utc(jd).strftime("%Y-%m-%d %H:%M")
+
+
+def _moon_point(jd: float, tz, ingress: int | None = None) -> dict:
+    """La Luna en ese instante. Con `ingress` (índice de signo) es el momento exacto en que entra a ese signo:
+    0°00′ de él, aunque el redondeo al minuto la deje apenas antes."""
+    if ingress is not None:
+        return {"utc": _utc_str(jd), "local": _local_str(jd, tz), "sign": ingress, "deg": 0, "min": 0}
+    lon = _moon_lon(jd)
+    return {"utc": _utc_str(jd), "local": _local_str(jd, tz), "sign": int(lon // 30) % 12,
+            "deg": int(lon % 30), "min": int((lon % 1) * 60)}
+
+
+def _phase_info(e: float) -> dict:
+    return {"elong": round(e, 2), "illum": round((1 - math.cos(math.radians(e))) / 2, 4), "waxing": e < 180,
+            "name": MOON_SECTORS[int(((e + 22.5) % 360) // 45)]}
+
+
+def moon_now(p: dict) -> dict:
+    """La Luna en este momento (o en `at`, «AAAA-MM-DD HH:MM» en UTC): signo, grado, fase, desde cuándo está
+    en ese signo, cuándo cambia al siguiente y las próximas cuatro fases principales."""
+    tz = _zone(p.get("tz"))
+    if p.get("at"):
+        try:
+            utc = datetime.strptime(str(p["at"]), "%Y-%m-%d %H:%M")
+        except ValueError:
+            raise ChartError("El momento tiene que ser «AAAA-MM-DD HH:MM» en UTC.")
+        if not MOON_MIN_YEAR <= utc.year <= MOON_MAX_YEAR:
+            raise ChartError(f"El año tiene que estar entre {MOON_MIN_YEAR} y {MOON_MAX_YEAR}.")
+    else:
+        utc = datetime.now(timezone.utc).replace(tzinfo=None, second=0, microsecond=0)
+    with _lock:
+        jd = _julday(utc)
+        lon, speed = _swe_at(swe.MOON, jd)
+        sign = int(lon // 30) % 12
+        nxt = _first_crossing(lambda j: _norm180(_moon_lon(j) - (sign + 1) * 30.0), jd, 0.25, 6)
+        prv = _first_crossing(lambda j: _norm180(_moon_lon(j) - sign * 30.0), jd, 0.25, 6, backwards=True)
+        phases = []
+        q = int(_elong(jd) // 90)
+        for k in range(1, 6):                       # cinco cruces alcanzan para cuatro fases con margen
+            target = ((q + k) % 4) * 90.0
+            j = _first_crossing(lambda x, t=target: _norm180(_elong(x) - t), jd, 0.25, 40)
+            if j is None:
+                continue
+            kind = next(m for m in MOON_QUARTERS if m[0] == target)
+            phases.append({"kind": kind[1], "name": kind[2], **_moon_point(j, tz)})
+        info = _phase_info(_elong(jd))
+    return {
+        "utc": utc.strftime("%Y-%m-%d %H:%M"),
+        "local": utc.replace(tzinfo=timezone.utc).astimezone(tz).strftime("%Y-%m-%d %H:%M"),
+        "tz": tz.key, "lon": round(lon, 4), "sign": sign, "deg": int(lon % 30), "min": int((lon % 1) * 60),
+        "speed": round(speed, 3), **info,
+        "since": _moon_point(prv, tz, sign) if prv else None,
+        "next_sign": _moon_point(nxt, tz, (sign + 1) % 12) if nxt else None,
+        "next_phases": phases[:4],
+    }
+
+
+def moon_month(p: dict) -> dict:
+    """Mes completo (hora de la zona elegida): por día, el signo en que termina, la hora en que la Luna cambia
+    de signo (si cambia ese día) y la fase al mediodía; más las fases principales del mes con su hora."""
+    tz = _zone(p.get("tz"))
+    try:
+        year, month = int(p["year"]), int(p["month"])
+    except (KeyError, TypeError, ValueError):
+        raise ChartError("Elegí un mes y un año.")
+    if not 1 <= month <= 12 or not MOON_MIN_YEAR <= year <= MOON_MAX_YEAR:
+        raise ChartError(f"El mes tiene que ser de 1 a 12 y el año de {MOON_MIN_YEAR} a {MOON_MAX_YEAR}.")
+    ndays = (datetime(year + (month == 12), month % 12 + 1, 1) - datetime(year, month, 1)).days
+
+    def jd_of_local(y, m, d, hh=0, mm=0):
+        u = datetime(y, m, d, hh, mm, tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
+        return _julday(u)
+
+    days = []
+    with _lock:
+        for d in range(1, ndays + 1):
+            j0 = jd_of_local(year, month, d)
+            nxt_day = datetime(year, month, d) + timedelta(days=1)
+            j1 = jd_of_local(nxt_day.year, nxt_day.month, nxt_day.day)
+            s0 = int(_moon_lon(j0) // 30) % 12
+            s1 = int(_moon_lon(j1 - 1 / 1440) // 30) % 12
+            ingress = None
+            if s0 != s1:
+                jc = _bisect(lambda j, b=s1 * 30.0: _norm180(_moon_lon(j) - b), j0, j1, _norm180(_moon_lon(j0) - s1 * 30.0))
+                ingress = {"sign": s1, "time": _local_str(jc, tz)[11:16], "utc": _utc_str(jc)}
+            e_noon = _elong(jd_of_local(year, month, d, 12))
+            days.append({"day": d, "weekday": datetime(year, month, d).weekday(), "sign": s1, "ingress": ingress,
+                         "from_sign": s0, **_phase_info(e_noon)})
+
+        # fases principales: se recorre el mes (con un día de margen) buscando cuándo la elongación cruza 0/90/180/270
+        a = jd_of_local(year, month, 1) - 1.0
+        b = jd_of_local(*((year + (month == 12), month % 12 + 1, 1))) + 1.0
+        events, t = [], a
+        prev = _elong(t)
+        while t < b:
+            t2 = t + 0.25
+            cur = _elong(t2)
+            if int(cur // 90) != int(prev // 90):
+                target = (int(cur // 90) * 90) % 360
+                jc = _bisect(lambda j, tg=float(target): _norm180(_elong(j) - tg), t, t2, _norm180(prev - target))
+                pt = _moon_point(jc, tz)
+                if pt["local"][:7] == f"{year:04d}-{month:02d}":
+                    kind = next(m for m in MOON_QUARTERS if m[0] == target)
+                    events.append({"kind": kind[1], "name": kind[2], "day": int(pt["local"][8:10]), **pt})
+            t, prev = t2, cur
+
+    return {"year": year, "month": month, "tz": tz.key, "days": days, "phases": events,
+            "first_weekday": days[0]["weekday"]}

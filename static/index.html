@@ -24,6 +24,7 @@
       var c = JSON.parse(localStorage.getItem("carta:cfg") || "null"), d = document.documentElement;
       if (c) {
         if (c.tint === true) d.dataset.tint = "on";
+        if (c.interp === false) d.dataset.nointerp = "";
         if (c.font && /^[a-z]+$/.test(c.font) && c.font !== "system") d.dataset.font = c.font;
         if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
         if (+c.wheel > 0 && +c.wheel !== 1) {
@@ -48,6 +49,12 @@
         </button>
       </div>
     </div>
+
+    <nav class="sidenav" id="sidenav" aria-label="Secciones">
+      <a href="#inicio" id="navHome">Inicio</a>
+      <a href="#luna" id="navMoon">Luna</a>
+      <a href="#carta" id="navChart">Carta</a>
+    </nav>
 
     <section id="savedSec" class="saved" aria-labelledby="savedTitle">
       <div class="saved-head">
@@ -184,6 +191,13 @@
         </div>
         <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece encima al pasar el mouse por el borde izquierdo o al tocar el botón de la esquina. Con un clic en ese botón queda fijo. En el celular arranca oculto.</p>
 
+        <h3 class="sub">Interpretación</h3>
+        <div class="seg" id="cfgInterp" role="group" aria-label="Interpretación">
+          <button type="button" data-interp="on" aria-pressed="true">Con lecturas</button>
+          <button type="button" data-interp="off" aria-pressed="false">Solo datos</button>
+        </div>
+        <p class="fine">Solo datos: se ocultan todas las lecturas (la ventana al tocar un planeta, los temas de las casas y las descripciones de los tránsitos). Quedan posiciones, aspectos, orbes, fechas y horas.</p>
+
         <h3 class="sub">Estilo de los gráficos</h3>
         <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
           <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
@@ -223,6 +237,43 @@
       <svg class="ic-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5.2 3 3.3V14H7v-1.5l3-3.3L9 4Z"/><path d="M12 14v6"/></svg>
       <svg class="ic-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </button>
+    <!-- Inicio: la Luna en su signo; al tocarla, el calendario lunar -->
+    <section id="home" class="page" aria-labelledby="homeTitle" hidden>
+      <header class="head">
+        <h2 id="homeTitle">Inicio</h2>
+        <p id="homeSub"></p>
+      </header>
+      <button type="button" id="moonCard" class="moon-card" aria-label="Ver el calendario lunar"><span class="mc-wait">Calculando la Luna…</span></button>
+      <div id="homeErr" class="error" role="alert" hidden></div>
+      <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
+        <h3 id="homeChartsTitle">Tus cartas</h3>
+        <div id="homeChartBody"></div>
+      </section>
+    </section>
+
+    <section id="lunar" class="page" aria-labelledby="lunarTitle" hidden>
+      <header class="head">
+        <h2 id="lunarTitle">Calendario lunar</h2>
+        <p id="lunarSub"></p>
+      </header>
+      <div class="mnav">
+        <div class="stepper mstep" role="group" aria-label="Cambiar de mes">
+          <button type="button" id="mPrev" aria-label="Mes anterior" title="Mes anterior">‹</button>
+          <strong id="mTitle" aria-live="polite"></strong>
+          <button type="button" id="mNext" aria-label="Mes siguiente" title="Mes siguiente">›</button>
+        </div>
+        <button type="button" id="mToday" class="secondary compact">Hoy</button>
+        <div class="seg" id="hemi" role="group" aria-label="Hemisferio desde el que se mira la Luna">
+          <button type="button" data-h="s" aria-pressed="true" title="Hemisferio sur: la Luna creciente se ve iluminada a la izquierda">Sur</button>
+          <button type="button" data-h="n" aria-pressed="false" title="Hemisferio norte: la Luna creciente se ve iluminada a la derecha">Norte</button>
+        </div>
+      </div>
+      <div id="mErr" class="error" role="alert" hidden></div>
+      <div id="mPhases"></div>
+      <div id="mGrid" aria-busy="false"></div>
+    </section>
+
+    <div id="chartPage">
     <header class="head">
       <h2 id="title">Carta natal</h2>
       <p id="sub"></p>
@@ -267,7 +318,7 @@
     <section id="intro" class="intro" hidden>
       <h3>Calculá una carta natal</h3>
       <p>Cargá la fecha, la hora y el lugar de nacimiento y tocá «Calcular carta». Después podés guardar tus cartas, ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
-      <p>Tocá cualquier planeta para leer su signo, su casa y sus aspectos.</p>
+      <p class="interp">Tocá cualquier planeta para leer su signo, su casa y sus aspectos.</p>
       <button id="introNew" type="button" class="primary with-ic intro-cta">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Crear mi primera carta
       </button>
@@ -282,7 +333,7 @@
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
           <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
-                  <span class="hint">Tocá un planeta para ver su signo, su casa y sus aspectos.</span>
+                  <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos.</span>
         </figcaption>
       </figure>
 
@@ -360,6 +411,7 @@
         </div>
         <div id="panel-over" role="tabpanel" aria-labelledby="tab-over" hidden></div>
       </section>
+    </div>
     </div>
   </main>
 

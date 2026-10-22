@@ -57,6 +57,20 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 
 ## Qué hace
 
+- **Tres páginas**, que se cambian desde el menú lateral (Inicio · Luna · Carta). La dirección lleva la página
+  (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`): el botón «atrás» del celular vuelve del calendario al inicio y al
+  recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
+  - **Inicio**: la Luna ahora: signo y grado, fase y porcentaje iluminado, desde cuándo está en ese signo, cuándo
+    pasa al siguiente (y en cuánto tiempo) y la próxima fase principal. Se actualiza solo cada 5 minutos y al volver
+    a la pestaña. Tocar la tarjeta abre el calendario. Abajo: «Continuar con…» la carta que estabas viendo y atajos
+    a las otras cartas guardadas (o «Crear mi primera carta»). No se calcula ninguna carta hasta entrar a **Carta**.
+  - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
+    signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
+    principales del mes (nueva, cuarto creciente, llena, cuarto menguante) con día, hora y signo. Flechas y «Hoy»
+    para cambiar de mes (de 1800 a 2400; cambiar de mes no suma pasos al historial), hoy resaltado y un selector
+    **Sur / Norte** (en el hemisferio sur la Luna creciente se ve iluminada a la izquierda; se recuerda). Las horas
+    son las de la zona horaria del navegador.
+  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre.
 - Fecha, hora local y lugar → posiciones de Sol a Plutón, nodo norte, Ascendente y Medio Cielo.
 - Zona horaria histórica con la base IANA (cambios de horario de verano incluidos). Avisa si la hora
   fue ambigua o no existió, y permite fijar el offset UTC a mano.
@@ -71,9 +85,9 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Elementos** (solo natal): una cruz con Fuego arriba a la izquierda, Aire arriba a la derecha, Tierra abajo
   a la izquierda y Agua abajo a la derecha. Cada cuadrante lista los planetas personales (Sol a Saturno, sin
   Urano, Neptuno ni Plutón) y el Ascendente según el elemento de su signo, sin porcentajes. El regente del
-  Ascendente queda marcado en su cuadrante si es un planeta personal. Con la regencia moderna, Escorpio,
-  Acuario y Piscis tienen regentes transpersonales y no se marca ninguno; con «Regente tradicional» (Marte,
-  Saturno, Júpiter) sí. La elección se recuerda.
+  Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
+  Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
+  opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
 - **Menú lateral, fijo o solapado**: el botón de la esquina superior del menú (o Ctrl/Cmd + \) lo oculta y deja todo
   el ancho para la rueda y las tablas. Con el menú oculto, al **pasar el mouse** por el borde izquierdo o por el botón
   de la esquina, el menú aparece **flotando encima** del gráfico, sin moverlo, y se va solo al alejar el mouse (o con
@@ -96,6 +110,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros) y nodo lunar
     (verdadero o medio). Recalcula la carta que estás viendo al elegir.
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
+  - *Interpretación*: **Con lecturas** o **Solo datos**. En «Solo datos» desaparece toda la interpretación: la ventana
+    de lectura al tocar un planeta (rueda, tablas y Elementos), los temas de las casas (profecciones y «Próximamente»),
+    los textos de los tránsitos destacados y las pistas de «tocá un planeta…». Quedan las posiciones, casas, aspectos,
+    orbes, fechas y horas. Es un modo: se recuerda, se aplica antes de dibujar y se puede cambiar en cualquier momento.
   - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
     o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo de signos claro). Al elegir
     Clásico se activa también el tinte por elemento, como era antes; se puede apagar.
@@ -209,8 +227,9 @@ Es la misma app con tres diferencias:
   cuerpo de un pedido POST (no en la URL) y el registro del servidor solo anota «POST /api/chart → 200».
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
   repositorio y que la versión pública no sirve (devuelve 404).
+  El inicio y el calendario lunar no mandan ningún dato personal: solo la zona horaria del navegador (y el mes).
 - **Límites**: hasta 60 pedidos seguidos por persona y después 2 por segundo (el calendario de tránsitos cuesta
-  20 pedidos; los destacados, 6; lo que viene, 8), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
+  20 pedidos; los destacados, 6; lo que viene, 8; el calendario lunar, 3; la Luna de hoy, 1), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
   un mensaje. No hay `/api/charts` ni `/api/presence`, y `/healthz` responde `ok` para el hosting.
 
 **Pasos en Render** (el plan gratis alcanza para compartir con amigos):
@@ -247,11 +266,12 @@ Cosas a saber:
 
 ```
 astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, tránsitos, sinastría, calendario,
-                  tránsitos destacados y próximos eventos (ingresos, estaciones, casas)
+                  tránsitos destacados y próximos eventos (ingresos, estaciones, casas), y la Luna (signo, fase,
+                  cambios de signo y fases principales del mes)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
 app.py            servidor (local: solo 127.0.0.1; con --public, para alojarla): /api/chart, /api/timezones,
                   /api/charts, /api/transits, /api/featured, /api/upcoming, /api/synastry, /api/transit-calendar,
-                  /api/validate-chart, /api/ping, /api/presence, /healthz
+                  /api/moon, /api/moon-calendar, /api/validate-chart, /api/ping, /api/presence, /healthz
 presence.py       cuándo cerrar el servidor: cuando no queda ninguna ventana abierta (--idle-exit)
 limits.py         límites de la versión pública: pedidos por persona y cálculos pesados a la vez
 Dockerfile, render.yaml, .dockerignore, .gitignore   para alojarla en Render
@@ -273,7 +293,8 @@ static/           interfaz
   local-charts.js                   cartas guardadas en el navegador (versión pública), exportar e importar
   defaults-local.js                 tu carta de arranque en la versión local (si lo borrás, el formulario arranca vacío)
   stair.js                          cuadro de aspectos en escalera
-  elements.js                       balance de elementos y regentes del Ascendente
+  elements.js                       balance de elementos y regente del Ascendente (moderno)
+  moon.js                           inicio y calendario lunar: tarjeta de la Luna, grilla del mes, íconos de fase
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
   places.json                       lugares incluidos
@@ -297,6 +318,9 @@ lista carpetas, y manda `X-Frame-Options`, `nosniff`, `no-referrer` y `noindex`.
 - Efemérides Moshier: no incluye Quirón ni asteroides (requieren los archivos `.se1`).
 - Tránsitos: los planetas en tránsito son Sol a Plutón y el nodo; el calendario y «Próximamente» dejan afuera
   la Luna (cambia de aspecto y de signo cada pocas horas). Los destacados son solo de Júpiter a Plutón.
+- Luna: de 1800 a 2400, con las efemérides Moshier (la hora del cambio de signo y de las fases es al minuto; otro
+  sitio puede diferir en un minuto según cómo redondee). Signos tropicales. La fase de cada día es la del mediodía
+  y el signo mostrado es el del final del día; la hora indica cuándo entra en él.
 - Profecciones: signos enteros y regentes tradicionales; el nacido un 29/2 cumple el 28/2 en años comunes. No hay progresiones, retornos ni revoluciones solares todavía.
 - Sinastría: aspectos y casas cruzadas; falta la carta compuesta.
 - El calendario muestra como máximo 800 aspectos; con «Todos» y 24 meses se llega a ese tope.
