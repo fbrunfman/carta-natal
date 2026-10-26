@@ -103,7 +103,7 @@
       <form id="form" autocomplete="off" novalidate>
         <label class="field">
           <span>Nombre</span>
-          <input name="name" type="text" placeholder="Opcional">
+          <input name="name" type="text" placeholder="Para encontrarla después" required>
         </label>
 
         <div class="row2 when">
@@ -151,8 +151,7 @@
         </label>
 
         <div class="actions">
-          <button class="primary" type="submit" id="go">Calcular carta</button>
-          <button class="secondary" type="button" id="save">Guardar carta</button>
+          <button class="primary" type="submit" id="go">Calcular y guardar</button>
         </div>
         <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
       </form>
@@ -341,7 +340,7 @@
 
     <section id="intro" class="intro" hidden>
       <h3>Calculá una carta natal</h3>
-      <p>Cargá la fecha, la hora y el lugar de nacimiento y tocá «Calcular carta». Después podés guardar tus cartas, ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
+      <p>Cargá el nombre, la fecha, la hora y el lugar de nacimiento y tocá «Calcular y guardar»: la carta se calcula y queda guardada. Después podés ver los tránsitos del momento y comparar dos cartas en la sinastría.</p>
       <p class="interp">Tocá cualquier planeta para leer su signo, su casa y sus aspectos.</p>
       <button id="introNew" type="button" class="primary with-ic intro-cta">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Crear mi primera carta

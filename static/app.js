@@ -128,11 +128,10 @@ for (const name of ["hsys", "node"]) {
   });
 }
 
-form.addEventListener("submit", async (e) => {
+// Un solo botón: calcula la carta y la guarda (con Enter en cualquier campo también). Ver persist() más abajo.
+form.addEventListener("submit", (e) => {
   e.preventDefault();
-  showChart();
-  await calculate();
-  closeDrawer();                       // en el celular, el menú se cierra para ver la carta
+  persist(false);
 });
 
 // ---------- cartas guardadas ---------------------------------------------
@@ -144,18 +143,27 @@ const saved = createSaved({
 });
 
 let noteTimer = 0;
+let noteIsError = false;
+/** El aviso de debajo del formulario. Lo bueno se va solo a los 4 s; un error queda hasta que se corrige algo o se vuelve a intentar. */
 function note(text, isError = false) {
   const el = $("#saveNote");
   el.textContent = text;
   el.classList.toggle("err", isError);
+  noteIsError = !!text && isError;
   clearTimeout(noteTimer);
-  if (text) noteTimer = setTimeout(() => { el.textContent = ""; el.classList.remove("err"); }, 4000);
+  if (text && !isError) noteTimer = setTimeout(() => { el.textContent = ""; }, 4000);
 }
+form.addEventListener("input", () => { if (noteIsError) note(""); });
 
+let saving = false;                     // mientras guarda, el botón no se puede apretar de nuevo (sería una carta repetida)
+
+/** El texto del botón único según el momento: una carta nueva, una guardada que se edita, o guardando. */
 function syncSaveButtons() {
   const active = saved.activeId;
-  $("#save").textContent = active ? "Guardar cambios" : "Guardar carta";
+  $("#go").textContent = saving ? "Guardando…" : active ? "Calcular y guardar cambios" : "Calcular y guardar";
+  $("#go").disabled = saving;
   $("#saveAs").hidden = !active;
+  $("#saveAs").disabled = saving;
   remember();
 }
 
@@ -170,29 +178,38 @@ async function openSaved(item) {
   await calculate();
 }
 
+/** Lo que hace el botón: guarda la carta (la valida el servidor: fecha, hora, lugar…), la calcula y la muestra.
+ *  asNew: con una carta guardada abierta, la guarda como otra en vez de pisarla. */
 async function persist(asNew) {
+  if (saving) return;
   const birthData = birthFromForm();
+  note("");
   if (!birthData.name) {
     note("Poné un nombre para guardar la carta.", true);
     form.elements.name.focus();
     return;
   }
+  saving = true;
+  syncSaveButtons();
   try {
     const updating = saved.activeId && !asNew;
     const rec = updating ? await saved.update(saved.activeId, birthData) : await saved.create(birthData);
     saved.setActive(rec.id);
+    saving = false;
     syncSaveButtons();
     closeForm(false);
     note(updating ? "Cambios guardados." : "Carta guardada.");
     showChart();
     await calculate();                  // lo que se ve es lo que se guardó
-    closeDrawer();
+    closeDrawer();                      // en el celular, el menú se cierra para ver la carta
   } catch (err) {
     note(err.message, true);
+  } finally {
+    saving = false;
+    syncSaveButtons();
   }
 }
 
-$("#save").addEventListener("click", () => persist(false));
 $("#saveAs").addEventListener("click", () => persist(true));
 
 // ---------- el formulario aparece con «Nueva carta» o «Editar» ----------------
@@ -396,12 +413,7 @@ async function calculate() {
   primeChart();
   birth = readForm();
   remember();
-  const btn = $("#go");
-  btn.disabled = true;
-  btn.textContent = "Calculando…";
   try { await run(load); } finally {
-    btn.disabled = false;
-    btn.textContent = "Calcular carta";
     if (formOpen()) editing = { values: readForm(), active: saved.activeId };   // la ✕ ya no vuelve más atrás de esto
     syncActions();
   }

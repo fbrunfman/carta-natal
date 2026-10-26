@@ -123,13 +123,16 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   más ancho (352 px) y se recuerda si lo dejaste fijo u oculto.
 - **En el celular y la tableta** el menú arranca **oculto** y no ocupa lugar: el botón de la esquina lo abre
   **encima** de la carta, como un cajón con una cortina oscura detrás; se cierra tocando la cortina, con Esc, con el
-  botón de ocultar, al elegir una carta o al calcular/guardar. Mientras no haya ninguna carta guardada, ese botón es
+  botón de ocultar, al elegir una carta o al calcular y guardar. Mientras no haya ninguna carta guardada, ese botón es
   un **«+»**: lo tocás y se abre el menú con el formulario para crear la primera (la pantalla de bienvenida tiene el
   mismo botón). Si querés el menú fijo en una pantalla grande o en la tableta, está en Configuración → *Menú lateral*.
 - **Crear y editar cartas**: el formulario está **oculto** y se despliega en el menú al tocar **«Nueva carta»**
-  (en blanco) o **«Editar»** (con los datos de la carta que estás viendo). *Calcular carta* muestra el resultado y
-  deja el formulario abierto; *Guardar* lo guarda, lo cierra y muestra la carta guardada. La **✕** de arriba cierra el
-  formulario y vuelve a como estaba antes de abrirlo (los campos, la carta elegida), salvo lo que ya hayas calculado.
+  (en blanco) o **«Editar»** (con los datos de la carta que estás viendo). Hay **un solo botón**, **«Calcular y
+  guardar»** (también con Enter en cualquier campo): valida los datos, guarda la carta (hace falta un nombre), la
+  calcula, cierra el formulario y la muestra. Con una carta guardada abierta dice **«Calcular y guardar cambios»** y
+  actualiza esa carta; **«Guardar como carta nueva»** la duplica en vez de pisarla. Si falta algo (el nombre, la
+  fecha…), no se guarda nada y el aviso queda debajo del formulario hasta que se corrija un campo. La **✕** de arriba
+  cierra el formulario sin guardar y vuelve a como estaba antes de abrirlo (los campos, la carta elegida).
   *Sistema de casas* y *nodo lunar* ya no están en el formulario: son preferencias de la vista, están en
   Configuración, valen para todas las cartas y se aplican al instante, sin apretar nada.
 - **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; abierto en pantallas
@@ -206,7 +209,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   selector que muestra la carta abierta (con su fecha); al tocarlo se despliega la lista, flotando sobre los
   botones, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
   ni mayúsculas, también por fecha). Con teclado: flecha abajo abre, flechas se mueven, Enter elige y Esc
-  cierra. Se cierra también al tocar afuera. «Guardar cambios» actualiza la abierta y «Guardar como carta
+  cierra. Se cierra también al tocar afuera. «Calcular y guardar cambios» actualiza la abierta y «Guardar como carta
   nueva» la duplica. Eliminar (la × al pasar el mouse por una carta de la lista) pide confirmación (dos toques).
 - En la rueda cada planeta es un círculo de color con su símbolo adentro (el Sol, con borde ondulado) y,
   debajo, grados, signo y minutos (como iPhemeris). Los signos van en una banda oscura con los símbolos en
