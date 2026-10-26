@@ -255,12 +255,14 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._guard(writing=True):
             return
         m = CHARTS_ROUTE.match(urlparse(self.path).path)
-        if not m:
+        if not m and action != "import":
             self._json({"error": "No encontrado."}, 404)
             return
-        chart_id = m.group(1)
+        chart_id = m.group(1) if m else None
         try:
-            if action == "create" and not chart_id:
+            if action == "import":
+                self._json(STORE.import_many(self._read_json().get("items")))
+            elif action == "create" and not chart_id:
                 self._json(STORE.create(self._read_json()), 201)
             elif action == "update" and chart_id:
                 self._json(STORE.update(chart_id, self._read_json()))
@@ -298,6 +300,8 @@ class Handler(SimpleHTTPRequestHandler):
         path = urlparse(self.path).path
         if path in COMPUTE:
             self._compute(COMPUTE[path], path)
+        elif path == "/api/charts/import":          # sumar las cartas de un archivo exportado
+            self._charts_write("import")
         else:
             self._charts_write("create")
 

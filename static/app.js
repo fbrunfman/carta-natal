@@ -3,8 +3,8 @@ import { renderWheel } from "./wheel.js";
 import { stairHTML } from "./stair.js";
 import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
-import { compute, config, isPublic } from "./api.js";
-import { localCharts } from "./local-charts.js";
+import { charts, compute, config, isPublic } from "./api.js";
+import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
@@ -432,6 +432,7 @@ function showError(err) {
       : "");
   if (!offline) $("#error").append(document.createTextNode(err.message));
   $("#stage").hidden = true;
+  $("#printBtn").hidden = true;
   $("#warnings").hidden = true;
   $("#timeNote").hidden = true;
 }
@@ -500,6 +501,7 @@ function render() {
   $("#error").hidden = true;
   $("#intro").hidden = true;
   $("#stage").hidden = false;
+  $("#printBtn").hidden = false;
   header(c);
 
   const t = c.time;
@@ -926,7 +928,7 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
 
 // ---------- pestañas, modos y filtro -------------------------------------
 const tabs = [...document.querySelectorAll("[role=tab]")];
-const lastTab = { natal: "tab-pos", transit: "tab-sum", syn: "tab-asp" };
+const lastTab = { natal: "tab-stair", transit: "tab-sum", syn: "tab-asp" };    // en la carta natal se abre en el Cuadro
 const visibleTabs = () => tabs.filter((t) => t.dataset.modes.split(" ").includes(mode));
 
 function selectTab(tab) {
@@ -961,6 +963,7 @@ tabs.forEach((t) => {
 });
 
 function paintMode() {
+  document.documentElement.dataset.mode = mode;       // la hoja de impresión lo usa: en natal salen todas las tablas
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === mode));
   $("#toolsTransit").hidden = mode !== "transit";
   $("#toolsSyn").hidden = mode !== "syn";
@@ -1086,15 +1089,9 @@ addEventListener("keydown", (e) => {
   }
 });
 
-// la configuración dentro del menú: abierta en pantallas grandes, cerrada en el celular, y se recuerda lo que se elija
-const cfgBox = $("#cfgBox");
-try {
-  const v = localStorage.getItem("carta:cfgopen");
-  cfgBox.open = v === null ? !matchMedia("(max-width: 820px)").matches : v === "1";
-} catch { cfgBox.open = true; }
-cfgBox.querySelector("summary").addEventListener("click", () => setTimeout(() => {
-  try { localStorage.setItem("carta:cfgopen", cfgBox.open ? "1" : "0"); } catch {}
-}));
+// la configuración dentro del menú: siempre arranca cerrada (se abre con un toque, pero no se recuerda abierta)
+try { localStorage.removeItem("carta:cfgopen"); } catch {}      // ya no se guarda; se limpia lo que dejó una versión anterior
+$("#cfgBox").open = false;
 
 // ---------- tema ----------------------------------------------------------
 const themeBtn = $("#theme");
@@ -1109,6 +1106,10 @@ themeBtn.addEventListener("click", () => {
   paintThemeBtn();
 });
 paintThemeBtn();
+
+// ---------- imprimir ------------------------------------------------------
+// «Imprimir» abre un cuadro para elegir qué va en la hoja; lo demás está en print.js y en el @media print de style.css.
+setupPrint({ root, getMode: () => mode });
 
 // ---------- configuración: estilo, letra, mandala --------------------------
 // Solo cambiar el estilo de los gráficos obliga a volver a dibujar; lo demás lo resuelve la CSS.
@@ -1131,11 +1132,10 @@ $("#cfgReset").addEventListener("click", () => {
   if (sideHidden() !== hidden) setSide(hidden, false);
 });
 
-// ---------- arranque ------------------------------------------------------
-// ---------- versión alojada en internet ------------------------------------
-// Las cartas guardadas viven en el navegador de cada persona; acá se pueden exportar e importar como copia.
-function setupPublic() {
-  $("#privacyNote").textContent = "Zodíaco tropical, calculado con Swiss Ephemeris (Moshier). Los datos de nacimiento se envían al servidor solo para calcular la carta y no se guardan ahí.";
+// ---------- copia de seguridad: exportar e importar las cartas guardadas --------------------------------
+// Sirve igual en la versión de escritorio (las cartas están en un archivo de tu compu) y en la alojada (están en el
+// navegador). El archivo es el mismo en las dos, así que se puede pasar cartas de una a la otra.
+function setupBackup() {
   $("#backup").hidden = false;
 
   let timer = 0;
@@ -1148,16 +1148,20 @@ function setupPublic() {
   };
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  $("#exportCharts").addEventListener("click", () => {
-    const data = localCharts.exportData();
-    if (!data.charts.length) { say("Todavía no hay cartas guardadas para exportar.", true); return; }
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: `cartas-natales-${new Date().toISOString().slice(0, 10)}.json` });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    say(`Se exportó ${plural(data.charts.length, "carta", "cartas")}.`);
+  $("#exportCharts").addEventListener("click", async () => {
+    try {
+      const data = await charts.exportData();
+      if (!data.charts.length) { say("Todavía no hay cartas guardadas para exportar.", true); return; }
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+      const a = Object.assign(document.createElement("a"), { href: url, download: `cartas-natales-${new Date().toISOString().slice(0, 10)}.json` });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      say(`Se exportó ${plural(data.charts.length, "carta", "cartas")}.`);
+    } catch (err) {
+      say(err.message, true);
+    }
   });
 
   $("#importCharts").addEventListener("click", () => $("#importFile").click());
@@ -1167,7 +1171,7 @@ function setupPublic() {
     if (!file) return;
     if (file.size > 1_000_000) { say("Ese archivo es demasiado grande.", true); return; }
     try {
-      const r = await localCharts.importData(JSON.parse(await file.text()));
+      const r = await charts.importData(JSON.parse(await file.text()));
       await saved.refresh();
       syncSaveButtons();
       const parts = [`Se importó ${plural(r.added, "carta", "cartas")}`];
@@ -1178,6 +1182,12 @@ function setupPublic() {
       say(err instanceof SyntaxError ? "Ese archivo no es un JSON válido." : err.message, true);
     }
   });
+}
+
+// ---------- versión alojada en internet ------------------------------------
+// Las cartas guardadas viven en el navegador de cada persona; el aviso de privacidad lo dice.
+function setupPublic() {
+  $("#privacyNote").textContent = "Zodíaco tropical, calculado con Swiss Ephemeris (Moshier). Los datos de nacimiento se envían al servidor solo para calcular la carta y no se guardan ahí.";
 }
 
 const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v.lon) !== "" &&
@@ -1457,8 +1467,10 @@ document.querySelectorAll("#hemi button").forEach((b) => b.addEventListener("cli
   if (page === "home" && moon.now) renderHome();
 }));
 
+// ---------- arranque ------------------------------------------------------
 async function init() {
   await config();
+  setupBackup();
   if (isPublic()) setupPublic();
   else { try { LOCAL_DEFAULTS = (await import("./defaults-local.js")).DEFAULTS; } catch { /* sin archivo: formulario vacío */ } }
   const last = recall();

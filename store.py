@@ -103,6 +103,16 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _key(c) -> tuple | None:
+    """Lo que hace igual a dos cartas: mismos datos de nacimiento (el id y las fechas de guardado no cuentan)."""
+    try:
+        manual = bool(c.get("manual"))
+        return (str(c.get("name")), str(c.get("date")), str(c.get("time")), float(c.get("lat")), float(c.get("lon")),
+                str(c.get("tz") or ""), manual, float(c.get("offset")) if manual else None)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 class ChartStore:
     def __init__(self, directory: Path | str | None = None):
         self.dir = Path(directory) if directory else data_dir()
@@ -152,6 +162,34 @@ class ChartStore:
             charts.append(rec)
             self._write(charts)
         return rec
+
+    def import_many(self, items) -> dict:
+        """Suma las cartas de un archivo exportado (de esta versión o de la pública). Las que ya están, con los
+        mismos datos de nacimiento, se saltean; las que no pasan la validación se cuentan aparte."""
+        if not isinstance(items, list) or len(items) > 100:
+            raise StoreError("Demasiadas cartas de una vez.")
+        added = skipped = failed = 0
+        with self._lock:
+            charts = self._read()
+            known = {_key(c) for c in charts}
+            for it in items:
+                try:
+                    rec = clean(it)
+                except StoreError:
+                    failed += 1
+                    continue
+                k = _key(rec)
+                if k in known:
+                    skipped += 1
+                    continue
+                known.add(k)
+                rec["id"] = uuid.uuid4().hex[:12]
+                rec["created"] = rec["updated"] = _now()
+                charts.append(rec)
+                added += 1
+            if added:
+                self._write(charts)
+        return {"added": added, "skipped": skipped, "failed": failed}
 
     def update(self, chart_id: str, data) -> dict:
         rec = clean(data)

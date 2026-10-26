@@ -426,7 +426,7 @@ td .g { margin-right: 4px; }
 .count { margin: 10px 0 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
 
 /* ---------- modos: natal, tránsitos, sinastría ---------- */
-.modebar { margin-top: 20px; }
+.modebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; margin-top: 20px; }
 .seg.modes { margin: 0; }
 .seg.modes button { padding: 7px 18px; font-size: calc(14.5px * var(--fs)); font-weight: 500; }
 
@@ -662,6 +662,19 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .pdl-disclaimer { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: calc(12.5px * var(--fs)); line-height: 1.5; color: var(--ink-2); }
 .pdlg :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
 .pdl-titles h2:focus { outline: none; }
+
+/* el cuadro de «Imprimir» */
+.prdlg { width: min(440px, calc(100vw - 24px)); }
+.prdlg form { display: flex; flex-direction: column; min-height: 0; }
+.prd-body { padding: 14px 20px 18px; overflow-y: auto; }
+.prd-body .home-chips { margin-top: 0; }
+.prd-list { margin: 16px 0 4px; padding: 0; border: 0; min-width: 0; }
+.prd-list .check { margin: 0 0 12px; font-size: calc(15px * var(--fs)); }
+.prd-list .check input { width: 18px; height: 18px; }
+.prd-body .status { margin: 0 0 6px; min-height: 1.3em; }
+.prd-body .pdl-fine { margin: 0 0 16px; line-height: 1.5; }
+.prd-body .actions { margin-top: 0; }
+.prd-body .actions .primary, .prd-body .actions .secondary { height: 42px; }
 
 @media (max-width: 520px) {
   .pdlg { width: calc(100vw - 16px); max-height: 92vh; border-radius: 12px; }
@@ -951,4 +964,77 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 :root[data-nointerp] .wheel .pl { cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* ---------- impresión: la rueda y las tablas, sin el menú ni los controles ----------
+   El botón «Imprimir» (y Ctrl/Cmd + P) usan esto. En la carta natal salen todas las tablas, una tras otra;
+   en tránsitos y sinastría, la rueda y la tabla que se está viendo. Siempre en claro (app.js cambia el tema mientras imprime). */
+@media print {
+  @page { margin: 12mm; }
+  :root { --fs: 1 !important; --ui: 1 !important; --wheel: 1 !important; }
+  html, body { background: #fff !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
+  .legend .hint, .interp, #stairInfo, dialog { display: none !important; }
+  .shell { display: block; min-height: 0; }
+  main { padding: 0; }
+
+  .head { margin-bottom: 4pt; }
+  .head h2 { font-size: 24pt; }
+  .head p { margin-top: 4pt; font-size: 10.5pt; color: #333; }
+  #chartPage > .note { margin: 6pt 0 0; padding: 3pt 8pt; font-size: 9.5pt; }
+
+  .stage { display: block; margin-top: 6pt; }
+  .wheel-fig { break-inside: avoid; }
+  .wheel { width: 100%; max-width: 12.8cm; max-height: 12.8cm; margin: 0 auto; }
+  .legend { margin-top: 2pt; gap: 3pt 14pt; font-size: 8.5pt; }
+
+  .data { margin-top: 8pt; }
+  table { font-size: 9pt; }
+  #panel-pos td, #panel-casas td { white-space: nowrap; }
+  #panel-pos th, #panel-pos td, #panel-casas th, #panel-casas td { padding-left: 3pt; padding-right: 3pt; }
+  #panel-pos table, #panel-casas table { font-size: 8.5pt; }
+  th { padding: 4pt 5pt 3pt; font-size: 8.5pt; }
+  td { padding: 2.5pt 5pt; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+  tbody tr:hover, tbody tr.hl { background: none; }
+  .count { margin: 0 0 3pt; font-size: 9.5pt; }
+
+  /* Qué sale lo decide app.js con data-print (una lista como "wheel stair pos"): solo eso, y en este orden.
+     Posiciones y casas, si van las dos, en dos columnas; todo lo demás, a lo ancho. */
+  .data { display: grid; grid-template-columns: minmax(0, 1.16fr) minmax(0, 1fr); gap: 12pt 14pt; align-items: start; }
+  .data > [role="tabpanel"] { grid-column: 1 / -1; }
+  :root[data-print] .data > [role="tabpanel"] { display: none !important; }
+  :root[data-print~="pos"] #panel-pos, :root[data-print~="casas"] #panel-casas, :root[data-print~="asp"] #panel-asp,
+  :root[data-print~="stair"] #panel-stair, :root[data-print~="elem"] #panel-elem, :root[data-print~="tpos"] #panel-tpos,
+  :root[data-print~="grid"] #panel-grid, :root[data-print~="over"] #panel-over { display: block !important; }
+  :root[data-print~="pos"][data-print~="casas"] #panel-pos, :root[data-print~="pos"][data-print~="casas"] #panel-casas { grid-column: auto; }
+  #panel-pos { order: 1; } #panel-casas { order: 2; } #panel-tpos { order: 3; } #panel-over { order: 4; }
+  #panel-stair, #panel-grid { order: 5; break-inside: avoid; }
+  #panel-asp { order: 6; } #panel-elem { order: 7; break-inside: avoid; }
+  :root[data-print]:not([data-print~="wheel"]) .wheel-fig { display: none !important; }
+  :root[data-print="wheel"] .wheel { max-width: 17cm; max-height: 17cm; }
+  :root[data-print="wheel grid"] .wheel { max-width: 11.5cm; max-height: 11.5cm; }        /* tránsitos y sinastría: el cuadro es cuadrado y no entra con la rueda grande */
+  :root[data-print] .data > [role="tabpanel"]::before {
+    display: block; margin: 0 0 3pt; padding-bottom: 2pt; border-bottom: 1px solid #999;
+    font: 600 9.5pt var(--sans); letter-spacing: .08em; text-transform: uppercase; color: #333;
+  }
+  #panel-pos::before { content: "Posiciones"; }
+  #panel-casas::before { content: "Casas"; }
+  #panel-tpos::before { content: "Tránsitos"; }
+  #panel-over::before { content: "Superposición"; }
+  #panel-stair::before, #panel-grid::before { content: "Cuadro de aspectos"; }
+  #panel-asp::before { content: "Aspectos"; }
+  #panel-elem::before { content: "Elementos"; }
+  #stairTable { max-width: 9.4cm; }
+  #gridTable { max-width: 8.4cm; }
+  /* elementos: los cuatro en una fila, para que entren en la hoja junto al cuadro y los aspectos */
+  .cross { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 6pt; }
+  .quad { min-height: 0; padding: 8pt 8pt 9pt; border: 0 !important; border-right: 1px solid #999 !important; }
+  .quad:last-child { border-right: 0 !important; }
+  .quad h3 { margin-bottom: 6pt; font-size: 10pt; }
+  .quad ul { gap: 4pt; }
+  #panel-asp table { max-width: 16cm; }
 }

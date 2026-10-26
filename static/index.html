@@ -311,6 +311,9 @@
         <button type="button" data-mode="transit" aria-pressed="false">Tránsitos</button>
         <button type="button" data-mode="syn" aria-pressed="false">Sinastría</button>
       </div>
+      <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
+      </button>
     </div>
 
     <div class="tools" id="toolsTransit" hidden>
@@ -362,12 +365,12 @@
 
       <section class="data" aria-label="Datos de la carta">
         <div class="tabs" role="tablist" aria-label="Tablas">
-          <button role="tab" id="tab-pos" data-modes="natal" aria-controls="panel-pos" aria-selected="true">Posiciones</button>
+          <button role="tab" id="tab-stair" data-modes="natal" aria-controls="panel-stair" aria-selected="true" title="Cuadro de aspectos">Cuadro</button>
+          <button role="tab" id="tab-pos" data-modes="natal" aria-controls="panel-pos" aria-selected="false" tabindex="-1">Posiciones</button>
           <button role="tab" id="tab-casas" data-modes="natal" aria-controls="panel-casas" aria-selected="false" tabindex="-1">Casas</button>
           <button role="tab" id="tab-sum" data-modes="transit" aria-controls="panel-sum" aria-selected="false" tabindex="-1" hidden>Resumen</button>
           <button role="tab" id="tab-tpos" data-modes="transit" aria-controls="panel-tpos" aria-selected="false" tabindex="-1" hidden>Tránsitos</button>
           <button role="tab" id="tab-asp" data-modes="natal transit syn" aria-controls="panel-asp" aria-selected="false" tabindex="-1">Aspectos</button>
-          <button role="tab" id="tab-stair" data-modes="natal" aria-controls="panel-stair" aria-selected="false" tabindex="-1" title="Cuadro de aspectos">Cuadro</button>
           <button role="tab" id="tab-elem" data-modes="natal" aria-controls="panel-elem" aria-selected="false" tabindex="-1">Elementos</button>
           <button role="tab" id="tab-cal" data-modes="transit" aria-controls="panel-cal" aria-selected="false" tabindex="-1" hidden>Calendario</button>
           <button role="tab" id="tab-grid" data-modes="transit syn" aria-controls="panel-grid" aria-selected="false" tabindex="-1" hidden title="Cuadro de aspectos">Cuadro</button>
@@ -439,6 +442,34 @@
   </main>
 
 </div>
+<dialog id="printDlg" class="pdlg prdlg" aria-labelledby="prdTitle">
+  <form id="printForm" novalidate>
+    <div class="pdl-head">
+      <div class="pdl-titles">
+        <h2 id="prdTitle">Imprimir</h2>
+        <p class="pdl-sub">Elegí qué va en la hoja.</p>
+      </div>
+      <button type="button" class="pdl-icon" id="prdClose" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="prd-body">
+      <div class="home-chips" role="group" aria-label="Atajos">
+        <button type="button" class="home-chip" data-preset="wheel">Solo el mandala</button>
+        <button type="button" class="home-chip" data-preset="cuadro">Mandala y cuadro</button>
+        <button type="button" class="home-chip" data-preset="all">Todo</button>
+      </div>
+      <fieldset class="prd-list" id="prdList"></fieldset>
+      <p class="status err" id="prdNote" role="alert"></p>
+      <p class="pdl-fine">Sale siempre en claro y sin el menú. Después se abre la impresión del navegador, donde también la podés guardar como PDF. Se recuerda lo que elegís y Ctrl o Cmd + P imprime eso mismo.</p>
+      <div class="actions">
+        <button type="button" class="secondary" id="prdCancel">Cancelar</button>
+        <button type="submit" class="primary" id="prdGo">Imprimir</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="planetDlg" class="pdlg" aria-labelledby="pdlTitle">
   <div class="pdl-head">
     <button type="button" class="pdl-icon" id="pdlBack" aria-label="Volver al planeta anterior" hidden>

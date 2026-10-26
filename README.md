@@ -105,7 +105,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - Nodo lunar verdadero o medio (en Configuración).
 - Aspectos (conjunción, oposición, trígono, cuadratura, sextil, quincuncio) con orbe y fase
   aplicativa o separativa. Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos.
-- **Cuadro** (pestaña en las tres vistas): los aspectos en escalera, con cada planeta como un círculo de
+- **Cuadro** (pestaña en las tres vistas; en la carta natal es la **primera** y la que se abre): los aspectos en escalera, con cada planeta como un círculo de
   color en la diagonal y un símbolo por aspecto en las celdas, vacías si no hay. Natal: todos contra todos
   (incluye Ascendente y Medio Cielo). Tránsitos y sinastría: filas = la carta de adentro, columnas = la de
   afuera. Al pasar el cursor se ve el orbe y la fase, y la rueda resalta el par.
@@ -135,8 +135,16 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   cierra el formulario sin guardar y vuelve a como estaba antes de abrirlo (los campos, la carta elegida).
   *Sistema de casas* y *nodo lunar* ya no están en el formulario: son preferencias de la vista, están en
   Configuración, valen para todas las cartas y se aplican al instante, sin apretar nada.
-- **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; abierto en pantallas
-  grandes y cerrado en el celular, y se recuerda):
+- **Imprimir** (botón arriba a la derecha de la carta): abre un cuadro para **elegir qué va en la hoja**: el mandala y,
+  según la vista, las tablas (natal: Cuadro de aspectos, Posiciones, Casas, Aspectos y Elementos; tránsitos: Tránsitos,
+  Cuadro y Aspectos; sinastría: Superposición, Cuadro y Aspectos). Con tres atajos: **Solo el mandala** (sale grande,
+  en una hoja), **Mandala y cuadro** (también en una hoja) y **Todo** (en la carta natal, dos hojas: el título, la rueda
+  y las tablas de Posiciones y Casas en la primera; el Cuadro, los Aspectos y los Elementos en la segunda). También se
+  puede imprimir sin mandala, solo tablas. Lo que elegís se recuerda por vista, y Ctrl/Cmd + P imprime eso mismo sin
+  abrir el cuadro. Después se abre la impresión del navegador, donde también se guarda como PDF. Sale sin menú ni
+  botones, y **siempre en claro**, aunque la pantalla esté en modo oscuro.
+- **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; **siempre arranca
+  cerrado**, en cualquier pantalla: no recuerda si lo dejaste abierto):
   - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros) y nodo lunar
     (verdadero o medio). Recalcula la carta que estás viendo al elegir.
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
@@ -244,7 +252,11 @@ no borra nada**:
 - Linux: `~/.local/share/carta-natal/`
 
 La ruta exacta aparece al pie de la barra lateral y en la terminal al iniciar. Para usar otra carpeta:
-variable de entorno `CARTA_NATAL_DATA`. Para hacer copia de seguridad alcanza con copiar ese archivo.
+variable de entorno `CARTA_NATAL_DATA`. Para hacer copia de seguridad alcanza con copiar ese archivo, o usar
+**Exportar cartas** / **Importar cartas…** al pie del menú: bajan y suben un archivo JSON con todas las cartas
+(`cartas-natales-AAAA-MM-DD.json`). Al importar se suman a las que ya tenés: las que tienen los mismos datos de
+nacimiento se saltean (no se duplica nada) y las que no se pueden leer se cuentan aparte. Es el mismo archivo de la
+versión pública, así que sirve para pasar cartas de una a la otra.
 Si el archivo se corrompe, la app lo aparta con otro nombre y empieza uno vacío en vez de pisarlo.
 (En la versión pública es distinto: ver «Alojarla en internet».)
 
@@ -317,6 +329,7 @@ static/           interfaz
   layout.js                         planetas dentro de su casa; separación del anillo exterior
   astro-data.js                     nombres, aspectos, formato de posiciones, círculos de color de cada cuerpo
   settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños (se guarda y se aplica)
+  print.js                          el cuadro de «Imprimir»: qué va en la hoja (la hoja misma la arma el @media print de style.css)
   summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
   planet-dialog.js                  ventana de lectura que se abre al tocar un planeta
   reading.js                        qué muestra esa ventana según la vista (natal, tránsitos, sinastría)
@@ -325,6 +338,7 @@ static/           interfaz
   glyphs.js                         símbolos de planetas y signos dibujados como vectores
   saved.js, api.js                  selector de cartas guardadas (desplegable con buscador) y cliente de la API
   local-charts.js                   cartas guardadas en el navegador (versión pública), exportar e importar
+                                    (en la versión local lo hace el servidor: POST /api/charts/import)
   defaults-local.js                 tu carta de arranque en la versión local (si lo borrás, el formulario arranca vacío)
   stair.js                          cuadro de aspectos en escalera
   elements.js                       balance de elementos y regente del Ascendente (moderno)
