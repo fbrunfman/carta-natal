@@ -280,17 +280,17 @@
       <div id="mGrid" aria-busy="false"></div>
     </section>
 
-    <!-- Combinar (beta): se pintan dos o más planetas y sale un texto que los junta -->
+    <!-- Combinar (beta): se pintan uno o más planetas y sale algo que los junta (texto, biografía, película o canción) -->
     <section id="combine" class="page" aria-labelledby="combineTitle" hidden>
       <header class="head">
         <h2 id="combineTitle">Combinar planetas <span class="beta-pill">Beta</span></h2>
-        <p>Pintá dos o más planetas y buscá un texto que los junte.</p>
+        <p>Pintá uno o más planetas y buscá algo que los junte: un texto, una biografía, una película o una canción.</p>
       </header>
-      <p class="beta-note" role="note"><strong>En construcción.</strong> Esta sección es una beta: por ahora hay <span id="cmbCount"></span> y las combinaciones pueden cambiar.</p>
+      <p class="beta-note" role="note"><strong>En construcción.</strong> Esta sección es una beta: por ahora hay <span id="cmbCount"></span> y pueden cambiar. Vienen de Conjugarnos, el grupo donde se proponen y se votan: <em>Validado</em> es que el grupo lo aprobó y <em>En debate</em>, que todavía no.</p>
       <div id="cmbPick" class="cmb-pick" role="group" aria-label="Planetas para combinar"></div>
       <p id="cmbHint" class="cmb-hint"></p>
       <div class="cmb-actions">
-        <button type="button" id="cmbGo" class="cmb-go" disabled>Buscar un texto</button>
+        <button type="button" id="cmbGo" class="cmb-go" disabled>Buscar</button>
         <button type="button" id="cmbClear" class="secondary compact" disabled>Limpiar</button>
       </div>
       <p id="cmbStatus" class="vh" role="status"></p>

@@ -7,6 +7,9 @@ venv/
 # verificar.py trae fechas de nacimiento de personas reales (para comprobar el motor): no se sube a internet
 verificar.py
 
+# lo que baja «Descargar todo» en Conjugarnos (trae los nombres de las personas del grupo): solo sirve para importar_conjugarnos.py
+conjugarnos-*.json
+
 # tu carta de arranque en la versión local (nombre, fecha y hora de nacimiento)
 static/defaults-local.js
 

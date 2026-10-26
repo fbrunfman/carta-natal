@@ -1,57 +1,58 @@
-// Pestaña «Combinar» (beta): textos que se buscan por la combinación de dos o más planetas.
-// Cada texto lleva `planetas`: los que lo definen (ids de BODY: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto).
-// Una búsqueda devuelve los textos que tienen TODOS los planetas elegidos (elegir de más acota); entre ellos sale uno al azar.
-// Agregar un texto: sumar un objeto a TEXTOS. Campos: planetas (2 o más), titulo, autor, tipo (opcional: Cuento, Poema…),
-// y texto (los párrafos se separan con una línea en blanco). Un texto sin titulo, autor, texto o con menos de 2 planetas no se usa.
+// Pestaña «Combinar» (beta): lo que se busca por un planeta solo o por la combinación de dos o más.
+// Lo que hay viene de dos lados:
+//   · CONJUGARNOS (combos-conjugarnos.js): lo que carga el grupo en Conjugarnos, validado o todavía en debate. Está GENERADO:
+//     se vuelve a hacer con `python3 importar_conjugarnos.py <export del grupo>`, no se edita a mano.
+//   · TEXTOS_PROPIOS (acá abajo): lo que se quiera sumar a mano, fuera del grupo.
+// Cada entrada lleva `planetas` (ids de BODY: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto), `titulo`,
+// `autor` y `texto` (los párrafos se separan con una línea en blanco), y opcionalmente:
+//   `clase`   texto (por defecto), biografia, pelicula o cancion; en película y canción el texto puede faltar
+//   `tipo`    la etiqueta que se ve (Cuento, Poema…); si falta, sale la de la clase
+//   `enlace`  un link (http o https) para ver o escuchar
+//   `estado`  validado o debate (solo lo ponen los del grupo)
+//   `porque`  por qué se propuso para esa combinación
+// Una entrada sin titulo o autor, sin texto (salvo película y canción) o sin ningún planeta válido no se usa.
+//
+// Cómo se busca: con UN planeta, salen los que son de ese planeta solo; con dos o más, los que tienen TODOS los elegidos
+// (elegir de más acota). Entre los que coinciden sale uno al azar.
+import { CONJUGARNOS } from "./combos-conjugarnos.js";
 
 export const PLANETS = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
 
-export const TEXTOS = [
-  {
-    // Saturno: la Ley, el guardián, el umbral, la prohibición, la espera de toda una vida.
-    // Plutón: guardianes cada vez más poderosos, el poder, el soborno, la obsesión con un solo obstáculo, la muerte y el cierre final.
-    // (Federico: Saturno + Plutón. Mi primera lectura había sido Saturno + Neptuno.)
-    planetas: ["saturn", "pluto"],
-    titulo: "Ante la ley", autor: "Franz Kafka", tipo: "Cuento",
-    // El texto es el que pegó Federico; no se sabe quién tradujo esta versión, por eso no hay `trad`.
-    texto: `Ante la ley hay un guardián. Un campesino se presenta frente a este guardián, y solicita que le permita entrar en la Ley. Pero el guardián contesta que por ahora no puede dejarlo entrar. El hombre reflexiona y pregunta si más tarde lo dejarán entrar.
+export const TEXTOS_PROPIOS = [];
 
--Tal vez -dice el centinela- pero no por ahora.
+export const TEXTOS = [...TEXTOS_PROPIOS, ...CONJUGARNOS];
 
-La puerta que da a la Ley está abierta, como de costumbre; cuando el guardián se hace a un lado, el hombre se inclina para espiar. El guardián lo ve, se sonríe y le dice:
+/** Lo que cambia según la clase: la etiqueta que se ve, el verbo del botón del link y si el texto puede faltar. */
+const CLASES = {
+  texto: { tipo: "", verbo: "Abrir", cuerpoOpcional: false },
+  biografia: { tipo: "Biografía", verbo: "Abrir", cuerpoOpcional: false },
+  pelicula: { tipo: "Película", verbo: "Ver", cuerpoOpcional: true },
+  cancion: { tipo: "Canción", verbo: "Escuchar", cuerpoOpcional: true },
+};
+const claseDe = (t) => CLASES[t && t.clase] || CLASES.texto;
 
--Si tu deseo es tan grande haz la prueba de entrar a pesar de mi prohibición. Pero recuerda que soy poderoso. Y sólo soy el último de los guardianes. Entre salón y salón también hay guardianes, cada uno más poderoso que el otro. Ya el tercer guardián es tan terrible que no puedo mirarlo siquiera.
-
-El campesino no había previsto estas dificultades; la Ley debería ser siempre accesible para todos, piensa, pero al fijarse en el guardián, con su abrigo de pieles, su nariz grande y aguileña, su barba negra de tártaro, rala y negra, decide que le conviene más esperar. El guardián le da un escabel y le permite sentarse a un costado de la puerta.
-
-Allí espera días y años. Intenta infinitas veces entrar y fatiga al guardián con sus súplicas. Con frecuencia el guardián conversa brevemente con él, le hace preguntas sobre su país y sobre muchas otras cosas; pero son preguntas indiferentes, como las de los grandes señores, y, finalmente siempre le repite que no puede dejarlo entrar. El hombre, que se ha provisto de muchas cosas para el viaje, sacrifica todo, por valioso que sea, para sobornar al guardián. Este acepta todo, en efecto, pero le dice:
-
--Lo acepto para que no creas que has omitido ningún esfuerzo.
-
-Durante esos largos años, el hombre observa casi continuamente al guardián: se olvida de los otros y le parece que éste es el único obstáculo que lo separa de la Ley. Maldice su mala suerte, durante los primeros años audazmente y en voz alta; más tarde, a medida que envejece, sólo murmura para sí. Retorna a la infancia, y como en su cuidadosa y larga contemplación del guardián ha llegado a conocer hasta las pulgas de su cuello de piel, también suplica a las pulgas que lo ayuden y convenzan al guardián. Finalmente, su vista se debilita, y ya no sabe si realmente hay menos luz, o si sólo lo engañan sus ojos. Pero en medio de la oscuridad distingue un resplandor, que surge inextinguible de la puerta de la Ley. Ya le queda poco tiempo de vida. Antes de morir, todas las experiencias de esos largos años se confunden en su mente en una sola pregunta, que hasta ahora no ha formulado. Hace señas al guardián para que se acerque, ya que el rigor de la muerte comienza a endurecer su cuerpo. El guardián se ve obligado a agacharse mucho para hablar con él, porque la disparidad de estaturas entre ambos ha aumentado bastante con el tiempo, para desmedro del campesino.
-
--¿Qué quieres saber ahora? -pregunta el guardián-. Eres insaciable.
-
--Todos se esfuerzan por llegar a la Ley -dice el hombre-; ¿cómo es posible entonces que durante tantos años nadie más que yo pretendiera entrar?
-
-El guardián comprende que el hombre está por morir, y para que sus desfallecientes sentidos perciban sus palabras, le dice junto al oído con voz atronadora:
-
--Nadie podía pretenderlo porque esta entrada era solamente para ti. Ahora voy a cerrarla.`,
-  },
-];
+export const ESTADOS = { validado: "Validado", debate: "En debate" };
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-const usable = (t) => t && Array.isArray(t.planetas) && new Set(t.planetas.filter((p) => PLANETS.includes(p))).size >= 2 && t.titulo && t.autor && t.texto;
 
 /** Los planetas sin repetir, en el orden de siempre (Sol, Luna, Mercurio …); lo que no es un planeta se descarta. */
 export const sortPlanets = (ids) => PLANETS.filter((p) => ids.includes(p));
 
-/** Textos que tienen todos los planetas elegidos. Con menos de dos planetas, ninguno. */
+const planetsOf = (t) => sortPlanets(Array.isArray(t.planetas) ? t.planetas : []);
+
+const usable = (t) => !!t && planetsOf(t).length >= 1 && !!t.titulo && !!t.autor && !!(t.texto || claseDe(t).cuerpoOpcional);
+
+/** ¿Entra en la búsqueda? Un planeta: solo los de ese planeta solo. Dos o más: los que los tienen a todos. */
+function matches(t, sel) {
+  const ps = planetsOf(t);
+  return sel.length === 1 ? ps.length === 1 && ps[0] === sel[0] : sel.every((p) => ps.includes(p));
+}
+
+/** Lo que coincide con los planetas elegidos. Sin ningún planeta, nada. */
 export function findTexts(ids, textos = TEXTOS) {
   const sel = sortPlanets([...ids]);
-  if (sel.length < 2) return [];
-  return textos.filter((t) => usable(t) && sel.every((p) => t.planetas.includes(p)));
+  if (!sel.length) return [];
+  return textos.filter((t) => usable(t) && matches(t, sel));
 }
 
 /** Uno al azar entre los que coinciden; si hay más de uno, evita repetir el último que salió. */
@@ -62,20 +63,56 @@ export function pickText(ids, avoid = null, rnd = Math.random, textos = TEXTOS) 
   return pool[Math.min(pool.length - 1, Math.floor(rnd() * pool.length))];
 }
 
-/** Cuántos textos se pueden mostrar. */
+/** Cuántos se pueden mostrar. */
 export const countTexts = (textos = TEXTOS) => textos.filter(usable).length;
 
-/** Combinaciones que tienen al menos un texto, cada una como lista ordenada de planetas, sin repetir. */
+/** Cuántos hay de cada estado (los que no son del grupo no cuentan en ninguno). */
+export function countByEstado(textos = TEXTOS) {
+  const n = { validado: 0, debate: 0 };
+  for (const t of textos) if (usable(t) && n[t.estado] !== undefined) n[t.estado]++;
+  return n;
+}
+
+/** Combinaciones que tienen al menos uno, cada una como lista ordenada de planetas, sin repetir. */
 export function combosWithText(textos = TEXTOS) {
   const seen = new Map();
-  for (const t of textos) if (usable(t)) { const c = sortPlanets(t.planetas); seen.set(c.join("+"), c); }
+  for (const t of textos) if (usable(t)) { const c = planetsOf(t); seen.set(c.join("+"), c); }
   return [...seen.values()];
 }
 
-/** El texto en HTML: párrafos, y debajo autor, título y tipo. */
+/** La etiqueta que se ve (Película, Canción, Cuento…), o vacío si no tiene. */
+export const tipoDe = (t) => t.tipo || claseDe(t).tipo;
+
+/** { href, dominio } si es una dirección web (http o https) que se puede abrir con tranquilidad; si no, null. */
+export function enlaceSeguro(u) {
+  try {
+    const x = new URL(String(u || ""));
+    if (x.protocol !== "http:" && x.protocol !== "https:") return null;
+    return { href: x.href, dominio: x.hostname.replace(/^www\./, "") };
+  } catch { return null; }
+}
+
+/** «Validado» o «En debate» (con una marca que no depende del color); vacío si no es del grupo. */
+export function estadoHTML(t) {
+  const e = ESTADOS[t.estado] ? t.estado : "";
+  return e ? `<span class="cmb-estado cmb-est-${e}">${ESTADOS[e]}</span>` : "";
+}
+
+/** El texto en HTML: párrafos, y debajo autor, título y tipo. Si no hay texto (una canción, por ejemplo), solo lo de abajo. */
 export function textHTML(t) {
-  const paras = String(t.texto).split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  return `<figure class="cmb-fig"><div class="cmb-text" lang="es">${paras.map((p) => `<p>${esc(p)}</p>`).join("")}</div>`
+  const paras = String(t.texto || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const tipo = tipoDe(t);
+  return `<figure class="cmb-fig">${paras.length ? `<div class="cmb-text" lang="es">${paras.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : ""}`
     + `<figcaption class="mp-by"><strong class="mp-au">${esc(t.autor)}</strong><cite class="mp-ob">${esc(t.titulo)}</cite>`
-    + `${t.tipo ? `<span class="cmb-kind">${esc(t.tipo)}</span>` : ""}</figcaption></figure>`;
+    + `${tipo ? `<span class="cmb-kind">${esc(tipo)}</span>` : ""}</figcaption></figure>`;
+}
+
+/** Lo que va debajo del texto: el botón del link (si hay) y por qué se propuso (si lo dijeron). */
+export function extrasHTML(t) {
+  const link = t.enlace ? enlaceSeguro(t.enlace) : null;
+  const verbo = claseDe(t).verbo;
+  return (link ? `<p class="cmb-ver"><a class="cmb-enlace" href="${esc(link.href)}" target="_blank" rel="noopener noreferrer">`
+      + `${verbo}<span class="cmb-dom">${esc(link.dominio)}</span><span class="cmb-fl" aria-hidden="true">↗</span>`
+      + `<span class="vh"> (se abre en otra pestaña)</span></a></p>` : "")
+    + (t.porque ? `<div class="cmb-why"><p class="cmb-why-t">Por qué esta combinación</p><p>${esc(t.porque)}</p></div>` : "");
 }

@@ -861,13 +861,29 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .cmb-out { max-width: 700px; margin-top: 28px; outline: none; }
 .cmb-out[hidden] { display: none; }
 .cmb-res { padding: 2px 0 2px clamp(16px, 3vw, 24px); border-left: 3px solid var(--line-strong); }
-.cmb-combo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; font: 600 calc(13px * var(--fs))/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.cmb-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 14px; }
+.cmb-combo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font: 600 calc(13px * var(--fs))/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
 .cmb-combo span { margin-left: 4px; }
+/* Validado / En debate: el círculo lleno o vacío lo dice también sin color */
+.cmb-estado { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border: 1px solid var(--line-strong); border-radius: 999px; font: 600 calc(12.5px * var(--fs))/1.2 var(--sans); color: var(--ink); }
+.cmb-estado::before { content: ""; width: 9px; height: 9px; box-sizing: border-box; border-radius: 50%; }
+.cmb-est-validado::before { background: var(--earth-solid); }
+.cmb-est-debate::before { border: 2px solid var(--minor); }
 .cmb-text { font: 400 calc(17px * var(--fs))/1.65 var(--serif); color: var(--ink); overflow-wrap: break-word; }
-.cmb-text p { margin: 0 0 .9em; }
+.cmb-text p { margin: 0 0 .9em; white-space: pre-line; }      /* pre-line: los versos de un poema siguen en su renglón */
 .cmb-text p:last-child { margin-bottom: 0; }
 .cmb-fig { margin: 0; }
+.cmb-fig > .mp-by:first-child { margin-top: 0; }               /* una canción puede venir sin texto */
 .cmb-kind::before { content: "·"; margin-right: 10px; }
+.cmb-ver { margin: 16px 0 0; }
+.cmb-enlace { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); font: 600 calc(14.5px * var(--fs))/1.2 var(--sans); text-decoration: none; }
+.cmb-enlace:hover { background: var(--hover); }
+.cmb-enlace:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cmb-dom { font-weight: 400; color: var(--ink-2); overflow-wrap: anywhere; }
+.cmb-dom::before { content: "·"; margin-right: 8px; }
+.cmb-why { max-width: 62ch; margin: 18px 0 0; padding: 10px 14px; border-left: 3px solid var(--line-strong); border-radius: 0 6px 6px 0; background: var(--hover); }
+.cmb-why p { margin: 0; font-size: calc(15px * var(--fs)); line-height: 1.5; color: var(--ink); }
+.cmb-why .cmb-why-t { margin-bottom: 4px; font: 600 calc(12px * var(--fs))/1.2 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
 .cmb-more { margin: 16px 0 0; color: var(--ink-2); font-size: calc(14px * var(--fs)); }
 .cmb-again { padding: 4px 0; border: 0; background: none; color: var(--ink); font: 600 calc(14px * var(--fs))/1.2 var(--sans); text-decoration: underline; text-underline-offset: 3px; }
 .cmb-again:hover { opacity: .75; }

@@ -76,14 +76,28 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     son las de la zona horaria del navegador.
   - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
-    se pintan con su color. Con dos o más pintados se habilita «Buscar un texto» y sale uno al azar entre los que
-    tienen **todos** los planetas elegidos (elegir de más acota). Si no hay ninguno, lo dice y ofrece las
-    combinaciones que sí tienen texto. «Otro texto» (si hay más de uno para esa combinación) no repite el último.
-    Se ve también con «Solo datos», porque es una búsqueda que se pide a propósito. Los textos y sus planetas están
-    en `static/combos.js` (un objeto por texto: `planetas`, `titulo`, `autor`, `tipo` y `texto`; los párrafos se
-    separan con una línea en blanco; uno sin título, autor o texto, o con menos de dos planetas, no sale). Por
-    ahora hay uno de prueba: Kafka, «Ante la ley» (Saturno + Plutón), con el texto que pasó Federico. La
-    pantalla está en `static/combinar.js`.
+    se pintan con su color. Con uno o más pintados se habilita «Buscar» y sale uno al azar de lo que coincide: con
+    **un** planeta, lo que es de ese planeta solo («Neptuno solo»); con dos o más, lo que tiene **todos** los
+    planetas elegidos (elegir de más acota). Si no hay nada, lo dice y ofrece las combinaciones que sí tienen algo.
+    «Ver otro» (si hay más de uno para esa combinación) no repite el último, y el pie cuenta cuántos hay y cuántos
+    están validados. Se ve también con «Solo datos», porque es una búsqueda que se pide a propósito.
+    Lo que hay viene del grupo de **Conjugarnos**, tanto lo **validado** como lo que sigue **en debate**; cada
+    resultado lo marca con «Validado» (círculo lleno) o «En debate» (círculo vacío). Puede ser un texto, una
+    biografía, una película o una canción: las películas y canciones pueden venir sin texto y con un link
+    (botón «Ver» o «Escuchar», que abre en otra pestaña y solo acepta http o https), y si el grupo escribió por qué
+    lo propuso, se lee debajo («Por qué esta combinación»). Los versos de un poema conservan sus renglones.
+    - **Cómo actualizarlo**: en Conjugarnos, página *Grupo* → *Descargar todo (JSON)* (solo quien administra; baja un
+      `conjugarnos-….json`), y después `python3 importar_conjugarnos.py conjugarnos-….json`. Reescribe `static/combos-conjugarnos.js` entero (una
+      entrada por combinación de planetas) y avisa lo que salteó (un link que no es web, un tipo raro…). Hay que
+      subir el cambio (commit y push) para que Render lo publique: es una **foto** del grupo, no se actualiza sola.
+    - **Qué no pasa**: los nombres de las personas (quién propuso, votó o comentó), los votos y los comentarios.
+      La carta natal se abre con un link, sin ser del grupo, así que solo viaja lo que se ve en la pantalla.
+      El export en sí trae esos nombres: no lo subas al repositorio (el `.gitignore` ya deja afuera `conjugarnos-*.json`).
+    - **Algo propio**: `TEXTOS_PROPIOS` en `static/combos.js` (un objeto por entrada: `planetas`, `titulo`, `autor`
+      y `texto`; opcionales `clase`, `tipo`, `enlace` y `porque`; los párrafos se separan con una línea en blanco;
+      una entrada sin título, autor o texto —salvo película y canción—, o sin ningún planeta, no sale).
+      Ojo con los derechos de autor de lo que se publica: los fragmentos largos de obras vigentes pueden dar problemas.
+    La pantalla está en `static/combinar.js`.
 - Fecha, hora local y lugar → posiciones de Sol a Plutón, nodo norte, Ascendente y Medio Cielo.
 - Zona horaria histórica con la base IANA (cambios de horario de verano incluidos). Avisa si la hora
   fue ambigua o no existió, y permite fijar el offset UTC a mano.
@@ -313,10 +327,12 @@ static/           interfaz
   elements.js                       balance de elementos y regente del Ascendente (moderno)
   moon.js                           inicio y calendario lunar: tarjeta de la Luna, grilla del mes, íconos de fase
   poems.js                          los poemas de la tarjeta de la Luna (por signo) y cómo se eligen y se dibujan
-  combos.js, combinar.js            la pestaña Combinar (beta): los textos por combinación de planetas y la pantalla
+  combos.js, combinar.js            la pestaña Combinar (beta): cómo se busca por planetas y la pantalla
+  combos-conjugarnos.js             lo del grupo de Conjugarnos (generado por importar_conjugarnos.py: no se edita a mano)
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
   places.json                       lugares incluidos
+importar_conjugarnos.py  trae el export de Conjugarnos a la pestaña Combinar (genera static/combos-conjugarnos.js)
 verificar.py      prueba contra una carta conocida
 ```
 
