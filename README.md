@@ -73,6 +73,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
     el color del elemento del signo y «Solo datos» oculta el poema. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
+    **En escritorio, con lugar de sobra (a partir de unos 1100 px de ancho de contenido), «Tránsitos destacados de hoy» y
+    «Tus cartas» van en una columna a la derecha del mapa**; en pantallas más angostas y en el celular van debajo, como antes.
     **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
     4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
     cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto

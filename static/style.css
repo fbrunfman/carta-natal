@@ -785,6 +785,18 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 /* ---------- inicio: el cielo de ahora, visto desde la Tierra ----------
    Un cuadrado con los 12 signos alrededor, la Tierra al centro y cada planeta en su lugar; la Luna, con su info, abajo a
    la izquierda. Los tamaños salen del ancho del mapa (cqw), el mismo cálculo que hace sky.js para que no se tapen. */
+/* en escritorio (con lugar de sobra), el mapa queda a la izquierda y, en una columna a la derecha, los tránsitos destacados
+   y «Tus cartas»; en pantallas angostas todo va en una sola columna, como siempre */
+#home { container-type: inline-size; }
+@container (min-width: 1100px) {
+  .home-grid {
+    display: grid; align-items: start; column-gap: 40px;
+    grid-template-columns: min(760px, max(300px, calc(100dvh - 190px))) minmax(300px, 680px);
+  }
+  .home-side > .home-charts { margin-top: 28px; max-width: none; }
+  .home-side > .home-charts:first-child, .home-side > [hidden] + .home-charts { margin-top: 0; }
+}
+
 .sky-wrap {
   --gap: 12px; container-type: inline-size; position: relative; width: min(100%, 760px, max(300px, calc(100dvh - 190px)));
   display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap);

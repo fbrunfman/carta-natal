@@ -248,29 +248,35 @@
         <h2 id="homeTitle">Inicio</h2>
         <p id="homeSub"></p>
       </header>
-      <div class="sky-wrap" id="skyWrap">
-        <div class="sky" id="sky" role="group" aria-label="El cielo ahora, visto desde la Tierra"></div>
-        <div class="sky-moon" id="skyMoon"><span class="mc-wait">Calculando el cielo…</span></div>
-        <div class="sky-foot">
-          <p class="sky-info" id="skyInfo" role="status" aria-live="polite"></p>
-          <a class="sky-foot-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>
+      <div class="home-grid">
+        <div class="home-main">
+          <div class="sky-wrap" id="skyWrap">
+            <div class="sky" id="sky" role="group" aria-label="El cielo ahora, visto desde la Tierra"></div>
+            <div class="sky-moon" id="skyMoon"><span class="mc-wait">Calculando el cielo…</span></div>
+            <div class="sky-foot">
+              <p class="sky-info" id="skyInfo" role="status" aria-live="polite"></p>
+              <a class="sky-foot-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>
+            </div>
+          </div>
+          <div id="homeErr" class="error" role="alert" hidden></div>
+        </div>
+        <div class="home-side">
+          <section class="home-charts home-tr" id="homeTr" aria-labelledby="homeTrTitle" hidden>
+            <h3 id="homeTrTitle">Tránsitos destacados de hoy</h3>
+            <p class="home-tr-note" id="homeTrNote"></p>
+            <div class="home-chips home-tr-pick" id="homeTrPick" role="group" aria-label="Cartas que se incluyen"></div>
+            <div class="home-tr-act">
+              <button type="button" class="home-continue" id="homeTrGo"></button>
+              <span class="home-tr-prog" id="homeTrProg" role="status" aria-live="polite"></span>
+            </div>
+            <div class="htr-cards" id="homeTrBody"></div>
+          </section>
+          <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
+            <h3 id="homeChartsTitle">Tus cartas</h3>
+            <div id="homeChartBody"></div>
+          </section>
         </div>
       </div>
-      <div id="homeErr" class="error" role="alert" hidden></div>
-      <section class="home-charts home-tr" id="homeTr" aria-labelledby="homeTrTitle" hidden>
-        <h3 id="homeTrTitle">Tránsitos destacados de hoy</h3>
-        <p class="home-tr-note" id="homeTrNote"></p>
-        <div class="home-chips home-tr-pick" id="homeTrPick" role="group" aria-label="Cartas que se incluyen"></div>
-        <div class="home-tr-act">
-          <button type="button" class="home-continue" id="homeTrGo"></button>
-          <span class="home-tr-prog" id="homeTrProg" role="status" aria-live="polite"></span>
-        </div>
-        <div class="htr-cards" id="homeTrBody"></div>
-      </section>
-      <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
-        <h3 id="homeChartsTitle">Tus cartas</h3>
-        <div id="homeChartBody"></div>
-      </section>
     </section>
 
     <section id="lunar" class="page" aria-labelledby="lunarTitle" hidden>
