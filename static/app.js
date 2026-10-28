@@ -8,7 +8,8 @@ import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
-import { moonCardHTML, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
+import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
+import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
 
@@ -1123,6 +1124,7 @@ setClassic(initSettings((cfg, what) => {
   if (what === "gfx") {
     setClassic(cfg.gfx === "classic");
     refreshCombine();
+    if (page === "home" && moon.now) paintSky();
     if (chart) render();
   }
 }).gfx === "classic");
@@ -1197,7 +1199,7 @@ const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v
 // Se navega con el # de la dirección (#inicio, #luna, #luna/2026-10, #carta): el botón «atrás» del celular vuelve del
 // calendario al inicio y al recargar queda la misma página. Sin # se abre el inicio.
 const moon = { now: null, nowAt: 0, nowSeq: 0, err: null, months: new Map(), cal: null, calSeq: 0, timer: 0, south: true,
-  poem: null, poemSign: -1, poemShown: null, poemOpen: false };       // poema de la tarjeta: se elige al entrar al inicio
+  poem: null, poemSign: -1 };                  // el poema de la Luna: se elige al entrar al inicio y se lee al tocarla
 try { moon.south = localStorage.getItem("carta:hemi") !== "n"; } catch {}
 let page = "";                       // "home" | "lunar" | "combine" | "chart"
 let chartStarted = false;            // ya se pidió la carta (al entrar a «Carta» o al elegir una)
@@ -1273,75 +1275,120 @@ document.querySelectorAll("#sidenav a").forEach((a) => a.addEventListener("click
   if (a.id === "navMoon" && page === "lunar") { e.preventDefault(); lunarTo(0, 0, true); }     // ya estás en el calendario: vuelve a este mes
 }));
 
-// -- inicio: la Luna ahora
+// -- inicio: el cielo de ahora, con la Luna abajo a la izquierda
+const skyState = { sel: null, w: 0, layout: [] };      // sel: el planeta que se tocó
+
 function renderHome() {
   const tz = moonTz();
   try {
     $("#homeSub").textContent = cap(new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date()));
   } catch { $("#homeSub").textContent = ""; }
-  const card = $("#moonCard"), err = $("#homeErr");
-  if (moon.now) {
-    card.hidden = false;
-    card.classList.remove("is-loading");
-    card.innerHTML = moonCardHTML(moon.now, moon.south, todayIn(tz));
+  const wrap = $("#skyWrap"), err = $("#homeErr");
+  if (moon.now || !moon.err) {
+    wrap.hidden = false;
     err.hidden = true;
-    renderPoem();
-  } else if (moon.err) {
-    card.hidden = true;
-    $("#moonPoem").hidden = true;
+    paintSky();
+  } else {
+    wrap.hidden = true;
     const offline = moon.err instanceof TypeError;
     err.hidden = false;
     err.replaceChildren(
-      Object.assign(document.createElement("strong"), { textContent: offline ? "No se pudo conectar con el servidor" : "No se pudo calcular la Luna" }),
+      Object.assign(document.createElement("strong"), { textContent: offline ? "No se pudo conectar con el servidor" : "No se pudo calcular el cielo" }),
       document.createTextNode(offline ? (isPublic() ? "Si hace un rato que nadie la usa, la página puede tardar hasta un minuto en despertar." : "Volvé a abrir la app.") : moon.err.message),
     );
     const retry = Object.assign(document.createElement("button"), { type: "button", className: "secondary compact", textContent: "Reintentar" });
     retry.style.marginTop = "10px";
     retry.addEventListener("click", () => { moon.err = null; renderHome(); loadMoon(); });
     err.append(document.createElement("br"), retry);
-  } else {
-    card.hidden = false;
-    card.classList.add("is-loading");
-    card.innerHTML = `<span class="mc-wait">Calculando la Luna…</span>`;
-    err.hidden = true;
-    $("#moonPoem").hidden = true;
   }
   renderHomeCharts();
 }
 
+/** Dibuja el mapa: los signos, la Tierra, los planetas en su lugar y la Luna en el rincón. */
+function paintSky() {
+  const sky = $("#sky"), box = $("#skyMoon"), now = moon.now;
+  const W = Math.round(sky.clientWidth) || 640;
+  skyState.w = W;
+  sky.innerHTML = skyShellHTML(W);
+  if (now) {
+    box.innerHTML = `<button type="button" class="sky-moon-btn" id="moonBtn" aria-haspopup="dialog">${moonCornerHTML(now, moon.south)}</button>` +
+      `<a class="sky-moon-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>`;
+  } else {
+    box.innerHTML = `<span class="mc-wait">Calculando el cielo…</span>`;
+  }
+  // en la pantalla grande la Luna está encima del mapa (en el celular, debajo): los planetas no la tapan
+  const obstacles = [], mr = box.getBoundingClientRect(), sr = sky.getBoundingClientRect();
+  if (now && mr.width && mr.top < sr.bottom - 1) {
+    obstacles.push({ x0: mr.left - sr.left - 4, y0: mr.top - sr.top - 4, x1: mr.right - sr.left + 4, y1: mr.bottom - sr.top + 4 });
+  }
+  skyState.layout = now?.planets ? layoutSky(now.planets, W, obstacles) : [];
+  sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel)).join(""));
+  paintSkyInfo();
+}
+
+function paintSkyInfo() {
+  const el = $("#skyInfo"), now = moon.now;
+  if (now && !now.planets) el.textContent = "Para ver los planetas, cerrá la ventana de Carta natal y volvé a abrirla.";
+  else el.innerHTML = skyInfoHTML(skyState.sel, skyState.layout, now ? now.local.slice(11) : "");
+}
+
+$("#sky").addEventListener("click", (e) => {
+  const b = e.target.closest(".sky-pl");
+  if (!b) return;
+  skyState.sel = skyState.sel === b.dataset.id ? null : b.dataset.id;
+  document.querySelectorAll("#sky .sky-pl").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.id === skyState.sel)));
+  paintSkyInfo();
+});
+
+// el mapa se vuelve a acomodar si cambia de ancho (girar el celular, achicar la ventana)
+let skyWatch = null, skyFrame = 0;
+function watchSky() {
+  if (skyWatch || typeof ResizeObserver === "undefined") return;
+  skyWatch = new ResizeObserver(() => {
+    const w = Math.round($("#sky").clientWidth);
+    if (page !== "home" || !moon.now || !w || Math.abs(w - skyState.w) < 6) return;
+    cancelAnimationFrame(skyFrame);
+    skyFrame = requestAnimationFrame(paintSky);
+  });
+  skyWatch.observe($("#skyWrap"));
+  document.fonts?.ready.then(() => { if (page === "home" && moon.now) paintSky(); });     // con la letra ya cargada cambia el tamaño del rincón de la Luna
+}
+
 /**
  * Un poema para la Luna en su signo, al azar entre los de ese signo. Se elige al entrar al inicio (o si la Luna cambia de
- * signo mientras se mira) y no cambia con cada actualización de la tarjeta; el botón «Leer completo» recuerda su estado.
+ * signo mientras se mira) y no cambia hasta entonces: se lee al tocar la Luna.
  */
-function renderPoem() {
-  const box = $("#moonPoem"), sign = moon.now.sign;
-  if (moon.poemSign !== sign) {
-    moon.poem = pickPoem(sign, moon.poem);
-    moon.poemSign = sign;
-    moon.poemShown = null; moon.poemOpen = false;
-  }
-  if (!moon.poem) { box.hidden = true; return; }
-  if (moon.poemShown !== moon.poem) {
+function ensurePoem(sign) {
+  if (moon.poemSign === sign) return;
+  moon.poem = pickPoem(sign, moon.poem);
+  moon.poemSign = sign;
+}
+function openPoem() {
+  const now = moon.now;
+  if (!now) return;
+  ensurePoem(now.sign);
+  const box = $("#poemBody");
+  $("#poemIc").innerHTML = moonIcon(now.elong, moon.south);
+  $("#poemTitle").textContent = `La Luna en ${SIGNS[now.sign]}`;
+  $("#poemSub").replaceChildren(`${now.name} · `, Object.assign(document.createElement("span"), { className: "nowrap", textContent: `${Math.round(now.illum * 100)} % iluminada` }));
+  if (moon.poem) {
     box.innerHTML = poemHTML(moon.poem);
-    box.dataset.el = ["fire", "earth", "air", "water"][sign % 4];
+    box.querySelector(".mp-more")?.remove();                       // acá se lee entero
+    box.dataset.el = ["fire", "earth", "air", "water"][now.sign % 4];
     box.setAttribute("role", "group");
-    box.setAttribute("aria-label", `Poema para la Luna en ${SIGNS[sign]}`);
-    moon.poemShown = moon.poem;
+    box.setAttribute("aria-label", `Poema para la Luna en ${SIGNS[now.sign]}`);
+    box.hidden = false;
+  } else {
+    box.hidden = true;
   }
-  box.classList.toggle("is-long", !!box.querySelector(".mp-more"));
-  paintPoem();
-  box.hidden = false;
+  $("#poemNow").innerHTML = (moon.poem ? "" : `<p class="pdl-empty interp">Todavía no hay poemas para este signo.</p>`) + moonLinesHTML(now, todayIn(moonTz()));
+  $("#poemDlg").showModal();
+  $("#poemDlg .pdl-body").scrollTop = 0;
 }
-function paintPoem() {
-  const box = $("#moonPoem"), more = box.querySelector(".mp-more");
-  box.classList.toggle("is-open", moon.poemOpen);
-  if (more) { more.setAttribute("aria-expanded", String(moon.poemOpen)); more.textContent = moon.poemOpen ? "Leer menos" : "Leer completo"; }
-}
-$("#moonPoem").addEventListener("click", (e) => {
-  if (!e.target.closest(".mp-more")) return;
-  moon.poemOpen = !moon.poemOpen;
-  paintPoem();
-});
+$("#skyMoon").addEventListener("click", (e) => { if (e.target.closest(".sky-moon-btn")) openPoem(); });
+$("#poemClose").addEventListener("click", () => $("#poemDlg").close());
+$("#poemCal").addEventListener("click", () => $("#poemDlg").close());          // el enlace sigue su camino al calendario
+$("#poemDlg").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // un toque en la cortina
 
 async function loadMoon() {
   const my = ++moon.nowSeq;
@@ -1359,6 +1406,7 @@ async function loadMoon() {
 function startHome() {
   moon.poemSign = -1;                                  // cada vez que se entra al inicio sale otro poema (si hay más de uno)
   renderHome();
+  watchSky();
   if (!moon.now || Date.now() - moon.nowAt > 120000) loadMoon();
   clearInterval(moon.timer);
   moon.timer = setInterval(() => { if (!document.hidden) loadMoon(); }, 300000);
@@ -1367,7 +1415,6 @@ function stopHome() { clearInterval(moon.timer); }
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && page === "home" && Date.now() - moon.nowAt > 120000) loadMoon();
 });
-$("#moonCard").addEventListener("click", () => { if (moon.now) go("#luna"); });
 
 /** «Continuar con …» y las demás cartas guardadas. Los nombres los escribe quien usa la app: todo con DOM. */
 function renderHomeCharts() {

@@ -746,7 +746,8 @@ def _phase_info(e: float) -> dict:
 
 def moon_now(p: dict) -> dict:
     """La Luna en este momento (o en `at`, «AAAA-MM-DD HH:MM» en UTC): signo, grado, fase, desde cuándo está
-    en ese signo, cuándo cambia al siguiente y las próximas cuatro fases principales."""
+    en ese signo, cuándo cambia al siguiente y las próximas cuatro fases principales. Con la posición de los
+    planetas en ese instante (`planets`), para dibujar el cielo."""
     tz = _zone(p.get("tz"))
     if p.get("at"):
         try:
@@ -773,6 +774,10 @@ def moon_now(p: dict) -> dict:
             kind = next(m for m in MOON_QUARTERS if m[0] == target)
             phases.append({"kind": kind[1], "name": kind[2], **_moon_point(j, tz)})
         info = _phase_info(_elong(jd))
+        sky = _calc_bodies(jd, "true")
+    # el cielo de ahora, para el mapa del inicio: el Sol y los planetas (la Luna ya viene arriba; el nodo no se dibuja)
+    planets = [{"id": b["id"], "lon": round(b["lon"], 4), "sign": int(b["lon"] // 30) % 12, "deg": int(b["lon"] % 30),
+                "min": int((b["lon"] % 1) * 60), "retro": b["retro"]} for b in sky if b["id"] not in ("moon", "node")]
     return {
         "utc": utc.strftime("%Y-%m-%d %H:%M"),
         "local": utc.replace(tzinfo=timezone.utc).astimezone(tz).strftime("%Y-%m-%d %H:%M"),
@@ -781,6 +786,7 @@ def moon_now(p: dict) -> dict:
         "since": _moon_point(prv, tz, sign) if prv else None,
         "next_sign": _moon_point(nxt, tz, (sign + 1) % 12) if nxt else None,
         "next_phases": phases[:4],
+        "planets": planets,
     }
 
 

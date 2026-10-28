@@ -1,4 +1,4 @@
-// La Luna: tarjeta de inicio, calendario del mes e íconos de fase. Sin DOM propio: cada función recibe lo que ya
+// La Luna: rincón del inicio, calendario del mes e íconos de fase. Sin DOM propio: cada función recibe lo que ya
 // calculó el servidor (/api/moon y /api/moon-calendar) y devuelve HTML (también se puede probar en node).
 // Los instantes llegan como «AAAA-MM-DD HH:MM» ya en la zona elegida.
 import { SIGNS, signHTML } from "./astro-data.js";
@@ -78,28 +78,34 @@ const pct = (illum) => `${Math.round(illum * 100)} %`;
 const sg = (sign) => `<span class="g">${signHTML(sign)}</span>`;
 const degMin = (p) => `${p.deg}°${pad(p.min)}′`;
 
-// ---------- tarjeta de inicio -----------------------------------------------------------------------------
+// ---------- inicio: la Luna en el rincón del mapa y lo que se ve al tocarla --------------------------------
 
 /**
- * La Luna ahora: signo y grado, fase, desde cuándo está en el signo, cuándo pasa al siguiente y la próxima fase.
+ * Lo que va en el rincón del inicio: ícono de fase, signo y grado, fase e iluminación.
+ * @param now respuesta de /api/moon
+ */
+export function moonCornerHTML(now, south = true) {
+  return `<span class="sky-moon-ic">${moonIcon(now.elong, south)}</span>
+    <span class="sky-moon-txt">
+      <span class="mc-kicker">La Luna está en</span>
+      <span class="sky-moon-sign">${sg(now.sign)}<span>${SIGNS[now.sign]}</span><span class="mc-deg">${degMin(now)}</span></span>
+      <span class="sky-moon-ph">${esc(now.name)}</span>
+      <span class="sky-moon-il">${pct(now.illum)} iluminada</span>
+      <span class="sky-moon-hint">Tocá la Luna<span class="interp"> para leer un poema</span></span>
+    </span>`;
+}
+
+/**
+ * Las líneas de «ahora»: desde cuándo está en el signo, cuándo pasa al siguiente y la próxima fase.
  * @param now respuesta de /api/moon · @param today «AAAA-MM-DD» en la zona elegida
  */
-export function moonCardHTML(now, south = true, today = now.local.slice(0, 10)) {
-  const next = now.next_sign;
-  const since = now.since;
-  const ph = now.next_phases[0];
+export function moonLinesHTML(now, today = now.local.slice(0, 10)) {
+  const next = now.next_sign, since = now.since, ph = now.next_phases[0];
   const lines = [];
   if (since) lines.push(`En ${SIGNS[now.sign]} desde ${esc(whenLabel(since.local, today))}.`);
   if (next) lines.push(`Pasa a ${SIGNS[next.sign]} ${esc(whenLabel(next.local, today))} (en ${esc(span(now.utc, next.utc))}).`);
   if (ph) lines.push(`Próxima fase: ${esc(ph.name)}, ${esc(whenLabel(ph.local, today))}.`);
-  return `<span class="mc-ic">${moonIcon(now.elong, south)}</span>
-    <span class="mc-body">
-      <span class="mc-kicker">La Luna está en</span>
-      <span class="mc-sign">${sg(now.sign)}<span class="mc-name">${SIGNS[now.sign]}</span><span class="mc-deg">${degMin(now)}</span></span>
-      <span class="mc-phase">${esc(now.name)} · ${pct(now.illum)} iluminada</span>
-      ${lines.map((l) => `<span class="mc-line">${l}</span>`).join("")}
-    </span>
-    <span class="mc-go">Calendario lunar <span aria-hidden="true">›</span></span>`;
+  return lines.map((l) => `<p class="mc-line">${l}</p>`).join("");
 }
 
 // ---------- calendario del mes -----------------------------------------------------------------------------

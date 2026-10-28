@@ -242,14 +242,17 @@
       <svg class="ic-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5.2 3 3.3V14H7v-1.5l3-3.3L9 4Z"/><path d="M12 14v6"/></svg>
       <svg class="ic-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <!-- Inicio: la Luna en su signo; al tocarla, el calendario lunar -->
+    <!-- Inicio: el cielo de ahora visto desde la Tierra; la Luna abajo a la izquierda y, al tocarla, un poema -->
     <section id="home" class="page" aria-labelledby="homeTitle" hidden>
       <header class="head">
         <h2 id="homeTitle">Inicio</h2>
         <p id="homeSub"></p>
       </header>
-      <button type="button" id="moonCard" class="moon-card" aria-label="Ver el calendario lunar"><span class="mc-wait">Calculando la Luna…</span></button>
-      <div id="moonPoem" class="moon-poem interp" hidden></div>
+      <div class="sky-wrap" id="skyWrap">
+        <div class="sky" id="sky" role="group" aria-label="El cielo ahora, visto desde la Tierra"></div>
+        <div class="sky-moon" id="skyMoon"><span class="mc-wait">Calculando el cielo…</span></div>
+        <p class="sky-info" id="skyInfo" role="status" aria-live="polite"></p>
+      </div>
       <div id="homeErr" class="error" role="alert" hidden></div>
       <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
         <h3 id="homeChartsTitle">Tus cartas</h3>
@@ -442,6 +445,24 @@
   </main>
 
 </div>
+<dialog id="poemDlg" class="pdlg poemdlg" aria-labelledby="poemTitle">
+  <div class="pdl-head">
+    <span class="poem-ic" id="poemIc"></span>
+    <div class="pdl-titles">
+      <h2 id="poemTitle"></h2>
+      <p class="pdl-sub" id="poemSub"></p>
+    </div>
+    <button type="button" class="pdl-icon" id="poemClose" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="pdl-body">
+    <div id="poemBody" class="moon-poem interp" hidden></div>
+    <div class="poem-now" id="poemNow"></div>
+    <a class="poem-cal" id="poemCal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>
+  </div>
+</dialog>
+
 <dialog id="printDlg" class="pdlg prdlg" aria-labelledby="prdTitle">
   <form id="printForm" novalidate>
     <div class="pdl-head">

@@ -782,29 +782,117 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .page[hidden], #chartPage[hidden] { display: none; }
 .page .head { margin-bottom: 20px; }
 
-.moon-card {
-  display: flex; align-items: center; gap: clamp(16px, 3vw, 32px); width: 100%; max-width: 760px; padding: clamp(16px, 3vw, 28px);
-  border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); text-align: left;
-  position: relative; -webkit-tap-highlight-color: transparent;
+/* ---------- inicio: el cielo de ahora, visto desde la Tierra ----------
+   Un cuadrado con los 12 signos alrededor, la Tierra al centro y cada planeta en su lugar; la Luna, con su info, abajo a
+   la izquierda. Los tamaños salen del ancho del mapa (cqw), el mismo cálculo que hace sky.js para que no se tapen. */
+.sky-wrap {
+  --gap: 12px; container-type: inline-size; position: relative; width: min(100%, 760px, max(300px, calc(100dvh - 190px)));
+  display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap);
 }
-.moon-card:hover { border-color: var(--ink-2); background: var(--field); }
-.moon-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.mc-ic { flex: none; width: clamp(84px, 16vw, 132px); height: clamp(84px, 16vw, 132px); }
-.mc-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sky {
+  grid-area: 1 / 1; position: relative; aspect-ratio: 1; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 14px; background: var(--field);
+}
+.sky-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sky-w.fire { fill: var(--fire); } .sky-w.earth { fill: var(--earth); } .sky-w.air { fill: var(--air); } .sky-w.water { fill: var(--water); }
+.sky-rays line { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .75; }
+.sky-rings circle { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 5; vector-effect: non-scaling-stroke; opacity: .6; }
+
+.sky-sign {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px;
+  pointer-events: none; text-align: center;
+}
+.sky-sign .g { font-size: clamp(16px, 4.4cqw, 30px); min-width: 0; }
+.sky-sign.fire { color: var(--fire-solid); } .sky-sign.earth { color: var(--earth-solid); }
+.sky-sign.air { color: var(--air-solid); } .sky-sign.water { color: var(--water-solid); }
+.sky-sn { display: none; font-size: calc(clamp(9px, 1.85cqw, 13px) * var(--fs)); line-height: 1.1; color: var(--ink-2); letter-spacing: .02em; }
+@container (min-width: 480px) { .sky-sn { display: block; } }
+
+.sky-earth {
+  position: absolute; left: 50%; top: 50%; width: clamp(14px, 3.2cqw, 24px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; box-shadow: 0 0 0 2px var(--field), 0 0 0 3px var(--line-strong);
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--water-solid) 50%, #fff), var(--water-solid) 55%, color-mix(in srgb, var(--water-solid) 55%, #000));
+}
+.sky-earth-nm {
+  position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); font-size: calc(clamp(9px, 1.7cqw, 12px) * var(--fs));
+  color: var(--ink-2); letter-spacing: .03em;
+}
+
+.sky-pl {
+  position: absolute; display: flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--ink);
+  transform: translate(calc(var(--sd) / -2), -50%); white-space: nowrap; border-radius: 99px; -webkit-tap-highlight-color: transparent;
+}
+.sky-pl .pb { --d: var(--sd); flex: none; transition: transform .12s; }
+.sky-pl.lab-left { flex-direction: row-reverse; transform: translate(calc(-100% + var(--sd) / 2), -50%); }
+.sky-pl.lab-below { flex-direction: column; gap: 1px; transform: translate(-50%, calc(var(--sd) / -2)); }
+.sky-pl.lab-above { flex-direction: column-reverse; gap: 1px; transform: translate(-50%, calc(-100% + var(--sd) / 2)); }
+.sky-nm {
+  font-size: calc(clamp(10px, 1.9cqw, 13.5px) * var(--fs)); font-weight: 600; line-height: 1.2;
+  text-shadow: 0 0 2px var(--field), 0 0 3px var(--field), 0 0 5px var(--field);
+}
+.sky-nm .rx, .sky-info .rx { margin-left: 3px; font-style: normal; font-weight: 700; color: var(--hard); }
+.sky-pl:hover .pb { transform: scale(1.12); }
+.sky-pl[aria-pressed="true"] .pb { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 50%; }
+.sky-pl:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+/* la Luna: abajo a la izquierda del mapa; en pantallas angostas, debajo de él */
+.sky-moon {
+  grid-area: 1 / 1; align-self: end; justify-self: start; z-index: 2; margin: 0 0 9.5cqw 2.4cqw; max-width: 37cqw;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px 6px 8px;
+  border-radius: 12px; background: color-mix(in srgb, var(--field) 86%, transparent);
+}
+.sky-moon-btn {
+  display: flex; align-items: center; gap: clamp(8px, 1.6cqw, 14px); padding: 0; border: 0; background: none; color: var(--ink);
+  text-align: left; border-radius: 10px; -webkit-tap-highlight-color: transparent;
+}
+.sky-moon-btn:hover .sky-moon-ic { transform: scale(1.04); }
+.sky-moon-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+.sky-moon-ic { flex: none; width: clamp(48px, 12cqw, 92px); aspect-ratio: 1; transition: transform .15s; }
+.sky-moon-ic .moon { display: block; width: 100%; height: 100%; }
+.sky-moon-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sky-moon .mc-kicker { font-size: calc(clamp(9.5px, 1.5cqw, 12px) * var(--fs)); }
+.sky-moon-sign { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 .35em; font: 500 calc(clamp(17px, 3.1cqw, 25px) * var(--fs))/1.15 var(--serif); letter-spacing: -.01em; }
+.sky-moon-sign .g { font-family: var(--glyph); font-size: .8em; min-width: 0; }
+.sky-moon-sign .mc-deg { font-size: calc(clamp(11px, 1.6cqw, 13px) * var(--fs)); }
+.sky-moon-ph { font-size: calc(clamp(11px, 1.7cqw, 13.5px) * var(--fs)); font-weight: 600; line-height: 1.25; }
+.sky-moon-il { font-size: calc(clamp(11px, 1.7cqw, 13.5px) * var(--fs)); line-height: 1.25; color: var(--ink-2); white-space: nowrap; }   /* nunca se parte entre el número y el % */
+.sky-moon-hint { font-size: calc(clamp(10.5px, 1.5cqw, 12.5px) * var(--fs)); color: var(--ink-2); line-height: 1.25; }
+.sky-moon-cal { align-self: flex-start; padding: 2px 0; font-size: calc(clamp(10.5px, 1.5cqw, 12.5px) * var(--fs)); font-weight: 600; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.sky-moon-cal:hover { color: var(--ink); }
 .mc-kicker { font-size: calc(13px * var(--fs)); color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
-.mc-sign { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font: 500 clamp(30px, 5vw, 46px)/1.05 var(--serif); letter-spacing: -.015em; }
-.mc-sign .g { font-family: var(--glyph); font-size: .8em; }
 .mc-deg { font: 400 calc(16px * var(--fs))/1 var(--sans); color: var(--ink-2); font-variant-numeric: tabular-nums; letter-spacing: 0; }
-.mc-phase { margin-top: 6px; font-size: calc(16px * var(--fs)); font-weight: 600; }
-.mc-line { font-size: calc(14px * var(--fs)); line-height: 1.4; color: var(--ink-2); }
-.mc-go { position: absolute; right: 18px; bottom: 12px; font-size: calc(13px * var(--fs)); font-weight: 600; color: var(--ink-2); }
-.moon-card:hover .mc-go { color: var(--ink); }
+.mc-line { margin: 0; font-size: calc(14px * var(--fs)); line-height: 1.4; color: var(--ink-2); }
 .mc-wait { color: var(--ink-2); padding: 18px 4px; }
-.moon-card.is-loading { cursor: default; }
-@media (max-width: 560px) {
-  .moon-card { flex-direction: column; align-items: flex-start; padding-bottom: 44px; }
-  .mc-ic { width: 96px; height: 96px; }
+
+.sky-info { grid-area: 2 / 1; margin: 0; min-height: 2.6em; font-size: calc(14px * var(--fs)); line-height: 1.45; color: var(--ink-2); }
+.sky-info-pl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--ink); }
+.sky-info-pl strong { font-size: calc(16px * var(--fs)); }
+.sky-info-pl .g { font-family: var(--glyph); min-width: 0; margin: 0 .2em 0 .1em; }
+@container (max-width: 559px) {
+  .sky-moon {
+    grid-area: 3 / 1; margin: 0; max-width: none; width: 100%; padding: 12px 14px 8px 12px;
+    border: 1px solid var(--line-strong); background: var(--surface);
+  }
+  .sky-moon-ic { width: 64px; }
+  .sky-moon-btn { gap: 14px; }
+  .sky-moon .mc-kicker { font-size: calc(11.5px * var(--fs)); }
+  .sky-moon-sign { font-size: calc(23px * var(--fs)); }
+  .sky-moon-sign .mc-deg { font-size: calc(13px * var(--fs)); }
+  .sky-moon-ph, .sky-moon-il { font-size: calc(13.5px * var(--fs)); }
+  .sky-moon-hint, .sky-moon-cal { font-size: calc(12.5px * var(--fs)); }
 }
+
+/* el cuadro del poema (al tocar la Luna) */
+.poemdlg { width: min(560px, calc(100vw - 24px)); }
+.poemdlg .nowrap { white-space: nowrap; }
+.poem-ic { flex: none; width: 46px; height: 46px; }
+.poem-ic .moon { display: block; width: 100%; height: 100%; }
+.poemdlg .moon-poem { margin-top: 14px; max-width: none; }
+.poem-now { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.poem-now:empty { display: none; }
+.poem-cal { display: inline-block; margin-top: 14px; font-size: calc(14px * var(--fs)); font-weight: 600; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.poem-cal:hover { color: var(--ink); }
+.poemdlg .pdl-empty { margin: 0; }
 
 /* poema de la Luna en el inicio: uno al azar entre los del signo; la barra lleva el color del elemento */
 .moon-poem { --el: var(--ink-2); max-width: 760px; margin-top: 22px; padding: 2px 0 2px clamp(16px, 3vw, 24px); border-left: 3px solid var(--el); }

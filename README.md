@@ -60,13 +60,18 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Cuatro páginas**, que se cambian desde el menú lateral (Inicio · Luna · Carta · Combinar). La dirección lleva la página
   (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
-  - **Inicio**: la Luna ahora: signo y grado, fase y porcentaje iluminado, desde cuándo está en ese signo, cuándo
-    pasa al siguiente (y en cuánto tiempo) y la próxima fase principal. Se actualiza solo cada 5 minutos y al volver
-    a la pestaña. Tocar la tarjeta abre el calendario. Debajo de la tarjeta, **un poema para la Luna en ese signo**,
-    con el nombre del autor y la obra: sale uno al azar entre los de ese signo (cada vez que se entra al inicio sale
-    otro, sin repetir el anterior; las actualizaciones de la tarjeta no lo cambian). Los largos se ven recortados con
-    «Leer completo»; la barra de la izquierda lleva el color del elemento del signo y «Solo datos» lo oculta. Los
-    poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale). Abajo: «Continuar con…» la carta que estabas viendo y atajos
+  - **Inicio**: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
+    la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol y
+    los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). Tocar un planeta dice en qué grado y signo
+    está. Los círculos de cada planeta son los de siempre; cuando dos están juntos se separan hacia adentro o hacia afuera
+    sin cambiar el ángulo, y el nombre va del lado donde hay lugar. **La Luna** está abajo a la izquierda (en el celular,
+    debajo del mapa) con lo de ahora: signo y grado, fase y porcentaje iluminado; el enlace «Calendario lunar ›» lleva al
+    calendario. **Al tocar la Luna se abre el poema**: un cuadro con **un poema para la Luna en ese signo**, con el nombre del
+    autor y la obra, entero, más desde cuándo está en el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase.
+    Sale uno al azar entre los de ese signo (cada vez que se entra al inicio sale otro, sin repetir el anterior; las
+    actualizaciones no lo cambian); la barra de la izquierda lleva el color del elemento del signo y «Solo datos» oculta el
+    poema. Se actualiza solo cada 5 minutos y al volver a la pestaña. Los poemas están en `static/poems.js` (uno por objeto,
+    por signo; un poema sin `autor` no sale). Abajo: «Tus cartas»: «Continuar con…» la carta que estabas viendo y atajos
     a las otras cartas guardadas (o «Crear mi primera carta»). No se calcula ninguna carta hasta entrar a **Carta**.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
@@ -275,7 +280,7 @@ Es la misma app con tres diferencias:
   repositorio y que la versión pública no sirve (devuelve 404).
   El inicio y el calendario lunar no mandan ningún dato personal: solo la zona horaria del navegador (y el mes).
 - **Límites**: hasta 60 pedidos seguidos por persona y después 2 por segundo (el calendario de tránsitos cuesta
-  20 pedidos; los destacados, 6; lo que viene, 8; el calendario lunar, 3; la Luna de hoy, 1), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
+  20 pedidos; los destacados, 6; lo que viene, 8; el calendario lunar, 3; la Luna y los planetas de hoy, 1), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
   un mensaje. No hay `/api/charts` ni `/api/presence`, y `/healthz` responde `ok` para el hosting.
 
 **Pasos en Render** (el plan gratis alcanza para compartir con amigos):
@@ -313,7 +318,7 @@ Cosas a saber:
 ```
 astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, tránsitos, sinastría, calendario,
                   tránsitos destacados y próximos eventos (ingresos, estaciones, casas), y la Luna (signo, fase,
-                  cambios de signo y fases principales del mes)
+                  cambios de signo y fases principales del mes) y dónde están el Sol y los planetas ahora (el mapa del inicio)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
 app.py            servidor (local: solo 127.0.0.1; con --public, para alojarla): /api/chart, /api/timezones,
                   /api/charts, /api/transits, /api/featured, /api/upcoming, /api/synastry, /api/transit-calendar,
@@ -342,8 +347,9 @@ static/           interfaz
   defaults-local.js                 tu carta de arranque en la versión local (si lo borrás, el formulario arranca vacío)
   stair.js                          cuadro de aspectos en escalera
   elements.js                       balance de elementos y regente del Ascendente (moderno)
-  moon.js                           inicio y calendario lunar: tarjeta de la Luna, grilla del mes, íconos de fase
-  poems.js                          los poemas de la tarjeta de la Luna (por signo) y cómo se eligen y se dibujan
+  moon.js                           la Luna del inicio, el calendario lunar: grilla del mes, íconos de fase
+  sky.js                            el mapa del inicio: signos alrededor, planetas en su lugar sin encimarse (sin DOM: se prueba con node)
+  poems.js                          los poemas de la Luna (por signo; se leen al tocar la Luna del inicio) y cómo se eligen y se dibujan
   combos.js, combinar.js            la pestaña Combinar (beta): cómo se busca por planetas y la pantalla
   combos-conjugarnos.js             lo del grupo de Conjugarnos (generado por importar_conjugarnos.py: no se edita a mano)
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
