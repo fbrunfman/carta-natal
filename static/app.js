@@ -7,7 +7,7 @@ import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
-import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
+import { profection, profectionHTML, featuredHTML, featuredRowsHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
@@ -1312,7 +1312,7 @@ function paintSky() {
   sky.innerHTML = skyShellHTML(W);
   if (now) {
     box.innerHTML = `<button type="button" class="sky-moon-btn" id="moonBtn" aria-haspopup="dialog">${moonCornerHTML(now, moon.south)}</button>` +
-      `<a class="sky-moon-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>`;
+      `<a class="sky-moon-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>`;
   } else {
     box.innerHTML = `<span class="mc-wait">Calculando el cielo…</span>`;
   }
@@ -1321,8 +1321,11 @@ function paintSky() {
   if (now && mr.width && mr.top < sr.bottom - 1) {
     obstacles.push({ x0: mr.left - sr.left - 4, y0: mr.top - sr.top - 4, x1: mr.right - sr.left + 4, y1: mr.bottom - sr.top + 4 });
   }
-  skyState.layout = now?.planets ? layoutSky(now.planets, W, obstacles) : [];
-  sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel)).join(""));
+  // la Luna es un cuerpo más del cielo: se dibuja con su fase en su longitud (el servidor la manda aparte de los planetas)
+  const bodies = now?.planets ? [{ id: "moon", lon: now.lon, sign: now.sign, deg: now.deg, min: now.min, retro: false }, ...now.planets] : [];
+  const moonArt = now ? moonIcon(now.elong, moon.south) : "";
+  skyState.layout = layoutSky(bodies, W, obstacles);
+  sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel, moonArt)).join(""));
   paintSkyInfo();
 }
 
@@ -1335,6 +1338,7 @@ function paintSkyInfo() {
 $("#sky").addEventListener("click", (e) => {
   const b = e.target.closest(".sky-pl");
   if (!b) return;
+  if (b.dataset.id === "moon") { openPoem(); return; }          // la Luna del mapa es la misma de la esquina: abre el poema
   skyState.sel = skyState.sel === b.dataset.id ? null : b.dataset.id;
   document.querySelectorAll("#sky .sky-pl").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.id === skyState.sel)));
   paintSkyInfo();
@@ -1440,6 +1444,109 @@ function renderHomeCharts() {
     nodes[nodes.length - 1].append(...others.map((it) => make("button", { type: "button", className: "home-chip", textContent: it.name, title: `Abrir la carta de ${it.name}` }, () => openSaved(it))));
   }
   body.replaceChildren(...nodes);
+  renderHomeTr();
+}
+
+// -- inicio: tránsitos destacados de hoy con las cartas guardadas. Se piden al apretar el botón (cada carta es un
+// cálculo de años de recorrido), de a dos a la vez; si el servidor pide esperar (versión pública) se espera y se sigue.
+const homeTr = { on: new Set(), res: new Map(), running: false, seq: 0, done: 0, total: 0, at: null };
+/** Lo que identifica los datos de una carta: si se edita, lo que se calculó antes deja de valer. */
+const trSig = (it) => [it.date, it.time, it.lat, it.lon, it.tz, it.manual, it.offset].join("|");
+
+function renderHomeTr() {
+  const sec = $("#homeTr"), items = saved.items;
+  sec.hidden = !items.length;                      // sin cartas guardadas no hay con qué calcular
+  if (!items.length) return;
+  const on = items.filter((it) => homeTr.on.has(it.id));      // al abrir la app no hay ninguna elegida: se eligen a mano
+  $("#homeTrNote").textContent = "Elegí las cartas. Los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto cerrado con el Sol, la Luna, los ángulos o los planetas hasta Saturno de cada una." +
+    (isPublic() ? " Al calcular, los datos de nacimiento de las cartas elegidas se envían al servidor solo para eso; no se guardan." : "");
+  const pick = $("#homeTrPick");
+  pick.replaceChildren(...items.map((it) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "home-chip", textContent: it.name, title: "Incluir o sacar esta carta del cálculo" });
+    b.setAttribute("aria-pressed", String(homeTr.on.has(it.id)));
+    b.addEventListener("click", () => { if (homeTr.on.has(it.id)) homeTr.on.delete(it.id); else homeTr.on.add(it.id); renderHomeTr(); });
+    return b;
+  }));
+  if (items.length > 1) {                          // con muchas cartas, elegirlas una por una es un rato largo
+    const all = on.length === items.length;
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "home-tr-all", textContent: all ? "Quitar todas" : "Elegir todas" });
+    b.addEventListener("click", () => { homeTr.on = new Set(all ? [] : items.map((it) => it.id)); renderHomeTr(); });
+    pick.append(b);
+  }
+  const go = $("#homeTrGo");
+  go.disabled = homeTr.running || !on.length;
+  go.textContent = homeTr.running ? "Calculando…" : !on.length ? "Calcular" : homeTr.res.size ? "Volver a calcular" : on.length === 1 ? "Calcular con 1 carta" : `Calcular con ${on.length} cartas`;
+  $("#homeTrProg").textContent = homeTr.running ? `${homeTr.done} de ${homeTr.total}`
+    : !on.length ? "Elegí al menos una carta."
+    : homeTr.res.size && homeTr.at ? `Calculado para el ${homeTr.at.date.split("-").reverse().join("/")} a las ${homeTr.at.time}` : "";
+  const cards = [];
+  for (const it of on) {
+    const r = homeTr.res.get(it.id);
+    if (!r || r.sig !== trSig(it)) continue;
+    const card = Object.assign(document.createElement("article"), { className: "htr-card" });
+    const head = Object.assign(document.createElement("div"), { className: "htr-head" });
+    head.append(Object.assign(document.createElement("h4"), { textContent: it.name }));
+    const open = Object.assign(document.createElement("button"), { type: "button", className: "htr-open", textContent: "Abrir en Tránsitos ›", title: `Abrir la carta de ${it.name} con los tránsitos de hoy` });
+    open.addEventListener("click", () => openSavedInTransit(it));
+    head.append(open);
+    const body = document.createElement("div");
+    if (r.err) {
+      body.className = "htr-err";
+      body.textContent = r.err instanceof TypeError ? "No se pudo conectar con el servidor." : sumError(r.err);
+    } else {
+      body.innerHTML = featuredRowsHTML(r.data);
+    }
+    card.append(head, body);
+    cards.push(card);
+  }
+  $("#homeTrBody").replaceChildren(...cards);
+}
+
+async function featuredRetry(body, at, my) {
+  for (let i = 0; ; i++) {
+    try {
+      return await compute.featured(body, at);
+    } catch (err) {
+      const busy = err.status === 429 || err.status === 503;
+      if (!busy || i >= 4 || my !== homeTr.seq) throw err;
+      await new Promise((ok) => setTimeout(ok, Math.min(15, Math.max(1, err.retryAfter || 2)) * 1000));
+    }
+  }
+}
+
+async function runHomeTr() {
+  if (homeTr.running) return;
+  const items = saved.items.filter((it) => homeTr.on.has(it.id));
+  if (!items.length) return;
+  const tz = moonTz();
+  const at = { ...nowIn(tz), tz };
+  const view = readForm(), queue = items.slice(), my = ++homeTr.seq;
+  Object.assign(homeTr, { running: true, res: new Map(), done: 0, total: items.length, at });
+  renderHomeTr();
+  const worker = async () => {
+    while (queue.length && my === homeTr.seq) {
+      const it = queue.shift();
+      let r;
+      const sig = trSig(it);
+      try { r = { sig, data: await featuredRetry(partnerBody(it, view), at, my) }; } catch (err) { r = { sig, err }; }
+      if (my !== homeTr.seq) return;
+      homeTr.res.set(it.id, r);
+      homeTr.done++;
+      if (page === "home") renderHomeTr();
+    }
+  };
+  await Promise.all([worker(), worker()]);
+  if (my !== homeTr.seq) return;
+  homeTr.running = false;
+  if (page === "home") renderHomeTr();
+}
+$("#homeTrGo").addEventListener("click", runHomeTr);
+
+/** «Abrir en Tránsitos»: la carta, en el modo de tránsitos y en este momento. */
+async function openSavedInTransit(item) {
+  if (mode !== "transit") { mode = "transit"; rememberView(); paintMode(); }
+  setNow();
+  await openSaved(item);
 }
 
 // -- calendario lunar

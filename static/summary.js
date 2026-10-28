@@ -133,6 +133,33 @@ export function featuredHTML(data, interp = true) {
     `«Hasta» es cuando sale de ese orbe por última vez, contando las retrogradaciones; «punto máximo», a menos de 1° del exacto.${more}</p>`;
 }
 
+/**
+ * Los destacados de una carta en versión corta, para el inicio (varias cartas una debajo de la otra): los tres puntos
+ * (planeta en tránsito, aspecto y punto natal), cómo está hoy y hasta cuándo dura. Sin lecturas: son datos.
+ * @param data respuesta de /api/featured
+ */
+export function featuredRowsHTML(data) {
+  if (!data.items.length) return `<p class="htr-none">Hoy ningún planeta lento forma un aspecto cerrado con esta carta.</p>`;
+  const row = (it) => {
+    const A = ASPECT[it.type];
+    const phase = it.peak ? "En su punto máximo" : it.applying ? "Se acerca" : "Se aleja";
+    const until = it.until ? `hasta ${monthYear(it.until)}` : "por varios años";
+    const next = it.exacts.find((e) => !e.past);
+    return `<li class="htr-row">
+      <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.glyph}</span>${badge(it.n, "s")}</span>
+      <span class="htr-txt">
+        <span class="htr-line"><strong>${esc(BODY[it.t].name)}</strong>${it.retro ? `<span class="rx-t" title="Retrógrado">R</span>` : ""} · ${esc(A.name.toLowerCase())} · <strong>${esc(BODY[it.n].name)}</strong> natal</span>
+        <span class="htr-sub"><span class="${it.peak ? "peak" : ""}">${phase}</span> · orbe ${fmtOrb(it.orb)} · ${esc(until)}${next ? ` · exacto ${esc(dayMonthYear(next.local))}` : ""}</span>
+      </span>
+    </li>`;
+  };
+  const SHOWN = 6;                                       // el resto queda plegado: con muchas cartas la página no se hace interminable
+  const first = data.items.slice(0, SHOWN).map(row).join(""), rest = data.items.slice(SHOWN).map(row).join("");
+  const more = data.total > data.items.length ? `<p class="fine tight">Se muestran los ${data.items.length} más importantes de ${data.total}.</p>` : "";
+  return `<ul class="htr-list">${first}</ul>` +
+    (rest ? `<details class="htr-more"><summary>Ver ${data.items.length - SHOWN} más</summary><ul class="htr-list">${rest}</ul></details>` : "") + more;
+}
+
 // ---------- próximamente ----------------------------------------------------------------------------
 
 function eventRow(e, interp) {

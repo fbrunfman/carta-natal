@@ -8,7 +8,7 @@ const clamp = (lo, x, hi) => Math.min(hi, Math.max(lo, x));
 const RAD = Math.PI / 180;
 
 /** Del más cerca al más lejos de la Tierra (el orden de siempre): cada uno arranca en su anillo. */
-export const ORDER = ["mercury", "venus", "sun", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
+export const ORDER = ["moon", "mercury", "venus", "sun", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
 const RMIN = 0.11;                                      // radio de los planetas, como parte del ancho del mapa
 const rmax = (W) => (W < 480 ? 0.385 : 0.35);           // en un celular los signos son solo el símbolo: queda más lugar
 export const NAMES_FROM = 480;                          // desde este ancho se escriben los nombres de los signos
@@ -65,38 +65,50 @@ export function skyShellHTML(W) {
 export function layoutSky(planets, W, obstacles = []) {
   const z = sizes(W), half = W / 2;
   const lo = RMIN * W, hi = rmax(W) * W;
-  const P = planets.map((p, i) => {
-    const slot = ORDER.indexOf(p.id);
-    const k = slot < 0 ? i : slot;
-    return { p, a: p.lon * RAD, r: lo + ((hi - lo) * k) / (ORDER.length - 1), d: p.id === "sun" ? z.sun : z.badge };
-  });
-  const at = (q) => [half + q.r * Math.cos(q.a), half - q.r * Math.sin(q.a)];
+  const place = (shrink) => {
+    const P = planets.map((p, i) => {
+      const slot = ORDER.indexOf(p.id);
+      const k = slot < 0 ? i : slot;
+      return { p, a: p.lon * RAD, r: lo + ((hi - lo) * k) / (ORDER.length - 1), d: (p.id === "sun" ? z.sun : z.badge) * shrink };
+    });
+    const at = (q) => [half + q.r * Math.cos(q.a), half - q.r * Math.sin(q.a)];
 
-  for (let it = 0; it < 160; it++) {
-    let moved = false;
-    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
-      const A = P[i], B = P[j];
-      const [ax, ay] = at(A), [bx, by] = at(B);
-      const need = ((A.d + B.d) / 2) * 1.22, dist = Math.hypot(ax - bx, ay - by);
-      if (dist >= need) continue;
-      const [inner, outer] = A.r <= B.r ? [A, B] : [B, A];
-      const push = (need - dist) / 2 + 0.6;
-      const room = inner.r - lo;                         // lo que el de adentro todavía puede bajar
-      const down = Math.min(push, Math.max(0, room));
-      inner.r -= down;
-      outer.r = Math.min(hi, outer.r + push + (push - down));
-      moved = true;
-    }
-    for (const q of P) for (const o of obstacles) {      // sin tapar los rectángulos de afuera: se corre hacia el centro
-      for (let guard = 0; guard < 80 && q.r > lo; guard++) {
-        const [x, y] = at(q);
-        const cx = clamp(o.x0, x, o.x1), cy = clamp(o.y0, y, o.y1);
-        if (Math.hypot(x - cx, y - cy) >= q.d / 2 + 3) break;
-        q.r -= 2; moved = true;
+    for (let it = 0; it < 160; it++) {
+      let moved = false;
+      for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+        const A = P[i], B = P[j];
+        const [ax, ay] = at(A), [bx, by] = at(B);
+        const need = ((A.d + B.d) / 2) * 1.22, dist = Math.hypot(ax - bx, ay - by);
+        if (dist >= need) continue;
+        const [inner, outer] = A.r <= B.r ? [A, B] : [B, A];
+        const push = (need - dist) / 2 + 0.6;
+        const room = inner.r - lo;                         // lo que el de adentro todavía puede bajar
+        const down = Math.min(push, Math.max(0, room));
+        inner.r -= down;
+        outer.r = Math.min(hi, outer.r + push + (push - down));
+        moved = true;
       }
+      for (const q of P) for (const o of obstacles) {      // sin tapar los rectángulos de afuera: se corre hacia el centro
+        for (let guard = 0; guard < 80 && q.r > lo; guard++) {
+          const [x, y] = at(q);
+          const cx = clamp(o.x0, x, o.x1), cy = clamp(o.y0, y, o.y1);
+          if (Math.hypot(x - cx, y - cy) >= q.d / 2 + 3) break;
+          q.r -= 2; moved = true;
+        }
+      }
+      if (!moved) break;
     }
-    if (!moved) break;
-  }
+    let tight = Infinity;                                  // qué tan cerca quedó el par más apretado (1 = justo tocándose)
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+      const [ax, ay] = at(P[i]), [bx, by] = at(P[j]);
+      tight = Math.min(tight, Math.hypot(ax - bx, ay - by) / ((P[i].d + P[j].d) / 2));
+    }
+    return { P, at, tight };
+  };
+  // si en un grupo muy apretado (varios planetas casi en la misma dirección) no hay lugar, los círculos se achican un poco
+  let L = place(1);
+  for (const k of [0.88, 0.78]) if (L.tight < 1) L = place(k);
+  const { P, at } = L;
 
   // nombres: del lado donde haya lugar (derecha, izquierda, abajo, arriba); si no entra, queda sin nombre
   const box = (cx, cy, w, h) => ({ x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2 });
@@ -141,11 +153,16 @@ const pad = (n) => String(n).padStart(2, "0");
 /** «Saturno, 9°32′ de Aries, retrógrado» */
 export const planetLabel = (p) => `${BODY[p.id].name}, ${p.deg}°${pad(p.min)}′ de ${SIGNS[p.sign]}${p.retro ? ", retrógrado" : ""}`;
 
-/** Un planeta como botón: el círculo de color y, si hay lugar, su nombre al lado. */
-export function planetHTML(p, selected = false) {
+/**
+ * Un planeta como botón: el círculo de color y, si hay lugar, su nombre al lado. La Luna se dibuja con su fase
+ * (`moonArt`, el SVG de moon.js) y, en vez de marcarse, abre el poema.
+ */
+export function planetHTML(p, selected = false, moonArt = "") {
   const name = BODY[p.id].name;
-  return `<button type="button" class="sky-pl${p.side ? " lab-" + p.side : ""}" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%;--sd:${p.d}px"` +
-    ` aria-pressed="${selected}" aria-label="${planetLabel(p)}">${badge(p.id)}` +
+  const isMoon = p.id === "moon" && moonArt;
+  return `<button type="button" class="sky-pl${isMoon ? " sky-pl-moon" : ""}${p.side ? " lab-" + p.side : ""}" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%;--sd:${p.d}px"` +
+    (isMoon ? ` aria-haspopup="dialog"` : ` aria-pressed="${selected}"`) + ` aria-label="${planetLabel(p)}">` +
+    (isMoon ? `<span class="pb pb-ph">${moonArt}</span>` : badge(p.id)) +
     (p.side ? `<span class="sky-nm">${name}${p.retro ? `<i class="rx" title="Retrógrado">R</i>` : ""}</span>` : "") + `</button>`;
 }
 
@@ -156,5 +173,6 @@ export function skyInfoHTML(selected, planets, hour) {
     return `<span class="sky-info-pl">${badge(p.id, "s")}<strong>${BODY[p.id].name}</strong>` +
       `<span>${p.deg}°${pad(p.min)}′ de <span class="g">${signHTML(p.sign)}</span>${SIGNS[p.sign]}${p.retro ? ` · <span class="rx">retrógrado</span>` : ""}</span></span>`;
   }
-  return `Así está el cielo${hour ? ` a las ${hour}` : " ahora"}, visto desde la Tierra. Tocá un planeta para ver dónde está.`;
+  return `Así está el cielo${hour ? ` a las ${hour}` : " ahora"}, visto desde la Tierra. Tocá un planeta para ver dónde está` +
+    `<span class="sky-info-desk interp"> (o la Luna, para leer un poema)</span>.`;
 }

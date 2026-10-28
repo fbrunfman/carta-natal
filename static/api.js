@@ -7,7 +7,10 @@ async function call(url, options) {
   const res = await fetch(url, options);
   let data = {};
   try { data = await res.json(); } catch { /* respuesta sin cuerpo */ }
-  if (!res.ok) throw Object.assign(new Error(data.error || "No se pudo completar la operación."), { status: res.status });
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error || "No se pudo completar la operación."),
+      { status: res.status, retryAfter: Number(res.headers.get("Retry-After")) || 0 });
+  }
   return data;
 }
 

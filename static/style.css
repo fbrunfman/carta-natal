@@ -832,6 +832,8 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 }
 .sky-nm .rx, .sky-info .rx { margin-left: 3px; font-style: normal; font-weight: 700; color: var(--hard); }
 .sky-pl:hover .pb { transform: scale(1.12); }
+.sky-pl-moon .pb-ph { filter: drop-shadow(0 0 1.5px var(--line-strong)); }
+.pb-ph .moon { display: block; width: 100%; height: 100%; }
 .sky-pl[aria-pressed="true"] .pb { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 50%; }
 .sky-pl:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
@@ -864,11 +866,18 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .mc-line { margin: 0; font-size: calc(14px * var(--fs)); line-height: 1.4; color: var(--ink-2); }
 .mc-wait { color: var(--ink-2); padding: 18px 4px; }
 
-.sky-info { grid-area: 2 / 1; margin: 0; min-height: 2.6em; font-size: calc(14px * var(--fs)); line-height: 1.45; color: var(--ink-2); }
+.sky-foot { grid-area: 2 / 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 4px 18px; }
+.sky-info { flex: 1 1 300px; margin: 0; min-height: 2.6em; font-size: calc(14px * var(--fs)); line-height: 1.45; color: var(--ink-2); }
+.sky-foot-cal { flex: none; padding: 2px 0; font-size: calc(13.5px * var(--fs)); font-weight: 600; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.sky-foot-cal:hover { color: var(--ink); }
+/* con lugar de sobra, la Luna del rincón es chica (así los planetas no se encuentran con ella): el aviso del poema y el
+   calendario pasan a la línea de abajo del mapa; en el celular la Luna va debajo y los lleva ella */
+@container (min-width: 560px) { .sky-moon-hint, .sky-moon-cal { display: none; } }
 .sky-info-pl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--ink); }
 .sky-info-pl strong { font-size: calc(16px * var(--fs)); }
 .sky-info-pl .g { font-family: var(--glyph); min-width: 0; margin: 0 .2em 0 .1em; }
 @container (max-width: 559px) {
+  .sky-foot-cal, .sky-info-desk { display: none; }
   .sky-moon {
     grid-area: 3 / 1; margin: 0; max-width: none; width: 100%; padding: 12px 14px 8px 12px;
     border: 1px solid var(--line-strong); background: var(--surface);
@@ -1005,6 +1014,44 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .home-chip { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--field); color: var(--ink); font-size: calc(14px * var(--fs)); }
 .home-chip:hover { background: var(--hover); border-color: var(--ink-2); }
 .home-empty { margin: 0 0 12px; color: var(--ink-2); font-size: calc(14.5px * var(--fs)); }
+
+/* tránsitos destacados de hoy, con las cartas guardadas */
+.home-tr { margin-top: 24px; }
+.home-tr-note { margin: 0 0 12px; max-width: 640px; color: var(--ink-2); font-size: calc(14px * var(--fs)); line-height: 1.45; }
+.home-tr-pick { margin: 0 0 4px; }
+/* los nombres de las personas (las cartas): insignias con esquinas de 4 px, sin forma de píldora */
+.home-tr-pick .home-chip, #homeChartBody .home-chip { padding: 5px 12px; border-radius: 4px; font-weight: 600; }
+.home-tr-pick .home-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.home-tr-pick .home-chip[aria-pressed="true"]::before { content: "✓\00a0"; }
+.home-tr-pick .home-chip[aria-pressed="true"]:hover { background: var(--ink-2); border-color: var(--ink-2); }
+.home-tr-all { padding: 5px 4px; border: 0; background: none; color: var(--ink-2); font-size: calc(13px * var(--fs)); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.home-tr-all:hover { color: var(--ink); }
+.home-tr-act { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+.home-continue[disabled] { opacity: .55; cursor: default; }
+.home-continue[disabled]:hover { opacity: .55; }
+.home-tr-prog { font-size: calc(13px * var(--fs)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.htr-cards { display: grid; gap: 12px; margin-top: 16px; }
+.htr-cards:empty { display: none; }
+.htr-card { padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.htr-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; }
+.htr-head h4 { margin: 0; font: 600 calc(17px * var(--fs))/1.25 var(--serif); overflow-wrap: anywhere; }
+.htr-open { padding: 2px 0; border: 0; background: none; color: var(--ink-2); font-size: calc(13px * var(--fs)); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.htr-open:hover { color: var(--ink); }
+.htr-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.htr-more { margin-top: 10px; }
+.htr-more summary { width: fit-content; padding: 2px 0; font-size: calc(13px * var(--fs)); font-weight: 600; color: var(--ink-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.htr-more summary:hover { color: var(--ink); }
+.htr-more .htr-list { margin-top: 8px; }
+.htr-row { display: flex; align-items: center; gap: 12px; }
+.htr-row .fc-glyphs { flex: none; }
+.htr-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.htr-line { font-size: calc(14.5px * var(--fs)); line-height: 1.3; }
+.htr-line strong { font-weight: 600; }
+.htr-sub { font-size: calc(12.5px * var(--fs)); line-height: 1.35; color: var(--ink-2); }
+.htr-sub .peak { color: var(--hard); font-weight: 600; }
+.htr-none, .htr-err { margin: 8px 0 0; font-size: calc(14px * var(--fs)); color: var(--ink-2); }
+.htr-err { color: var(--hard); }
+@media (max-width: 520px) { .htr-row { align-items: flex-start; } .htr-row .fc-glyphs { padding-top: 2px; } }
 
 .mnav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 16px; }
 .mnav .seg, .mnav .secondary { margin: 0; }

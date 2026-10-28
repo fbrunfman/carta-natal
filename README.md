@@ -61,18 +61,28 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
   - **Inicio**: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
-    la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol y
-    los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). Tocar un planeta dice en qué grado y signo
-    está. Los círculos de cada planeta son los de siempre; cuando dos están juntos se separan hacia adentro o hacia afuera
-    sin cambiar el ángulo, y el nombre va del lado donde hay lugar. **La Luna** está abajo a la izquierda (en el celular,
-    debajo del mapa) con lo de ahora: signo y grado, fase y porcentaje iluminado; el enlace «Calendario lunar ›» lleva al
-    calendario. **Al tocar la Luna se abre el poema**: un cuadro con **un poema para la Luna en ese signo**, con el nombre del
-    autor y la obra, entero, más desde cuándo está en el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase.
-    Sale uno al azar entre los de ese signo (cada vez que se entra al inicio sale otro, sin repetir el anterior; las
-    actualizaciones no lo cambian); la barra de la izquierda lleva el color del elemento del signo y «Solo datos» oculta el
-    poema. Se actualiza solo cada 5 minutos y al volver a la pestaña. Los poemas están en `static/poems.js` (uno por objeto,
-    por signo; un poema sin `autor` no sale). Abajo: «Tus cartas»: «Continuar con…» la carta que estabas viendo y atajos
-    a las otras cartas guardadas (o «Crear mi primera carta»). No se calcula ninguna carta hasta entrar a **Carta**.
+    la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol,
+    la Luna y los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). La Luna se dibuja con su fase.
+    Tocar un planeta dice en qué grado y signo está. Cuando dos están juntos se separan hacia adentro o hacia afuera sin
+    cambiar el ángulo (y si en un grupo muy apretado no hay lugar, los círculos se achican un poco); el nombre va del lado
+    donde hay lugar. **La Luna** también está abajo a la izquierda en una tarjeta chica (en el celular, debajo del mapa)
+    con lo de ahora: signo y grado, fase y porcentaje iluminado; el enlace «Calendario lunar ›» (debajo del mapa, o en la
+    tarjeta en el celular) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
+    cuadro con **un poema para la Luna en ese signo**, con el nombre del autor y la obra, entero, más desde cuándo está en
+    el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase. Sale uno al azar entre los de ese signo (cada vez que
+    se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
+    el color del elemento del signo y «Solo datos» oculta el poema. Se actualiza solo cada 5 minutos y al volver a la
+    pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
+    **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
+    4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
+    cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
+    cerrado con el Sol, la Luna, los ángulos o los planetas hasta Saturno. Es el mismo cálculo de los destacados de la
+    pestaña Carta (`/api/featured`), un pedido por carta y de a dos a la vez; en la versión pública, si el servidor pide
+    esperar se espera y se sigue. Cada carta tiene su tarjeta con los tránsitos (el planeta y el punto natal, si está en su
+    punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
+    que abre esa carta con los tránsitos de ahora. No se calcula nada hasta elegir cartas y apretar el botón. Abajo: «Tus cartas»:
+    «Continuar con…» la carta que estabas viendo y atajos a las otras cartas guardadas (o «Crear mi primera carta»). No se
+    calcula ninguna carta hasta entrar a **Carta**.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
     principales del mes (nueva, cuarto creciente, llena, cuarto menguante) con día, hora y signo. Flechas y «Hoy»
@@ -278,7 +288,9 @@ Es la misma app con tres diferencias:
   cuerpo de un pedido POST (no en la URL) y el registro del servidor solo anota «POST /api/chart → 200».
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
   repositorio y que la versión pública no sirve (devuelve 404).
-  El inicio y el calendario lunar no mandan ningún dato personal: solo la zona horaria del navegador (y el mes).
+  El mapa del inicio y el calendario lunar no mandan ningún dato personal: solo la zona horaria del navegador (y el mes).
+  Los «Tránsitos destacados de hoy» del inicio sí mandan los datos de nacimiento de las cartas elegidas, recién al apretar
+  el botón y solo para calcular (como al abrir una carta).
 - **Límites**: hasta 60 pedidos seguidos por persona y después 2 por segundo (el calendario de tránsitos cuesta
   20 pedidos; los destacados, 6; lo que viene, 8; el calendario lunar, 3; la Luna y los planetas de hoy, 1), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
   un mensaje. No hay `/api/charts` ni `/api/presence`, y `/healthz` responde `ok` para el hosting.
@@ -348,7 +360,7 @@ static/           interfaz
   stair.js                          cuadro de aspectos en escalera
   elements.js                       balance de elementos y regente del Ascendente (moderno)
   moon.js                           la Luna del inicio, el calendario lunar: grilla del mes, íconos de fase
-  sky.js                            el mapa del inicio: signos alrededor, planetas en su lugar sin encimarse (sin DOM: se prueba con node)
+  sky.js                            el mapa del inicio: signos alrededor, Sol, Luna y planetas en su lugar sin encimarse (sin DOM: se prueba con node)
   poems.js                          los poemas de la Luna (por signo; se leen al tocar la Luna del inicio) y cómo se eligen y se dibujan
   combos.js, combinar.js            la pestaña Combinar (beta): cómo se busca por planetas y la pantalla
   combos-conjugarnos.js             lo del grupo de Conjugarnos (generado por importar_conjugarnos.py: no se edita a mano)
