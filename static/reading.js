@@ -1,28 +1,24 @@
 // Qué se muestra al tocar un planeta: posición, casa y aspectos, según la vista (natal, tránsitos o sinastría).
 // Sin DOM: recibe los datos que ya calculó el servidor y devuelve texto plano (quien lo dibuje lo escapa).
-import { BODY, split } from "./astro-data.js";
+import { BODY, ASPECT, split } from "./astro-data.js";
 import { signReading, houseReading, retroReading, pairReading, orbNote, phaseLabel } from "./interp.js";
 
 export const OUTER = "o:";   // los ids del anillo exterior van con este prefijo
 
 /**
- * @param ctx { mode, chart, transit, syn, orbMax }
+ * Dónde está un punto en la vista actual.
  * @param rawId "sun", "asc"… (interior) o "o:sun" (anillo exterior)
  * @returns null si ese cuerpo no está en los datos
  */
-export function subjectFor(ctx, rawId) {
-  const { mode, chart, transit, syn, orbMax } = ctx;
+function locate(ctx, rawId) {
+  const { mode, chart, transit, syn } = ctx;
   const outer = rawId.startsWith(OUTER);
   const id = outer ? rawId.slice(OUTER.length) : rawId;
   if (!BODY[id] || !chart) return null;
-
-  const A = syn ? syn.a.input.name || "Carta A" : chart.input.name || "la carta natal";
-  const B = syn ? syn.b.input.name || "Carta B" : "";
   const inTransit = mode === "transit" && !!transit;
   const inSyn = mode === "syn" && !!syn;
   if (outer && !inTransit && !inSyn) return null;
 
-  // posición
   let lon, house = null, retro = false;
   if (!outer) {
     if (id === "asc" || id === "mc") lon = chart.angles[id];
@@ -45,7 +41,22 @@ export function subjectFor(ctx, rawId) {
       house = syn.overlay.b_in_a.find((o) => o.id === id)?.house ?? null;
     }
   }
-  const sp = split(lon);
+  return { id, outer, lon, house, retro, sp: split(lon), inTransit, inSyn };
+}
+
+/**
+ * @param ctx { mode, chart, transit, syn, orbMax }
+ * @param rawId "sun", "asc"… (interior) o "o:sun" (anillo exterior)
+ * @returns null si ese cuerpo no está en los datos
+ */
+export function subjectFor(ctx, rawId) {
+  const { mode, chart, transit, syn, orbMax } = ctx;
+  const loc = locate(ctx, rawId);
+  if (!loc) return null;
+  const { id, outer, lon, house, retro, sp, inTransit, inSyn } = loc;
+
+  const A = syn ? syn.a.input.name || "Carta A" : chart.input.name || "la carta natal";
+  const B = syn ? syn.b.input.name || "Carta B" : "";
 
   // a quién pertenece cada lado, para rotular los aspectos
   const ownerOf = (isOuter) => (!inTransit && !inSyn ? "" : isOuter ? (inTransit ? "tránsito" : B) : (inTransit ? "natal" : A));
@@ -103,5 +114,44 @@ export function subjectFor(ctx, rawId) {
     aspects: { items, hidden: main.hidden, title: outer ? (inTransit ? "Aspectos a la carta natal" : `Aspectos con ${A}`) : "Aspectos" },
     cross,
     orbMax,
+  };
+}
+
+const ANGLE = { conjunction: 0, opposition: 180, trine: 120, square: 90, sextile: 60, quincunx: 150 };    // grados exactos de cada aspecto
+
+/**
+ * Qué se muestra al tocar un aspecto (en el cuadro, la lista o la cuadrícula): los dos puntos, el orbe y lo que significa.
+ * @param ctx { mode, chart, transit, syn, orbMax }
+ * @param aKey, bKey los dos extremos, como van en las tablas: «sun» / «o:moon» (el del anillo exterior lleva «o:»)
+ * @returns null si ese aspecto no está en los datos de la vista
+ */
+export function aspectFor(ctx, aKey, bKey) {
+  const { chart, transit, syn } = ctx;
+  const pa = locate(ctx, aKey), pb = locate(ctx, bKey);
+  if (!pa || !pb || pa.outer) return null;
+  const src = pb.outer ? (pb.inTransit ? transit : syn) : null;
+  const rec = pb.outer
+    ? src.aspects.find((x) => x.a === pa.id && x.b === pb.id)
+    : chart.aspects.find((x) => (x.a === pa.id && x.b === pb.id) || (x.a === pb.id && x.b === pa.id));
+  if (!rec || !ASPECT[rec.type]) return null;
+
+  const A = syn ? syn.a.input.name || "Carta A" : "";
+  const B = syn ? syn.b.input.name || "Carta B" : "";
+  const inTransit = pb.inTransit && pb.outer, inSyn = pb.inSyn && pb.outer;
+  const point = (p, key) => ({
+    key, id: p.id, name: BODY[p.id].name, outer: p.outer, lon: p.lon, sign: p.sp.sign, deg: p.sp.deg, min: p.sp.min,
+    house: p.house, retro: p.retro,
+    owner: inTransit ? (p.outer ? "tránsito" : "natal") : inSyn ? (p.outer ? B : A) : "",
+    houseShort: !p.house ? "" : p.outer ? (inTransit ? `casa natal ${p.house}` : `casa ${p.house} de ${A}`) : `casa ${p.house}`,
+    retroText: p.retro ? retroReading(p.id) : null,
+  });
+  const inner = point(pa, aKey), outer = pb.outer ? point(pb, bKey) : null;
+  const other = outer || point(pb, bKey);
+  // en tránsitos se lee primero lo que pasa en el cielo y después lo que toca; en las demás vistas, en el orden de la tabla
+  const points = inTransit ? [outer, inner] : [inner, other];
+  return {
+    type: rec.type, angle: ANGLE[rec.type], orb: rec.orb, applying: rec.applying, phase: phaseLabel(rec.applying), note: orbNote(rec.orb),
+    context: inTransit ? "Tránsito sobre la carta natal" : inSyn ? "Sinastría" : "", live: inTransit,
+    points, text: pairReading(pa.id, pb.id, rec.type),
   };
 }

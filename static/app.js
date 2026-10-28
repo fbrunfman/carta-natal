@@ -7,6 +7,7 @@ import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
+import { initAspectDialog } from "./aspect-dialog.js";
 import { profection, profectionHTML, featuredHTML, featuredRowsHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
@@ -621,11 +622,13 @@ function renderAspects() {
       ${phaseCol ? `<td class="small muted">${phase}</td>` : ""}</tr>`;
   }
   $("#aspTable").innerHTML = html + "</tbody></table>";
+  armAspects();
 }
 
 // -- natal: cuadro de aspectos en escalera
 function renderStair() {
   $("#stairTable").innerHTML = chart ? stairHTML(chart, orbMax) : "";
+  armAspects();
 }
 
 // -- natal: balance de elementos
@@ -661,6 +664,7 @@ function renderGrid() {
     html += "</tr>";
   }
   el.innerHTML = html + "</tbody></table>";
+  armAspects();
 }
 
 // -- sinastría: en qué casa de uno cae cada planeta del otro
@@ -904,6 +908,31 @@ hoverFocus("#panel-over", false);
 // Tocar un planeta (en la rueda, en una tabla o en la cruz de elementos) abre su lectura.
 const reading = initPlanetDialog(() => ({ mode, chart, transit, syn, orbMax }), () => { wheel?.clear(); highlightRows(null); });
 function openReading(id) { if (chart && interpOn) reading.open(id); }
+// Tocar un aspecto (en la lista, el cuadro o la cuadrícula) abre la ventana que lo explica; desde ahí se salta a cada planeta.
+const aspectDlg = initAspectDialog(() => ({ mode, chart, transit, syn, orbMax }), (key) => openReading(key), () => { wheel?.clear(); });
+const aspectCell = (e) => e.target.closest("[data-a][data-b]");
+function openAspect(el) { if (chart && interpOn && el) aspectDlg.open(el.dataset.a, el.dataset.b); }
+// Con lecturas, cada aspecto se puede tocar y alcanzar con el teclado; en «solo datos», no.
+function armAspects() {
+  for (const sel of ["#aspTable", "#stairTable", "#gridTable"]) {
+    for (const el of document.querySelectorAll(`${sel} [data-a][data-b]`)) {
+      el.classList.toggle("asp-open", interpOn);
+      if (interpOn) { el.tabIndex = 0; el.setAttribute("aria-haspopup", "dialog"); }
+      else { el.removeAttribute("tabindex"); el.removeAttribute("aria-haspopup"); }
+    }
+  }
+}
+for (const sel of ["#aspTable", "#stairTable", "#gridTable"]) {
+  $(sel).addEventListener("click", (e) => openAspect(aspectCell(e)));
+  $(sel).addEventListener("keydown", (e) => {
+    if ((e.key !== "Enter" && e.key !== " ") || e.target !== aspectCell(e)) return;
+    e.preventDefault();
+    openAspect(e.target);
+  });
+  // con el teclado, el aspecto enfocado también resalta su línea en la rueda
+  $(sel).addEventListener("focusin", (e) => { const el = aspectCell(e); if (el && wheel) wheel.pair(el.dataset.a, el.dataset.b); });
+  $(sel).addEventListener("focusout", () => wheel?.clear());
+}
 for (const sel of ["#panel-pos", "#panel-tpos", "#panel-over", "#panel-elem"]) {
   $(sel).addEventListener("click", (e) => {
     const el = e.target.closest("tr[data-id], li.chip[data-id]");
@@ -911,14 +940,15 @@ for (const sel of ["#panel-pos", "#panel-tpos", "#panel-over", "#panel-elem"]) {
   });
 }
 
-const STAIR_HINT = "Pasá el cursor por un aspecto para ver el orbe.";
+const STAIR_HINT = "Pasá el cursor por un aspecto para ver el orbe; tocalo para leer qué significa.";
 for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
   $(sel).addEventListener("mouseover", (e) => {
     const el = e.target.closest("[data-a][data-b]");
     if (!el) return;
     if (wheel) wheel.pair(el.dataset.a, el.dataset.b);
     const info = $("#stairInfo");
-    if (sel === "#stairTable" && info) info.textContent = el.dataset.info || STAIR_HINT;
+    // con el dedo no hay «pasar por encima»: cambiar el texto de acá mueve la página justo cuando se toca y el toque cae en otro lado
+    if (sel === "#stairTable" && info && !matchMedia("(hover: none)").matches) info.textContent = el.dataset.info || STAIR_HINT;
   });
   $(sel).addEventListener("mouseleave", () => {
     wheel?.clear();
@@ -1119,6 +1149,8 @@ setClassic(initSettings((cfg, what) => {
   interpOn = cfg.interp;
   if (interpChanged) {                  // «solo datos»: se cierra la ventana de lectura y se redibuja lo que la ofrecía
     reading.close();
+    aspectDlg.close();
+    armAspects();
     if (chart) { drawWheel(); renderSummary(); }
   }
   if (what === "gfx") {

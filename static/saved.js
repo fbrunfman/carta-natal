@@ -4,6 +4,33 @@ import { charts } from "./api.js";
 
 const SEARCH_FROM = 7;   // desde cuántas cartas aparece el buscador
 
+/** Un botón que responde al toque del dedo sin esperar el clic.
+ *  En el iPhone y el iPad el clic puede no llegar nunca (si el sistema toma el toque como «pasar el dedo por encima»):
+ *  con el dedo se actúa al levantarlo, sin esperar el clic, y se cancela el clic para que no caiga sobre lo que quede debajo.
+ *  Con el mouse o el teclado, el clic de siempre. */
+function onTap(el, fn) {
+  el.addEventListener("click", fn);
+  let down = null;
+  el.addEventListener("touchstart", (e) => {
+    down = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  el.addEventListener("touchend", (e) => {
+    const t = e.changedTouches[0];
+    const tap = down && e.cancelable && e.touches.length === 0 && Math.hypot(t.clientX - down.x, t.clientY - down.y) < 10;
+    down = null;
+    if (!tap) return;                // arrastrar para desplazar la lista no hace nada
+    e.preventDefault();
+    fn();
+  }, { passive: false });
+  el.addEventListener("touchcancel", () => { down = null; });
+}
+
+// Pantalla táctil (también el iPad, que se presenta como una compu y dice que tiene «hover»): botones más grandes y la «×»
+// siempre a la vista, sin esperar a que el dedo «pase por encima».
+try {
+  if (navigator.maxTouchPoints > 0 || matchMedia("(any-pointer: coarse)").matches) document.documentElement.dataset.touch = "";
+} catch {}
+
 /**
  * @param list/where        <ul> de la lista y párrafo con la ruta del archivo (el aviso de «no hay cartas» lo maneja quien llama, con onChange)
  * @param picker            { root, btn, pop, q, none, count } los elementos del desplegable
@@ -35,22 +62,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     const nm = Object.assign(document.createElement("span"), { className: "nm", textContent: it.name });
     const dt = Object.assign(document.createElement("span"), { className: "dt", textContent: shortDate(it.date) });
     open.append(nm, dt);
-    open.addEventListener("click", () => choose(it));
-    // En el iPhone el clic puede no llegar nunca (si el sistema toma el toque como «pasar el dedo por encima»): con el
-    // dedo se elige al levantarlo, sin esperar el clic, y se cancela el clic para que no caiga sobre lo que quede debajo.
-    let down = null;
-    open.addEventListener("touchstart", (e) => {
-      down = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
-    }, { passive: true });
-    open.addEventListener("touchend", (e) => {
-      const t = e.changedTouches[0];
-      const tap = down && e.cancelable && e.touches.length === 0 && Math.hypot(t.clientX - down.x, t.clientY - down.y) < 10;
-      down = null;
-      if (!tap) return;                // arrastrar para desplazar la lista no elige nada
-      e.preventDefault();
-      choose(it);
-    }, { passive: false });
-    open.addEventListener("touchcancel", () => { down = null; });
+    onTap(open, () => choose(it));
 
     const isArmed = armed === it.id;
     const del = document.createElement("button");
@@ -58,7 +70,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     del.className = "del" + (isArmed ? " armed" : "");
     del.textContent = isArmed ? "¿Eliminar?" : "×";
     del.setAttribute("aria-label", isArmed ? `Confirmar: eliminar la carta de ${it.name}` : `Eliminar la carta de ${it.name}`);
-    del.addEventListener("click", () => (isArmed ? remove(it) : arm(it.id)));
+    onTap(del, () => (isArmed ? remove(it) : arm(it.id)));
 
     li.append(open, del);
     return li;
@@ -167,7 +179,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     render();
     list.querySelector(".del.armed")?.focus();
     clearTimeout(armTimer);
-    armTimer = setTimeout(() => { armed = null; render(); }, 3500);
+    armTimer = setTimeout(() => { armed = null; render(); }, "touch" in document.documentElement.dataset ? 6000 : 3500);
   }
 
   async function remove(it) {

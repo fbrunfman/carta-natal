@@ -381,7 +381,7 @@
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
           <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
-                  <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos.</span>
+                  <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos; al pasar el mouse se ve el orbe de cada aspecto.</span>
         </figcaption>
       </figure>
 
@@ -526,6 +526,21 @@
     </button>
   </div>
   <div class="pdl-body" id="pdlBody"></div>
+</dialog>
+
+<dialog id="aspectDlg" class="pdlg" aria-labelledby="aspTitle">
+  <div class="pdl-head">
+    <span id="aspBadges" class="pdl-badge asd-badges"></span>
+    <div class="pdl-titles">
+      <p class="pdl-ctx" id="aspCtx" hidden></p>
+      <h2 id="aspTitle" tabindex="-1"></h2>
+      <p class="pdl-sub" id="aspSub"></p>
+    </div>
+    <button type="button" class="pdl-icon" id="aspClose" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="pdl-body" id="aspBody"></div>
 </dialog>
 
 <script type="module" src="app.js"></script>

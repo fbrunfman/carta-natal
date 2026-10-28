@@ -35,5 +35,5 @@ export function stairHTML(chart, orbMax) {
     }
     html += `<div class="sc diag" role="columnheader">${badge(row)}</div></div>`;
   });
-  return html + `</div><p class="fine tight" id="stairInfo" aria-live="polite">Pasá el cursor por un aspecto para ver el orbe.</p>`;
+  return html + `</div><p class="fine tight" id="stairInfo" aria-live="polite">Pasá el cursor por un aspecto para ver el orbe; tocalo para leer qué significa.</p>`;
 }

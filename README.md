@@ -121,11 +121,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - Sistemas de casas: Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales y signos enteros (en Configuración).
 - Nodo lunar verdadero o medio (en Configuración).
 - Aspectos (conjunción, oposición, trígono, cuadratura, sextil, quincuncio) con orbe y fase
-  aplicativa o separativa. Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos.
+  aplicativa o separativa. Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
+  línea resaltada aparece su orbe** (en una etiqueta del color del aspecto, sin pisarse con las otras; lo mismo con el
+  teclado al enfocar el planeta). Tocar un aspecto de la lista, del Cuadro o de la cuadrícula abre una ventana que lo
+  explica (ver «Lectura de un aspecto» más abajo).
 - **Cuadro** (pestaña en las tres vistas; en la carta natal es la **primera** y la que se abre): los aspectos en escalera, con cada planeta como un círculo de
   color en la diagonal y un símbolo por aspecto en las celdas, vacías si no hay. Natal: todos contra todos
   (incluye Ascendente y Medio Cielo). Tránsitos y sinastría: filas = la carta de adentro, columnas = la de
-  afuera. Al pasar el cursor se ve el orbe y la fase, y la rueda resalta el par.
+  afuera. Al pasar el cursor se ve el orbe y la fase, y la rueda resalta el par y muestra su orbe sobre la línea. En el
+  celular o la tablet, donde no hay cursor, se toca la celda y se abre la ventana del aspecto.
 - **Elementos** (solo natal): una cruz con Fuego arriba a la izquierda, Aire arriba a la derecha, Tierra abajo
   a la izquierda y Agua abajo a la derecha. Cada cuadrante lista los planetas personales (Sol a Saturno, sin
   Urano, Neptuno ni Plutón) y el Ascendente según el elemento de su signo, sin porcentajes. El regente del
@@ -166,7 +170,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     (verdadero o medio). Recalcula la carta que estás viendo al elegir.
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
   - *Interpretación*: **Con lecturas** o **Solo datos**. En «Solo datos» desaparece toda la interpretación: la ventana
-    de lectura al tocar un planeta (rueda, tablas y Elementos), los temas de las casas (profecciones y «Próximamente»),
+    de lectura al tocar un planeta (rueda, tablas y Elementos), la de los aspectos (lista, Cuadro y cuadrícula; ahí los
+    aspectos dejan de ser tocables), los temas de las casas (profecciones y «Próximamente»),
     los textos de los tránsitos destacados y las pistas de «tocá un planeta…». Quedan las posiciones, casas, aspectos,
     orbes, fechas y horas. Es un modo: se recuerda, se aplica antes de dibujar y se puede cambiar en cualquier momento.
   - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
@@ -198,6 +203,17 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *retrogradación*, con una aclaración en Urano, Neptuno y Plutón, donde es un estado muy frecuente.
   En **tránsitos** y **sinastría** el planeta del anillo exterior se lee igual (signo, casa de la carta de adentro y
   aspectos a esa carta) y el de adentro agrega los aspectos que recibe del anillo exterior.
+- **Lectura de un aspecto**: tocá un aspecto en la lista de Aspectos, en el Cuadro o en la cuadrícula (natal, tránsitos
+  y sinastría; con el teclado, Enter o espacio sobre la celda o la fila) y se abre una ventana. La cabecera lleva los
+  dos planetas con el símbolo del aspecto, su nombre, el orbe y si es aplicativo o separativo. Debajo:
+  - *Los dos puntos*: dónde está cada uno (signo, casa y, en tránsitos y sinastría, de quién es: «tránsito», «natal» o el
+    nombre de cada carta);
+  - *El aspecto*: el ángulo exacto, qué es el orbe, cómo se lee esa fase (aplicativo / separativo) y cómo se comporta ese
+    tipo de aspecto;
+  - *Qué une a este par*: el tema que relaciona a esos dos cuerpos (los mismos textos de `interp-aspects.js`);
+  - *Movimiento*: si alguno de los dos está retrógrado.
+  Cada planeta de la ventana es un botón: cierra el aspecto y abre la lectura de ese planeta. Mientras la ventana está
+  abierta, la rueda deja resaltada la línea. El orbe sobre las líneas es un dato, así que también se ve en «Solo datos».
   Las lecturas son generales y simbólicas, no calculadas para la persona; al pie de la ventana se aclara que describen
   tendencias y no causas ni predicciones. Los textos están en `static/interp-signs.js`, `interp-houses.js` e
   `interp-aspects.js`, uno por línea, para editarlos a gusto.
@@ -235,7 +251,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   botones, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
   ni mayúsculas, también por fecha). Con teclado: flecha abajo abre, flechas se mueven, Enter elige y Esc
   cierra. Se cierra también al tocar afuera. «Calcular y guardar cambios» actualiza la abierta y «Guardar como carta
-  nueva» la duplica. Eliminar (la × al pasar el mouse por una carta de la lista) pide confirmación (dos toques).
+  nueva» la duplica. Eliminar (la × al pasar el mouse por una carta de la lista; en el celular y el iPad la × está siempre a la vista y es más grande, con lugar propio a la derecha de la fila) pide confirmación (dos toques; con el dedo, la confirmación espera 6 segundos).
 - En la rueda cada planeta es un círculo de color con su símbolo adentro (el Sol, con borde ondulado) y,
   debajo, grados, signo y minutos (como iPhemeris). Los signos van en una banda oscura con los símbolos en
   blanco. Cada planeta se dibuja siempre dentro de la casa a la que pertenece: si hay varios juntos se
@@ -351,7 +367,8 @@ static/           interfaz
   print.js                          el cuadro de «Imprimir»: qué va en la hoja (la hoja misma la arma el @media print de style.css)
   summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
   planet-dialog.js                  ventana de lectura que se abre al tocar un planeta
-  reading.js                        qué muestra esa ventana según la vista (natal, tránsitos, sinastría)
+  aspect-dialog.js                  ventana que explica un aspecto (se abre al tocarlo en la lista, el Cuadro o la cuadrícula)
+  reading.js                        qué muestran esas ventanas según la vista (natal, tránsitos, sinastría): subjectFor (planeta) y aspectFor (aspecto)
   interp.js                         junta los textos: signo, casa, dignidades, aspectos
   interp-signs.js, interp-houses.js, interp-aspects.js   los textos de interpretación (editables)
   glyphs.js                         símbolos de planetas y signos dibujados como vectores

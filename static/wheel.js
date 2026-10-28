@@ -1,5 +1,5 @@
 // Rueda natal en SVG. Ascendente a la izquierda, casas en sentido antihorario.
-import { SIGNS, ELEMENT, BODY, ASPECT, split, discWheel, look, bodyText, signText } from "./astro-data.js";
+import { SIGNS, ELEMENT, BODY, ASPECT, split, fmtOrb, discWheel, look, bodyText, signText } from "./astro-data.js";
 import { BODY_SVG, SIGN_SVG, glyphAt } from "./glyphs.js";
 import { placePlanets, spreadRing } from "./layout.js";
 
@@ -133,7 +133,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     if (a.type === "conjunction") continue;
     const [x1, y1] = pt(R.asp, phi(lonOf(a.a))), [x2, y2] = pt(R.asp, phi(lonOf(a.b)));
     const tier = a.orb < 1 ? "t1" : a.orb < 3 ? "t2" : "t3";
-    lineSvg += `<line class="asp asp-${a.type} ${tier}" data-a="${a.a}" data-b="${a.b}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><title>${nameOf(a.a)} ${ASPECT[a.type].name.toLowerCase()} ${nameOf(a.b)}</title></line>`;
+    lineSvg += `<line class="asp asp-${a.type} ${tier}" data-a="${a.a}" data-b="${a.b}" data-orb="${a.orb}" data-t="${a.type}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><title>${nameOf(a.a)} ${ASPECT[a.type].name.toLowerCase()} ${nameOf(a.b)}</title></line>`;
   }
   let dotSvg = "";
   for (const id of [...chart.bodies.map((b) => b.id), "asc", "mc"]) {
@@ -206,6 +206,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     s += ring;
   }
 
+  s += `<g class="orbs" aria-hidden="true"></g>`;      // el orbe de cada línea resaltada (arriba de todo)
   svg.innerHTML = s;
   svg.setAttribute("aria-label", outer
     ? `Rueda doble de ${esc(chart.input.name || "la carta")} con ${esc(outer.label)}`
@@ -215,9 +216,51 @@ export function renderWheel(svg, chart, hooks = {}) {
   const pls = [...svg.querySelectorAll(".pl")];
   const lines = [...svg.querySelectorAll(".asp")];
 
+  // Orbe sobre cada línea resaltada: una etiqueta chica en el medio de la raya (o corrida a lo largo de ella si ahí
+  // taparía a otra etiqueta). Las conjunciones no tienen raya, así que no llevan etiqueta.
+  const orbLayer = svg.querySelector(".orbs");
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const clearOrbs = () => { orbLayer.textContent = ""; };
+  function showOrbs() {
+    clearOrbs();
+    const taken = [];
+    const hit = (r) => taken.some((o) => r.x < o.x + o.w + 2 && r.x + r.w + 2 > o.x && r.y < o.y + o.h + 2 && r.y + r.h + 2 > o.y);
+    const len = (l) => Math.hypot(l.getAttribute("x2") - l.getAttribute("x1"), l.getAttribute("y2") - l.getAttribute("y1"));
+    // las rayas cortas tienen menos lugar donde poner la etiqueta: van primero, las largas se acomodan después
+    for (const l of lines.filter((x) => x.classList.contains("on")).sort((p, q) => len(p) - len(q))) {
+      const orb = Number(l.dataset.orb);
+      if (!Number.isFinite(orb)) continue;
+      const x1 = +l.getAttribute("x1"), y1 = +l.getAttribute("y1"), x2 = +l.getAttribute("x2"), y2 = +l.getAttribute("y2");
+      const g = document.createElementNS(SVGNS, "g");
+      g.setAttribute("class", `orb orb-${ASPECT[l.dataset.t]?.cls || "neutral"}`);
+      g.dataset.a = l.dataset.a; g.dataset.b = l.dataset.b;
+      const rect = document.createElementNS(SVGNS, "rect");
+      const txt = document.createElementNS(SVGNS, "text");
+      txt.setAttribute("dy", ".35em");
+      txt.textContent = fmtOrb(orb);
+      g.append(rect, txt);
+      orbLayer.append(g);
+      const bb = txt.getBBox();
+      const w = bb.width + 9, h = bb.height + 3;
+      // se prueba el medio y después se corre a lo largo de la raya; si en ningún lugar entra sin tapar a otra, queda donde menos tapa
+      let spot = null, least = Infinity;
+      for (const t of [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8, 0.14, 0.86]) {
+        const cx = x1 + (x2 - x1) * t, cy = y1 + (y2 - y1) * t;
+        const r = { x: cx - w / 2, y: cy - h / 2, w, h };
+        const cover = taken.reduce((sum, o) => sum + Math.max(0, Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x)) * Math.max(0, Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y)), 0);
+        if (cover < least) { least = cover; spot = { cx, cy, r }; }
+        if (!cover && !hit(r)) { spot = { cx, cy, r }; break; }
+      }
+      taken.push(spot.r);
+      txt.setAttribute("x", n2(spot.cx)); txt.setAttribute("y", n2(spot.cy));
+      for (const [k, v] of [["x", spot.r.x], ["y", spot.r.y], ["width", w], ["height", h], ["rx", 4]]) rect.setAttribute(k, n2(v));
+    }
+  }
+
   function reset() {
     svg.classList.remove("has-focus");
     for (const e of svg.querySelectorAll(".on, .rel, .sel")) e.classList.remove("on", "rel", "sel");
+    clearOrbs();
   }
   function focus(id) {
     reset();
@@ -232,6 +275,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       if (g.dataset.id === id) g.classList.add("sel");
       else if (rel.has(g.dataset.id)) g.classList.add("rel");
     }
+    showOrbs();
   }
   function pair(a, b) {
     reset();
@@ -240,6 +284,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       if ((l.dataset.a === a && l.dataset.b === b) || (l.dataset.a === b && l.dataset.b === a)) l.classList.add("on");
     }
     for (const g of pls) if (g.dataset.id === a || g.dataset.id === b) g.classList.add("sel");
+    showOrbs();
   }
 
   const pickable = (el, id) => {
