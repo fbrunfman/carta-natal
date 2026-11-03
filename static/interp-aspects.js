@@ -127,6 +127,8 @@ export const FRAME = {
   trine: "Trígono: fluyen con naturalidad y se apoyan sin esfuerzo. Es un talento disponible, aunque la facilidad puede llevar a darlo por sentado.",
   square: "Cuadratura: hay fricción entre ambas, con impulsos que no coinciden. Esa tensión empuja a actuar y suele ser una fuente de logro, a costa de esfuerzo.",
   sextile: "Sextil: hay una colaboración posible entre las dos funciones. Es una oportunidad que rinde cuando se la activa con iniciativa.",
+  semisquare: "Semicuadratura: una fricción menor, como media cuadratura. Es una irritación sostenida que molesta sin llegar a ser una crisis, y pide pequeños ajustes.",
+  sesquiquadrate: "Sesquicuadratura: una fricción menor que se acumula y termina por estallar. Aparece como inquietud o tensión que empuja a actuar, aunque suele ser más incómoda que decisiva.",
   quincunx: "Quincuncio: las dos funciones no comparten elemento ni modalidad y no se entienden de inmediato. Piden ajustes constantes y una adaptación que nunca es del todo cómoda.",
 };
 

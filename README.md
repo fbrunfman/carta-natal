@@ -71,14 +71,14 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     cuadro con **un poema para la Luna en ese signo**, con el nombre del autor y la obra, entero, más desde cuándo está en
     el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase. Sale uno al azar entre los de ese signo (cada vez que
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
-    el color del elemento del signo y «Solo datos» oculta el poema. Se actualiza solo cada 5 minutos y al volver a la
+    el color del elemento del signo; con las lecturas apagadas (hoy) el poema no se muestra. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
     **En escritorio, con lugar de sobra (a partir de unos 1100 px de ancho de contenido), «Tránsitos destacados de hoy» y
     «Tus cartas» van en una columna a la derecha del mapa**; en pantallas más angostas y en el celular van debajo, como antes.
     **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
     4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
     cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
-    cerrado con el Sol, la Luna, los ángulos o los planetas hasta Saturno. Es el mismo cálculo de los destacados de la
+    cerrado con el Sol, la Luna o los planetas hasta Saturno. Es el mismo cálculo de los destacados de la
     pestaña Carta (`/api/featured`), un pedido por carta y de a dos a la vez; en la versión pública, si el servidor pide
     esperar se espera y se sigue. Cada carta tiene su tarjeta con los tránsitos (el planeta y el punto natal, si está en su
     punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
@@ -115,19 +115,46 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
       una entrada sin título, autor o texto —salvo película y canción—, o sin ningún planeta, no sale).
       Ojo con los derechos de autor de lo que se publica: los fragmentos largos de obras vigentes pueden dar problemas.
     La pantalla está en `static/combinar.js`.
-- Fecha, hora local y lugar → posiciones de Sol a Plutón, nodo norte, Ascendente y Medio Cielo.
+- Fecha, hora local y lugar → posiciones de Sol a Plutón, Ascendente y Medio Cielo. **El nodo lunar está apagado**: no se
+  calcula ni se muestra en ninguna parte (ver «Cosas apagadas a pedido», más abajo, para volver a ponerlo).
 - Zona horaria histórica con la base IANA (cambios de horario de verano incluidos). Avisa si la hora
   fue ambigua o no existió, y permite fijar el offset UTC a mano.
 - Sistemas de casas: Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales y signos enteros (en Configuración).
-- Nodo lunar verdadero o medio (en Configuración).
-- Aspectos (conjunción, oposición, trígono, cuadratura, sextil, quincuncio) con orbe y fase
-  aplicativa o separativa. Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
+- **Aspectos entre planetas** (conjunción 0°, oposición 180°, trígono 120°, cuadratura 90°, sextil 60°, semicuadratura 45°,
+  sesquicuadratura 135° y quincuncio 150°) con orbe y fase aplicativa o separativa. **El Ascendente y el Medio Cielo no
+  forman aspectos**: no aparecen en ninguna lista, cuadro, cuadrícula, calendario ni línea de la rueda (siguen en las
+  posiciones, las casas y el mandala, y se pueden tocar para leer su signo). El orbe máximo sale de esta tabla, por grupo
+  de planetas y tipo de aspecto; **entre dos cuerpos de grupos distintos manda el orbe mayor** (Sol con Neptuno: el del Sol):
+
+  | | conjunción, oposición, cuadratura | trígono | sextil | 45°, 135° y 150° |
+  |---|---|---|---|---|
+  | Sol, Luna | 10° | 8° | 6° | 2° |
+  | Mercurio, Venus, Marte | 8° | 7° | 5° | 2° |
+  | Júpiter, Saturno | 7° | 6° | 5° | 2° |
+  | Urano, Neptuno, Plutón | 5° | 3° | 3° | 2° |
+
+  El Nodo norte (apagado) no está en la tabla: usaría la última fila. En los trígonos de Mercurio, Venus y Marte (7/6) y de
+  Júpiter y Saturno (6/5) la hoja trae dos valores; se usa el primero. Los números están en `ORB_TABLE` (`astro.py`).
+  El orbe de «Tránsitos destacados» es aparte (3°, y 2° en trígonos y sextiles), porque ahí se buscan los aspectos cerrados.
+  Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
   línea resaltada aparece su orbe** (en una etiqueta del color del aspecto, sin pisarse con las otras; lo mismo con el
-  teclado al enfocar el planeta). Tocar un aspecto de la lista, del Cuadro o de la cuadrícula abre una ventana que lo
-  explica (ver «Lectura de un aspecto» más abajo).
+  teclado al enfocar el planeta).
+- **Conjunciones en la rueda**: no llevan raya (sería un punto). En su lugar va un **circulito rojo** en el punto medio
+  entre los dos cuerpos, sobre el círculo de los aspectos. Al pasar el cursor por uno de los planetas se resalta y muestra
+  su orbe, igual que las rayas.
+- **Grados de las cúspides**: la rueda lleva, en el borde de afuera, los **grados y minutos de la cúspide de cada casa**
+  (sin el signo, que ya está en el anillo). Los de las casas 1, 4, 7 y 10 van junto al rótulo «Asc», «IC», «Dsc» y «MC»
+  (el grado debajo o al lado del nombre); las otras se acomodan sin pisar nada, con cualquier sistema de casas y también
+  en la rueda doble de tránsitos y sinastría (ahí son los de la carta de adentro). La pestaña Casas ya los traía en tabla.
+- **Qué aspectos se ven** (Configuración → *Aspectos*): ocho botones, uno por tipo (conjunción, oposición, trígono,
+  cuadratura, sextil, semicuadratura, sesquicuadratura y quincuncio). Apagar uno lo saca de **la rueda** (rayas y circulitos),
+  **la lista de Aspectos**, **el Cuadro y la cuadrícula**, **los aspectos de tránsitos y sinastría** y **el calendario de
+  aspectos exactos**; volver a prenderlo los trae de vuelta. Es solo de la vista: el cálculo no cambia, y «Tránsitos
+  destacados» y «Próximamente» (que buscan sus propios aspectos cerrados) no se filtran. Se recuerda en el navegador
+  (`aspOff` dentro de `carta:cfg`) y «Restablecer» los prende todos.
 - **Cuadro** (pestaña en las tres vistas; en la carta natal es la **primera** y la que se abre): los aspectos en escalera, con cada planeta como un círculo de
   color en la diagonal y un símbolo por aspecto en las celdas, vacías si no hay. Natal: todos contra todos
-  (incluye Ascendente y Medio Cielo). Tránsitos y sinastría: filas = la carta de adentro, columnas = la de
+  (sin Ascendente ni Medio Cielo). Tránsitos y sinastría: filas = la carta de adentro, columnas = la de
   afuera. Al pasar el cursor se ve el orbe y la fase, y la rueda resalta el par y muestra su orbe sobre la línea. En el
   celular o la tablet, donde no hay cursor, se toca la celda y se abre la ventana del aspecto.
 - **Elementos** (solo natal): una cruz con Fuego arriba a la izquierda, Aire arriba a la derecha, Tierra abajo
@@ -154,8 +181,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   actualiza esa carta; **«Guardar como carta nueva»** la duplica en vez de pisarla. Si falta algo (el nombre, la
   fecha…), no se guarda nada y el aviso queda debajo del formulario hasta que se corrija un campo. La **✕** de arriba
   cierra el formulario sin guardar y vuelve a como estaba antes de abrirlo (los campos, la carta elegida).
-  *Sistema de casas* y *nodo lunar* ya no están en el formulario: son preferencias de la vista, están en
-  Configuración, valen para todas las cartas y se aplican al instante, sin apretar nada.
+  El *sistema de casas* ya no está en el formulario: es una preferencia de la vista, está en
+  Configuración, vale para todas las cartas y se aplica al instante, sin apretar nada.
 - **Imprimir** (botón arriba a la derecha de la carta): abre un cuadro para **elegir qué va en la hoja**: el mandala y,
   según la vista, las tablas (natal: Cuadro de aspectos, Posiciones, Casas, Aspectos y Elementos; tránsitos: Tránsitos,
   Cuadro y Aspectos; sinastría: Superposición, Cuadro y Aspectos). Con tres atajos: **Solo el mandala** (sale grande,
@@ -163,17 +190,19 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   y las tablas de Posiciones y Casas en la primera; el Cuadro, los Aspectos y los Elementos en la segunda). También se
   puede imprimir sin mandala, solo tablas. Lo que elegís se recuerda por vista, y Ctrl/Cmd + P imprime eso mismo sin
   abrir el cuadro. Después se abre la impresión del navegador, donde también se guarda como PDF. Sale sin menú ni
-  botones, y **siempre en claro**, aunque la pantalla esté en modo oscuro.
+  botones, y **siempre en claro**, aunque la pantalla esté en modo oscuro. La lista de Aspectos sale en dos columnas, para
+  que entre aunque tenga muchos.
 - **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; **siempre arranca
   cerrado**, en cualquier pantalla: no recuerda si lo dejaste abierto):
-  - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros) y nodo lunar
-    (verdadero o medio). Recalcula la carta que estás viendo al elegir.
+  - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros).
+    Recalcula la carta que estás viendo al elegir.
+  - *Aspectos*: qué tipos de aspecto se ven (ver «Qué aspectos se ven», arriba).
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
-  - *Interpretación*: **Con lecturas** o **Solo datos**. En «Solo datos» desaparece toda la interpretación: la ventana
-    de lectura al tocar un planeta (rueda, tablas y Elementos), la de los aspectos (lista, Cuadro y cuadrícula; ahí los
-    aspectos dejan de ser tocables), los temas de las casas (profecciones y «Próximamente»),
-    los textos de los tránsitos destacados y las pistas de «tocá un planeta…». Quedan las posiciones, casas, aspectos,
-    orbes, fechas y horas. Es un modo: se recuerda, se aplica antes de dibujar y se puede cambiar en cualquier momento.
+  - *Interpretación*: **ya no está** (ver «Cosas apagadas a pedido»). La app queda siempre en «solo datos»: sin la
+    ventana de lectura al tocar un planeta (rueda, tablas y Elementos) ni la de los aspectos (lista, Cuadro y cuadrícula;
+    ahí los aspectos dejan de ser tocables), sin los temas de las casas (profecciones y «Próximamente»), sin los textos de
+    los tránsitos destacados, sin las pistas de «tocá un planeta…» y sin el poema de la Luna. Quedan las posiciones, casas,
+    aspectos, orbes, fechas y horas.
   - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
     o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo de signos claro). Al elegir
     Clásico se activa también el tinte por elemento; se puede apagar.
@@ -186,24 +215,25 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *Tamaño del mandala*: 60 % a 140 %. Por encima de 100 % el mandala pasa a ocupar todo el ancho y las
     tablas bajan debajo de él.
   - «Restablecer» vuelve a los valores de fábrica (estilo Nuevo, con tinte por elemento, letra Redondeada, tamaños al
-    100 %, con lecturas). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
+    100 %, todos los aspectos prendidos). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
     página, así que no hay parpadeo al abrir. Mientras nadie toque la configuración no se guarda nada y rige lo de
     fábrica. Una configuración guardada antes de este cambio (sin `v`) que seguía en los valores de entonces (letra del
     sistema, sin tinte en el estilo Nuevo) cuenta como «sin elegir» y pasa a los de ahora; lo que se haya elegido de
-    verdad (otra letra, el estilo Clásico sin tinte, tamaños, «Solo datos») se respeta.
-- **Lectura de cada planeta**: tocá un planeta en la rueda (o su fila en Posiciones, Tránsitos y Superposición, o su
+    verdad (otra letra, el estilo Clásico sin tinte, tamaños) se respeta. Una configuración vieja con las lecturas prendidas
+    no las reactiva: mientras estén apagadas en el código, mandan las del código.
+- **Lectura de cada planeta** *(apagada a pedido; el código sigue)*: tocá un planeta en la rueda (o su fila en Posiciones, Tránsitos y Superposición, o su
   casilla en Elementos; también «Asc» y «MC» en la rueda) y se abre una ventana con:
   - *el signo*: elemento, modalidad, dignidad clásica (domicilio, exaltación, exilio, caída) y la lectura del planeta
     en ese signo. Para Urano, Neptuno y Plutón aclara que el signo describe a una generación;
   - *la casa*: el tema de la casa y la lectura del planeta ahí (el Nodo norte incluye su eje con el nodo sur;
-    Ascendente y Medio Cielo no llevan casa);
+    Ascendente y Medio Cielo no llevan casa ni aspectos);
   - *los aspectos*: cada uno con orbe y fase, qué relaciona ese par de cuerpos y cómo se comporta ese tipo de aspecto.
-    Se respeta el filtro de orbe (1° / 3° / todos) y hay un botón para ver también los de orbe mayor. Tocando el
+    Se respeta el filtro de orbe (hasta 1° / hasta 3° / todos, que es como arranca: los orbes de la tabla) y hay un botón para ver también los de orbe mayor. Tocando el
     otro planeta se salta a su lectura, y la flecha de la esquina vuelve;
   - *retrogradación*, con una aclaración en Urano, Neptuno y Plutón, donde es un estado muy frecuente.
   En **tránsitos** y **sinastría** el planeta del anillo exterior se lee igual (signo, casa de la carta de adentro y
   aspectos a esa carta) y el de adentro agrega los aspectos que recibe del anillo exterior.
-- **Lectura de un aspecto**: tocá un aspecto en la lista de Aspectos, en el Cuadro o en la cuadrícula (natal, tránsitos
+- **Lectura de un aspecto** *(apagada a pedido; el código sigue)*: tocá un aspecto en la lista de Aspectos, en el Cuadro o en la cuadrícula (natal, tránsitos
   y sinastría; con el teclado, Enter o espacio sobre la celda o la fila) y se abre una ventana. La cabecera lleva los
   dos planetas con el símbolo del aspecto, su nombre, el orbe y si es aplicativo o separativo. Debajo:
   - *Los dos puntos*: dónde está cada uno (signo, casa y, en tránsitos y sinastría, de quién es: «tránsito», «natal» o el
@@ -213,7 +243,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *Qué une a este par*: el tema que relaciona a esos dos cuerpos (los mismos textos de `interp-aspects.js`);
   - *Movimiento*: si alguno de los dos está retrógrado.
   Cada planeta de la ventana es un botón: cierra el aspecto y abre la lectura de ese planeta. Mientras la ventana está
-  abierta, la rueda deja resaltada la línea. El orbe sobre las líneas es un dato, así que también se ve en «Solo datos».
+  abierta, la rueda deja resaltada la línea. El orbe sobre las líneas es un dato, así que se ve igual con las lecturas apagadas.
   Las lecturas son generales y simbólicas, no calculadas para la persona; al pie de la ventana se aclara que describen
   tendencias y no causas ni predicciones. Los textos están en `static/interp-signs.js`, `interp-houses.js` e
   `interp-aspects.js`, uno por línea, para editarlos a gusto.
@@ -224,7 +254,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     cambia en el cumpleaños; el mes, un signo por mes calendario desde el cumpleaños; el día, un signo por día
     desde el aniversario del mes. Se calcula en el navegador, no hace falta pedir nada.
   - *Destacados*: los **tránsitos lentos (Júpiter a Plutón)** que están en aspecto cerrado con tu Sol, Luna,
-    Ascendente, Medio Cielo o planetas hasta Saturno. Orbe de hasta 3° (2° en trígonos y sextiles); «punto máximo»
+    o planetas hasta Saturno. Orbe de hasta 3° (2° en trígonos y sextiles); «punto máximo»
     es a menos de 1° del exacto. Cada tarjeta dice de qué se trata (título y texto del par de planetas), hasta cuándo
     dura, desde cuándo está activo y las fechas exactas (tachadas las pasadas, resaltada la próxima, con «R» si el
     planeta está retrógrado). Muestra los 12 más importantes. Tocar una tarjeta abre la lectura del planeta en tránsito.
@@ -239,13 +269,13 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   el momento de a 1 hora, día, semana, mes o año. Tres tablas: dónde está cada planeta y qué casa natal
   recorre; aspectos del tránsito a la carta natal con orbe y fase (aplicativo / separativo); y un
   **calendario** de aspectos exactos con fecha y hora, para 3, 6, 12 o 24 meses desde la fecha que quieras
-  (Júpiter–Plutón, más Marte, o del Sol a Plutón). El calendario marca los retrógrados y numera las
+  (Júpiter–Plutón, más Marte, o del Sol a Plutón), con los mismos ocho aspectos de arriba y sin el Ascendente ni el Medio Cielo. El calendario marca los retrógrados y numera las
   pasadas (1ª de 3). Tocando una fila, la rueda salta a ese instante exacto.
 - **Sinastría**: pestaña «Sinastría» y elegís otra carta guardada en «Comparar con». Adentro la carta
-  abierta con sus casas, afuera la otra. Aspectos cruzados (incluyen Ascendente y Medio Cielo de ambas),
+  abierta con sus casas, afuera la otra. Aspectos cruzados entre los planetas de ambas (sin Ascendente ni Medio Cielo),
   un cuadro de aspectos (filas = una carta, columnas = la otra) y la superposición de casas: en qué
   casa de cada una cae cada planeta de la otra. Al ser dos fechas de nacimiento, no se calcula fase.
-- En las dos vistas el filtro de orbe (1° / 3° / todos) también decide qué líneas se dibujan en la rueda.
+- En las dos vistas el filtro de orbe (hasta 1° / hasta 3° / todos) también decide qué líneas se dibujan en la rueda.
 - **Cartas guardadas**: guardá todas las que quieras con nombre. En el menú de la izquierda hay un
   selector que muestra la carta abierta (con su fecha); al tocarlo se despliega la lista, flotando sobre los
   botones, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
@@ -268,12 +298,26 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 Los minutos de arco se **truncan** (no se redondean), igual que iPhemeris y la notación sexagesimal
 habitual: 3°37′48″ se muestra como 3°37′. Plutón se dibuja con la forma de órbita (⯓).
 
-`verificar.py` compara el motor con resultados ya verificados: una carta natal conocida (13 cuerpos, signo,
+`verificar.py` compara el motor con resultados ya verificados: una carta natal conocida (10 planetas más Ascendente y Medio Cielo —el nodo, solo si `SHOW_NODE` está en `True`—, con signo,
 grado, minuto y casa), dos sinastrías de los documentos del proyecto (aspectos, orbes
-y casas cruzadas) y la gran conjunción Júpiter–Saturno del 21/12/2020. Trae fechas de nacimiento reales, por
+y casas cruzadas; los aspectos al Ascendente y al Medio Cielo de los documentos ya no se calculan) y la gran conjunción Júpiter–Saturno del 21/12/2020. Trae fechas de nacimiento reales, por
 eso no se sube al repositorio (ver `.gitignore`). Los momentos exactos del
 calendario se afinan por bisección (precisión de un segundo) y se probaron contra un barrido por fuerza
 bruta: mismos eventos, orbe menor a 0,001° en cada uno.
+
+## Cosas apagadas a pedido (y cómo volver a ponerlas)
+
+Dos cosas se sacaron sin borrar el código; las dos se vuelven a poner con una bandera:
+
+- **Nodo lunar**: en `astro.py`, `SHOW_NODE = False`. Con `True` el cálculo vuelve a traerlo (Nodo norte, con su orbe de la
+  última fila de la tabla, aspectos, casa, etc.). En `static/index.html`, sacar `hidden` del campo «Nodo lunar» de
+  Configuración (el que tiene el comentario) para elegir entre verdadero y medio.
+- **Lecturas e interpretación** (ventanas de planeta y de aspecto, temas de casas, textos de tránsitos, poema de la Luna,
+  pistas de «tocá un planeta…», y la opción *Interpretación* de Configuración): en `static/settings.js`,
+  `export const INTERP_ENABLED = false` y, en la cabecera de `static/index.html`, `var INTERP_ENABLED = false`. Para volver
+  a ponerlas: las dos en `true` y sacar `hidden` del título, el selector y la aclaración de *Interpretación* en
+  Configuración (el comentario ahí lo recuerda). Con eso vuelve el selector «Con lecturas / Solo datos» y arranca con
+  lecturas. Se probó así: con las banderas en `true` pasan las pruebas de las ventanas de aspectos y de planetas.
 
 ## Dónde se guardan las cartas
 
@@ -363,7 +407,7 @@ static/           interfaz
   wheel.js                          dibujo de la rueda
   layout.js                         planetas dentro de su casa; separación del anillo exterior
   astro-data.js                     nombres, aspectos, formato de posiciones, círculos de color de cada cuerpo
-  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños (se guarda y se aplica)
+  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños, tipos de aspecto (se guarda y se aplica)
   print.js                          el cuadro de «Imprimir»: qué va en la hoja (la hoja misma la arma el @media print de style.css)
   summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
   planet-dialog.js                  ventana de lectura que se abre al tocar un planeta
@@ -405,11 +449,11 @@ lista carpetas, y manda `X-Frame-Options`, `nosniff`, `no-referrer` y `noindex`.
 - Lista de lugares incluida: Argentina (capitales provinciales y ciudades grandes) y ~45 ciudades
   del mundo. Para otro lugar, escribí latitud y longitud.
 - Efemérides Moshier: no incluye Quirón ni asteroides (requieren los archivos `.se1`).
-- Tránsitos: los planetas en tránsito son Sol a Plutón y el nodo; el calendario y «Próximamente» dejan afuera
+- Tránsitos: los planetas en tránsito son Sol a Plutón (el nodo está apagado); el calendario y «Próximamente» dejan afuera
   la Luna (cambia de aspecto y de signo cada pocas horas). Los destacados son solo de Júpiter a Plutón.
 - Luna: de 1800 a 2400, con las efemérides Moshier (la hora del cambio de signo y de las fases es al minuto; otro
   sitio puede diferir en un minuto según cómo redondee). Signos tropicales. La fase de cada día es la del mediodía
   y el signo mostrado es el del final del día; la hora indica cuándo entra en él.
 - Profecciones: signos enteros y regentes tradicionales; el nacido un 29/2 cumple el 28/2 en años comunes. No hay progresiones, retornos ni revoluciones solares todavía.
 - Sinastría: aspectos y casas cruzadas; falta la carta compuesta.
-- El calendario muestra como máximo 800 aspectos; con «Todos» y 24 meses se llega a ese tope.
+- El calendario muestra como máximo 800 aspectos; con «Todos» y 24 meses se llega a ese tope (con las semicuadraturas y sesquicuadraturas se llega antes que antes).

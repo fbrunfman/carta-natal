@@ -47,6 +47,8 @@ export const ASPECT = {
   trine: { name: "Trígono", glyph: "△" + VS, cls: "soft" },
   square: { name: "Cuadratura", glyph: "□" + VS, cls: "hard" },
   sextile: { name: "Sextil", glyph: "⚹" + VS, cls: "soft" },
+  semisquare: { name: "Semicuadratura", glyph: "∠" + VS, cls: "minor" },
+  sesquiquadrate: { name: "Sesquicuadratura", glyph: "⚼" + VS, cls: "minor" },
   quincunx: { name: "Quincuncio", glyph: "⚻" + VS, cls: "minor" },
 };
 

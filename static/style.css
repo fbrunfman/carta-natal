@@ -315,6 +315,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .cusp-in.axis { stroke: var(--ink); stroke-width: 1.7; }
 .wheel .hnum { font: calc(11px * var(--fw)) var(--sans); fill: var(--ink-2); text-anchor: middle; font-variant-numeric: tabular-nums; }
 .wheel .axis-label { font: 600 calc(11.5px * var(--fw)) var(--sans); }
+.wheel .cusplbl { font: 500 calc(9.5px * var(--fw)) var(--sans); fill: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 .wheel .asp { stroke-linecap: round; fill: none; opacity: var(--o, .7); transition: opacity .12s; }
 .wheel .asp.t1 { stroke-width: 1.8; --o: .95; }
@@ -322,8 +323,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .asp.t3 { stroke-width: .8; --o: .42; }
 .wheel .asp-opposition, .wheel .asp-square { stroke: var(--hard); }
 .wheel .asp-trine, .wheel .asp-sextile { stroke: var(--soft); }
-.wheel .asp-quincunx { stroke: var(--minor); stroke-dasharray: 5 4; }
+.wheel .asp-quincunx, .wheel .asp-semisquare, .wheel .asp-sesquiquadrate { stroke: var(--minor); stroke-dasharray: 5 4; }
 .wheel .adot { fill: var(--ink); }
+/* conjunción: un circulito rojo entre los dos cuerpos (no lleva raya) */
+.wheel .asp.conj { fill: var(--hard); stroke: var(--field); stroke-width: 1.4; --o: 1; }
+.wheel.has-focus .asp.conj.on { stroke-width: 1.4; }
+.wheel .orb-neutral rect { stroke: var(--hard); }
 /* el orbe de cada línea de aspecto resaltada (al pasar por un planeta o por un aspecto del cuadro) */
 .wheel .orbs { pointer-events: none; }
 .wheel .orb rect { fill: var(--field); stroke: var(--ink-2); stroke-width: 1.1; }
@@ -365,6 +370,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel.bi .pl:not(.out) .rx { font-size: calc(10px * var(--fw)); }
 .wheel.bi .hnum { font-size: calc(13px * var(--fw)); }
 .wheel.bi .axis-label { font-size: calc(14px * var(--fw)); }
+.wheel.bi .cusplbl { font-size: calc(11px * var(--fw)); }
 
 /* tinte por elemento en la banda de signos */
 :root[data-tint="on"] .wheel:not(.classic) .sg-fire { fill: #653C4B; }
@@ -621,6 +627,14 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .wheel .axis-label.pick:focus-visible { fill: var(--focus); text-decoration: underline; }
 #panel-pos tbody tr[data-id], #panel-tpos tbody tr[data-id], #panel-over tbody tr[data-id], #panel-elem .chip[data-id] { cursor: pointer; }
 /* con lecturas, cada aspecto de la lista, el cuadro y la cuadrícula se puede tocar (abre su explicación) */
+/* Configuración: un botón por tipo de aspecto (encendido: se muestra) */
+.asp-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.asp-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--ink-2); border-radius: 4px; background: var(--field); color: var(--ink); font-size: calc(13px * var(--fs)); font-weight: 600; cursor: pointer; }
+.asp-toggle .a-ic { font-family: var(--glyph); font-size: 1.15em; min-width: 1.1em; text-align: center; }
+.asp-toggle:hover { background: var(--hover); }
+.asp-toggle[aria-pressed="false"] { border-color: var(--line-strong); background: transparent; color: var(--ink-2); font-weight: 500; text-decoration: line-through; }
+.asp-toggle[aria-pressed="false"] .a-ic { opacity: .4; }
+.asp-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .asp-open { cursor: pointer; }
 .asp-open:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 4px; }
 
@@ -1207,5 +1221,9 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .quad:last-child { border-right: 0 !important; }
   .quad h3 { margin-bottom: 6pt; font-size: 10pt; }
   .quad ul { gap: 4pt; }
-  #panel-asp table { max-width: 16cm; }
+  /* aspectos: con los orbes de la tabla son muchos; en dos columnas entran en media hoja */
+  #panel-asp #aspTable { column-count: 2; column-gap: 0.9cm; }
+  #panel-asp table { max-width: none; font-size: 8.5pt; }
+  #panel-asp th { padding: 3pt 3pt 2pt; }
+  #panel-asp td { padding: 2pt 3pt; }
 }

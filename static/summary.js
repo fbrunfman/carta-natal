@@ -125,11 +125,11 @@ function featuredCard(it, interp) {
 
 export function featuredHTML(data, interp = true) {
   if (!data.items.length) {
-    return `<p class="muted pad">Ningún planeta lento (de Júpiter a Plutón) forma un aspecto cerrado con tu Sol, tu Luna, tus ángulos o tus planetas hasta Saturno en este momento.</p>`;
+    return `<p class="muted pad">Ningún planeta lento (de Júpiter a Plutón) forma un aspecto cerrado con tu Sol, tu Luna o tus planetas hasta Saturno en este momento.</p>`;
   }
   const more = data.total > data.items.length ? ` Se muestran los ${data.items.length} más importantes de ${data.total}.` : "";
   return data.items.map((it) => featuredCard(it, interp)).join("") +
-    `<p class="fine tight">Planetas lentos (de Júpiter a Plutón) con orbe de hasta 3° (2° en trígonos y sextiles) a tu Sol, Luna, Ascendente, Medio Cielo y planetas hasta Saturno. ` +
+    `<p class="fine tight">Planetas lentos (de Júpiter a Plutón) con orbe de hasta 3° (2° en trígonos y sextiles) a tu Sol, Luna y planetas hasta Saturno. ` +
     `«Hasta» es cuando sale de ese orbe por última vez, contando las retrogradaciones; «punto máximo», a menos de 1° del exacto.${more}</p>`;
 }
 

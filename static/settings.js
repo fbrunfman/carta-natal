@@ -2,7 +2,13 @@
 // elemento y modo «solo datos» (sin interpretación). Se guarda en el navegador (localStorage) y se aplica como atributos y variables CSS en <html>.
 // El mismo código de aplicar() está resumido en el <script> del <head> de index.html para que no haya parpadeo.
 
+import { ASPECT } from "./astro-data.js";
+
 export const KEY = "carta:cfg";
+// Lecturas, explicaciones y análisis de la carta: apagados a pedido. Con false la app queda siempre en «solo datos» y la
+// opción de Configuración está oculta. Para volver a ponerlos: true acá, y también en el <script> del <head> de index.html
+// y sacar el `hidden` de la sección «Interpretación» de Configuración.
+export const INTERP_ENABLED = false;
 export const VERSION = 2;       // las configuraciones guardadas llevan `v`; sin `v` son de cuando los valores de fábrica eran otros
 
 export const DEFAULTS = Object.freeze({
@@ -11,7 +17,8 @@ export const DEFAULTS = Object.freeze({
   font: "rounded",   // ver FONTS
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
-  interp: true,      // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
+  aspOff: [],        // tipos de aspecto apagados (claves de ASPECT: "square", "sextile"…); [] = se muestran todos
+  interp: INTERP_ENABLED,   // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
 });
 
 export const FONTS = {
@@ -45,7 +52,8 @@ export function load() {
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     fs: clamp(raw.fs ?? DEFAULTS.fs, LIMITS.fs, DEFAULTS.fs),
     wheel: clamp(raw.wheel ?? DEFAULTS.wheel, LIMITS.wheel, DEFAULTS.wheel),
-    interp: raw.interp !== false,
+    aspOff: Array.isArray(raw.aspOff) ? [...new Set(raw.aspOff.filter((t) => Object.hasOwn(ASPECT, t)))] : [],
+    interp: INTERP_ENABLED && raw.interp !== false,
   };
 }
 
@@ -80,7 +88,15 @@ export function initSettings(onChange) {
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
     big: $("#cfgBig"), reset: $("#cfgReset"),
     interp: [...document.querySelectorAll("#cfgInterp button")],
+    asp: $("#cfgAsp"),
   };
+  // un botón por tipo de aspecto: encendido se muestra, apagado se oculta en la rueda, las listas, el cuadro y el calendario
+  el.asp.replaceChildren(...Object.entries(ASPECT).map(([type, A]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "asp-toggle"; b.dataset.asp = type;
+    b.innerHTML = `<span class="a-ic ${A.cls}" aria-hidden="true">${A.glyph}</span>${A.name}`;
+    return b;
+  }));
 
   el.font.replaceChildren(...Object.entries(FONTS).map(([v, label]) =>
     Object.assign(document.createElement("option"), { value: v, textContent: label })));
@@ -95,6 +111,7 @@ export function initSettings(onChange) {
     el.wheel.value = Math.round(cfg.wheel * 100); el.wheelV.textContent = pct(cfg.wheel);
     el.big.hidden = !(cfg.wheel > 1);
     for (const b of el.interp) b.setAttribute("aria-pressed", (b.dataset.interp === "on") === cfg.interp);
+    for (const b of el.asp.children) b.setAttribute("aria-pressed", !cfg.aspOff.includes(b.dataset.asp));
   }
   function change(patch, what) {
     cfg = { ...cfg, ...patch };
@@ -110,6 +127,11 @@ export function initSettings(onChange) {
   for (const b of el.interp) b.addEventListener("click", () => {
     const on = b.dataset.interp === "on";
     if (on !== cfg.interp) change({ interp: on }, "interp");
+  });
+  el.asp.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-asp]")?.dataset.asp;
+    if (!t) return;
+    change({ aspOff: cfg.aspOff.includes(t) ? cfg.aspOff.filter((x) => x !== t) : [...cfg.aspOff, t] }, "asp");
   });
   el.tint.addEventListener("change", () => change({ tint: el.tint.checked }, "tint"));
   el.font.addEventListener("change", () => change({ font: el.font.value }, "font"));

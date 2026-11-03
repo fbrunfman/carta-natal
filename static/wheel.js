@@ -1,5 +1,5 @@
 // Rueda natal en SVG. Ascendente a la izquierda, casas en sentido antihorario.
-import { SIGNS, ELEMENT, BODY, ASPECT, split, fmtOrb, discWheel, look, bodyText, signText } from "./astro-data.js";
+import { SIGNS, ELEMENT, BODY, ASPECT, split, fmtPos, fmtOrb, discWheel, look, bodyText, signText } from "./astro-data.js";
 import { BODY_SVG, SIGN_SVG, glyphAt } from "./glyphs.js";
 import { placePlanets, spreadRing } from "./layout.js";
 
@@ -13,7 +13,7 @@ const SIZE = { disc: 24, sign: 14.5, band: 30 };       // diámetro del círculo
 
 // Rueda doble: un anillo más allá del zodíaco para tránsitos o la otra carta.
 // La pila va igual que la interior (símbolo hacia afuera, minutos hacia adentro) pero más compacta.
-const OUT = { min: 324, sign: 339, deg: 354, glyph: 377, edge: 393, label: 398, view: 421, tick: 7 };
+const OUT = { min: 324, sign: 339, deg: 354, glyph: 377, edge: 393, label: 398, view: 440, tick: 7 };
 const SIZE_OUT = { disc: 25, sign: 15.5, band: 33 };
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -54,7 +54,7 @@ export function renderWheel(svg, chart, hooks = {}) {
   const outer = hooks.outer || null;     // { bodies, angles?, aspects (a: interior, b: exterior), short, houseWord }
   // con lecturas, tocar un planeta abre su ventana; en «solo datos» (sin onPick) son solo imágenes con foco
   const act = hooks.onPick ? ' role="button" aria-haspopup="dialog"' : ' role="img"';
-  const V = outer ? OUT.view : 345;
+  const V = outer ? OUT.view : 360;       // más allá del zodíaco quedan los rótulos de los ejes y los grados de las cúspides
   svg.setAttribute("viewBox", `${-V} ${-V} ${2 * V} ${2 * V}`);
   svg.classList.toggle("bi", !!outer);
   svg.classList.toggle("classic", look.classic);
@@ -116,27 +116,68 @@ export function renderWheel(svg, chart, hooks = {}) {
     s += `<text class="hnum" x="${hx}" y="${hy}" dy=".35em">${i + 1}</text>`;
   }
 
-  // Etiquetas de ángulos fuera del anillo
+  // Fuera del anillo: los rótulos de los ejes (Asc, MC, Dsc, IC) y los grados y minutos de la cúspide de cada casa.
+  // Si una cúspide cae justo en un eje (lo normal: la cúspide 1 es el Ascendente), su grado va debajo del rótulo;
+  // si cae cerca de uno, se corre un poco para no pisarlo.
   const mcPhi = phi(chart.angles.mc);
-  for (const [text, a] of [["Asc", 0], ["MC", mcPhi], ["Dsc", 180], ["IC", norm360(mcPhi + 180)]]) {
-    const [lx, ly] = pt(outer ? OUT.label : R.label, a);
+  const axes = [["Asc", 0], ["MC", mcPhi], ["Dsc", 180], ["IC", norm360(mcPhi + 180)]];
+  const rl = outer ? OUT.label : R.label;
+  const gap = (x, y) => ((x - y + 540) % 360) - 180;                 // diferencia con signo, de -180 a 180
+  const axisDeg = {};                                                // índice de eje → texto del grado
+  const loose = [];                                                  // cúspides que no coinciden con ningún eje
+  cusps.forEach((c, i) => {
+    const a = phi(c);
+    const k = axes.findIndex(([, ang]) => Math.abs(gap(a, ang)) < 0.5);
+    if (k >= 0 && !(k in axisDeg)) axisDeg[k] = fmtPos(c);
+    else loose.push({ i, a, text: fmtPos(c) });
+  });
+  for (const l of loose) {
+    for (const [, ang] of axes) {
+      const d = gap(l.a, ang);
+      if (Math.abs(d) < 6.5) l.a = ang + (d < 0 ? -6.5 : 6.5);      // lejos del rótulo del eje
+    }
+    const [lx, ly] = pt(rl, l.a);
+    const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
+    s += `<text class="cusplbl" data-cusp="${l.i + 1}" x="${lx}" y="${ly}" dy=".35em" text-anchor="${anchor}">${l.text}</text>`;
+  }
+  axes.forEach(([text, a], k) => {
+    const [lx, ly] = pt(rl, a);
     const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
     // Asc y MC se pueden tocar para ver su lectura; Dsc e IC son solo rótulos
     const pick = (text === "Asc" || text === "MC") && !!hooks.onPick;
-    s += `<text class="axis-label${pick ? " pick" : ""}" x="${lx}" y="${ly}" dy=".35em" text-anchor="${anchor}"` +
-      `${pick ? ` data-pick="${text.toLowerCase()}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${text === "Asc" ? "Ascendente" : "Medio Cielo"}"` : ""}>${text}</text>`;
-  }
+    const attrs = `class="axis-label${pick ? " pick" : ""}" text-anchor="${anchor}"` +
+      `${pick ? ` data-pick="${text.toLowerCase()}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${text === "Asc" ? "Ascendente" : "Medio Cielo"}"` : ""}`;
+    if (!(k in axisDeg)) {
+      s += `<text ${attrs} x="${lx}" y="${ly}" dy=".35em">${text}</text>`;
+      return;
+    }
+    // el rótulo y, junto a él, el grado de la cúspide: a los costados uno sobre otro; arriba o abajo, el grado del lado
+    // del anillo y el rótulo más afuera
+    const line = (t, x, y, cls = "") => `<tspan${cls ? ` class="${cls}"` : ""} x="${x}" y="${y}" dy=".35em">${t}</tspan>`;
+    const deg = (x, y) => line(axisDeg[k], x, y, "cusplbl").replace("<tspan ", `<tspan data-cusp-axis="${text.toLowerCase()}" `);
+    if (Math.abs(lx) < 12) {
+      const off = ly < 0 ? -12 : 12;
+      s += `<text ${attrs} x="${lx}" y="${ly}">${deg(lx, ly)}${line(text, lx, ly + off)}</text>`;
+    } else {
+      s += `<text ${attrs} x="${lx}" y="${ly}">${line(text, lx, ly - 6)}${deg(lx, ly + 7)}</text>`;
+    }
+  });
 
-  // Aspectos (sin línea para conjunciones)
+  // Aspectos. Las conjunciones no llevan raya: un circulito rojo en el punto medio entre los dos cuerpos.
   let lineSvg = "";
   for (const a of aspects) {
-    if (a.type === "conjunction") continue;
-    const [x1, y1] = pt(R.asp, phi(lonOf(a.a))), [x2, y2] = pt(R.asp, phi(lonOf(a.b)));
+    const p1 = phi(lonOf(a.a)), p2 = phi(lonOf(a.b));
+    if (a.type === "conjunction") {
+      const [cx, cy] = pt(R.asp, p1 + (((p2 - p1 + 540) % 360) - 180) / 2);
+      lineSvg += `<circle class="asp asp-conjunction conj" data-a="${a.a}" data-b="${a.b}" data-orb="${a.orb}" data-t="conjunction" cx="${cx}" cy="${cy}" r="4.6"><title>${nameOf(a.a)} conjunción ${nameOf(a.b)}</title></circle>`;
+      continue;
+    }
+    const [x1, y1] = pt(R.asp, p1), [x2, y2] = pt(R.asp, p2);
     const tier = a.orb < 1 ? "t1" : a.orb < 3 ? "t2" : "t3";
     lineSvg += `<line class="asp asp-${a.type} ${tier}" data-a="${a.a}" data-b="${a.b}" data-orb="${a.orb}" data-t="${a.type}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><title>${nameOf(a.a)} ${ASPECT[a.type].name.toLowerCase()} ${nameOf(a.b)}</title></line>`;
   }
   let dotSvg = "";
-  for (const id of [...chart.bodies.map((b) => b.id), "asc", "mc"]) {
+  for (const id of chart.bodies.map((b) => b.id)) {
     const [x, y] = pt(R.asp, phi(lonIn(id)));
     dotSvg += `<circle class="adot" cx="${x}" cy="${y}" r="2"/>`;
   }
@@ -217,7 +258,7 @@ export function renderWheel(svg, chart, hooks = {}) {
   const lines = [...svg.querySelectorAll(".asp")];
 
   // Orbe sobre cada línea resaltada: una etiqueta chica en el medio de la raya (o corrida a lo largo de ella si ahí
-  // taparía a otra etiqueta). Las conjunciones no tienen raya, así que no llevan etiqueta.
+  // taparía a otra etiqueta). En las conjunciones, que no tienen raya, va al lado del circulito rojo.
   const orbLayer = svg.querySelector(".orbs");
   const SVGNS = "http://www.w3.org/2000/svg";
   const clearOrbs = () => { orbLayer.textContent = ""; };
@@ -225,12 +266,15 @@ export function renderWheel(svg, chart, hooks = {}) {
     clearOrbs();
     const taken = [];
     const hit = (r) => taken.some((o) => r.x < o.x + o.w + 2 && r.x + r.w + 2 > o.x && r.y < o.y + o.h + 2 && r.y + r.h + 2 > o.y);
-    const len = (l) => Math.hypot(l.getAttribute("x2") - l.getAttribute("x1"), l.getAttribute("y2") - l.getAttribute("y1"));
+    const conj = (l) => l.dataset.t === "conjunction";
+    const len = (l) => (conj(l) ? 0 : Math.hypot(l.getAttribute("x2") - l.getAttribute("x1"), l.getAttribute("y2") - l.getAttribute("y1")));
     // las rayas cortas tienen menos lugar donde poner la etiqueta: van primero, las largas se acomodan después
     for (const l of lines.filter((x) => x.classList.contains("on")).sort((p, q) => len(p) - len(q))) {
       const orb = Number(l.dataset.orb);
       if (!Number.isFinite(orb)) continue;
-      const x1 = +l.getAttribute("x1"), y1 = +l.getAttribute("y1"), x2 = +l.getAttribute("x2"), y2 = +l.getAttribute("y2");
+      const isConj = conj(l);
+      const x1 = +l.getAttribute(isConj ? "cx" : "x1"), y1 = +l.getAttribute(isConj ? "cy" : "y1");
+      const x2 = isConj ? x1 : +l.getAttribute("x2"), y2 = isConj ? y1 : +l.getAttribute("y2");
       const g = document.createElementNS(SVGNS, "g");
       g.setAttribute("class", `orb orb-${ASPECT[l.dataset.t]?.cls || "neutral"}`);
       g.dataset.a = l.dataset.a; g.dataset.b = l.dataset.b;
@@ -244,8 +288,11 @@ export function renderWheel(svg, chart, hooks = {}) {
       const w = bb.width + 9, h = bb.height + 3;
       // se prueba el medio y después se corre a lo largo de la raya; si en ningún lugar entra sin tapar a otra, queda donde menos tapa
       let spot = null, least = Infinity;
-      for (const t of [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8, 0.14, 0.86]) {
-        const cx = x1 + (x2 - x1) * t, cy = y1 + (y2 - y1) * t;
+      const sx = w / 2 + 9;
+      const tries = isConj ? [[0, -15], [0, 15], [sx, 0], [-sx, 0], [0, -29], [0, 29], [sx, -15], [-sx, 15], [sx, 15], [-sx, -15], [0, -43], [0, 43], [sx, -29], [-sx, 29]]
+        : [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8, 0.14, 0.86];
+      for (const t of tries) {
+        const cx = isConj ? x1 + t[0] : x1 + (x2 - x1) * t, cy = isConj ? y1 + t[1] : y1 + (y2 - y1) * t;
         const r = { x: cx - w / 2, y: cy - h / 2, w, h };
         const cover = taken.reduce((sum, o) => sum + Math.max(0, Math.min(r.x + r.w, o.x + o.w) - Math.max(r.x, o.x)) * Math.max(0, Math.min(r.y + r.h, o.y + o.h) - Math.max(r.y, o.y)), 0);
         if (cover < least) { least = cover; spot = { cx, cy, r }; }

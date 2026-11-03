@@ -67,7 +67,7 @@ export function initPlanetDialog(getContext, onClose) {
         `</section>`;
     }
     // -- aspectos
-    html += aspectSection(s.aspects.title, s.aspects.items, s.aspects.hidden, true);
+    if (!s.angle) html += aspectSection(s.aspects.title, s.aspects.items, s.aspects.hidden, true);
     if (s.cross) html += aspectSection(s.cross.title, s.cross.items, s.cross.hidden, false);
     const hidden = s.aspects.hidden + (s.cross ? s.cross.hidden : 0);
     if (hidden) {

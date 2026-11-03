@@ -29,7 +29,8 @@
         if (c.tint === false && c.gfx !== "classic") delete c.tint;
       }
       if (c.tint !== false) d.dataset.tint = "on";
-      if (c.interp === false) d.dataset.nointerp = "";
+      var INTERP_ENABLED = false;            // lecturas apagadas a pedido; mismo valor que INTERP_ENABLED en settings.js
+      if (!INTERP_ENABLED || c.interp === false) d.dataset.nointerp = "";
       var f = typeof c.font === "string" && /^[a-z]+$/.test(c.font) ? c.font : "rounded";
       if (f !== "system") d.dataset.font = f;
       if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
@@ -179,7 +180,8 @@
               <option value="W">Signos enteros</option>
             </select>
           </label>
-          <label class="field">
+          <!-- Nodo lunar: oculto a pedido (el nodo no se calcula; ver SHOW_NODE en astro.py). Para volver a ponerlo, sacar `hidden`. -->
+          <label class="field" hidden>
             <span>Nodo lunar</span>
             <select name="node" form="form">
               <option value="true">Verdadero</option>
@@ -187,7 +189,11 @@
             </select>
           </label>
         </div>
-        <p class="fine" id="cfgCalcNote">Casas y nodo valen para todas las cartas y se aplican al instante.</p>
+        <p class="fine" id="cfgCalcNote">El sistema de casas vale para todas las cartas y se aplica al instante.</p>
+
+        <h3 class="sub">Aspectos</h3>
+        <div class="asp-toggles" id="cfgAsp" role="group" aria-label="Aspectos que se muestran"></div>
+        <p class="fine">Tocá un aspecto para sacarlo o volver a ponerlo. Los apagados no se ven en la rueda, las listas, el cuadro ni el calendario.</p>
 
         <h3 class="sub">Menú lateral</h3>
         <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
@@ -196,12 +202,14 @@
         </div>
         <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece encima al pasar el mouse por el borde izquierdo o al tocar el botón de la esquina. Con un clic en ese botón queda fijo. En el celular arranca oculto.</p>
 
-        <h3 class="sub">Interpretación</h3>
-        <div class="seg" id="cfgInterp" role="group" aria-label="Interpretación">
+        <!-- Interpretación: oculta a pedido (la app queda siempre en «solo datos»; ver INTERP_ENABLED en settings.js).
+             Para volver a ponerla, sacar `hidden` de estos tres elementos y poner INTERP_ENABLED = true (acá abajo y en settings.js). -->
+        <h3 class="sub" hidden>Interpretación</h3>
+        <div class="seg" id="cfgInterp" role="group" aria-label="Interpretación" hidden>
           <button type="button" data-interp="on" aria-pressed="true">Con lecturas</button>
           <button type="button" data-interp="off" aria-pressed="false">Solo datos</button>
         </div>
-        <p class="fine">Solo datos: se ocultan todas las lecturas (la ventana al tocar un planeta, los temas de las casas y las descripciones de los tránsitos). Quedan posiciones, aspectos, orbes, fechas y horas.</p>
+        <p class="fine" hidden>Solo datos: se ocultan todas las lecturas (la ventana al tocar un planeta, los temas de las casas y las descripciones de los tránsitos). Quedan posiciones, aspectos, orbes, fechas y horas.</p>
 
         <h3 class="sub">Estilo de los gráficos</h3>
         <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
@@ -379,7 +387,7 @@
         <figcaption class="legend">
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-soft"/></svg>Trígono y sextil</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
-          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio y aspectos menores</span>
           <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
                   <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos; al pasar el mouse se ve el orbe de cada aspecto.</span>
         </figcaption>
@@ -412,8 +420,8 @@
         <div id="panel-asp" role="tabpanel" aria-labelledby="tab-asp" hidden>
           <div class="seg orb" role="group" aria-label="Orbe máximo">
             <button type="button" data-orb="1">Hasta 1°</button>
-            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
-            <button type="button" data-orb="99">Todos</button>
+            <button type="button" data-orb="3">Hasta 3°</button>
+            <button type="button" data-orb="99" aria-pressed="true">Todos</button>
           </div>
           <p class="count" id="aspCount"></p>
           <div id="aspTable"></div>
@@ -421,8 +429,8 @@
         <div id="panel-stair" role="tabpanel" aria-labelledby="tab-stair" hidden>
           <div class="seg orb" role="group" aria-label="Orbe máximo">
             <button type="button" data-orb="1">Hasta 1°</button>
-            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
-            <button type="button" data-orb="99">Todos</button>
+            <button type="button" data-orb="3">Hasta 3°</button>
+            <button type="button" data-orb="99" aria-pressed="true">Todos</button>
           </div>
           <div id="stairTable"></div>
         </div>
@@ -452,8 +460,8 @@
         <div id="panel-grid" role="tabpanel" aria-labelledby="tab-grid" hidden>
           <div class="seg orb" role="group" aria-label="Orbe máximo">
             <button type="button" data-orb="1">Hasta 1°</button>
-            <button type="button" data-orb="3" aria-pressed="true">Hasta 3°</button>
-            <button type="button" data-orb="99">Todos</button>
+            <button type="button" data-orb="3">Hasta 3°</button>
+            <button type="button" data-orb="99" aria-pressed="true">Todos</button>
           </div>
           <div id="gridTable"></div>
         </div>

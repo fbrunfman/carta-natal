@@ -32,13 +32,15 @@ const BLANK = {
 let PLACES = [];
 let mode = "natal";        // natal | transit | syn
 let birth = null;          // lo que había en el formulario al calcular (los tránsitos y la sinastría parten de acá)
+let aspOff = new Set(loadSettings().aspOff);     // tipos de aspecto apagados en Configuración
+const vis = (list) => (aspOff.size ? list.filter((a) => !aspOff.has(a.type)) : list);
 let interpOn = loadSettings().interp;      // false = «solo datos»: ninguna lectura ni descripción (Configuración)
 let chart = null;          // carta natal mostrada (en sinastría, la carta A)
 let transit = null;        // respuesta de /api/transits
 let syn = null;            // respuesta de /api/synastry
 let partnerId = null;      // carta guardada con la que se compara
 let wheel = null;
-let orbMax = 3;
+let orbMax = 99;
 
 // ---------- formulario ----------------------------------------------------
 function readForm() {
@@ -464,7 +466,7 @@ function header(c) {
     $("#title").textContent = name || "Carta natal";
     $("#sub").textContent =
       `${longDate.format(new Date(y, m - 1, d))}, ${c.input.time} en ${where}. ` +
-      `Casas ${c.houses.system_name}, nodo ${c.node_kind === "mean" ? "medio" : "verdadero"}.`;
+      `Casas ${c.houses.system_name}${c.bodies.some((b) => b.id === "node") ? `, nodo ${c.node_kind === "mean" ? "medio" : "verdadero"}` : ""}.`;
     document.title = name ? `${name} · Carta natal` : "Carta natal";
   }
 }
@@ -474,7 +476,7 @@ function outerRing() {
   if (mode === "transit" && transit) {
     return {
       bodies: transit.bodies,
-      aspects: transit.aspects.filter((a) => a.orb <= orbMax),
+      aspects: vis(transit.aspects).filter((a) => a.orb <= orbMax),
       short: "tránsito", houseWord: "casa natal", label: "los planetas en tránsito",
     };
   }
@@ -484,7 +486,7 @@ function outerRing() {
     return {
       bodies: syn.b.bodies.map((b) => ({ ...b, house: houseIn[b.id] })),
       angles: syn.b.angles,
-      aspects: syn.aspects.filter((a) => a.orb <= orbMax),
+      aspects: vis(syn.aspects).filter((a) => a.orb <= orbMax),
       short: B, houseWord: `casa de ${A}`, label: B,
     };
   }
@@ -493,7 +495,7 @@ function outerRing() {
 
 function drawWheel() {
   const outer = outerRing();
-  wheel = renderWheel($("#wheel"), chart, { outer, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
+  wheel = renderWheel($("#wheel"), { ...chart, aspects: vis(chart.aspects) }, { outer, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
   $("#outKey").hidden = !outer;
   if (outer) $("#outKeyText").textContent = mode === "transit" ? "Tránsitos" : outer.short;
 }
@@ -595,7 +597,7 @@ function renderAspects() {
     $("#aspTable").innerHTML = needPartner;
     return;
   }
-  const all = cross ? cross.aspects : chart.aspects;
+  const all = vis(cross ? cross.aspects : chart.aspects);
   const list = all.filter((a) => a.orb <= orbMax);
   $("#aspCount").textContent = list.length === 1 ? "1 aspecto" : `${list.length} aspectos`;
   if (!list.length) {
@@ -627,7 +629,7 @@ function renderAspects() {
 
 // -- natal: cuadro de aspectos en escalera
 function renderStair() {
-  $("#stairTable").innerHTML = chart ? stairHTML(chart, orbMax) : "";
+  $("#stairTable").innerHTML = chart ? stairHTML({ ...chart, aspects: vis(chart.aspects) }, orbMax) : "";
   armAspects();
 }
 
@@ -642,9 +644,9 @@ function renderGrid() {
   const el = $("#gridTable");
   const cross = mode === "syn" ? syn : mode === "transit" ? transit : null;
   if (!cross) { el.innerHTML = mode === "syn" ? needPartner : ""; return; }
-  const inner = [...chart.bodies.map((b) => b.id), "asc", "mc"];
-  const outer = mode === "syn" ? [...syn.b.bodies.map((b) => b.id), "asc", "mc"] : transit.bodies.map((b) => b.id);
-  const found = new Map(cross.aspects.filter((a) => a.orb <= orbMax).map((a) => [`${a.a}|${a.b}`, a]));
+  const inner = chart.bodies.map((b) => b.id);
+  const outer = (mode === "syn" ? syn.b.bodies : transit.bodies).map((b) => b.id);
+  const found = new Map(vis(cross.aspects).filter((a) => a.orb <= orbMax).map((a) => [`${a.a}|${a.b}`, a]));
   const A = mode === "syn" ? syn.a.input.name || "A" : chart.input.name || "la carta natal";
   const B = mode === "syn" ? syn.b.input.name || "B" : "los tránsitos";
   const owner = mode === "syn" ? (who) => ` de ${esc(who)}` : () => "";
@@ -729,14 +731,15 @@ function renderCalendar() {
   const d = cal.data;
   if (!d) return;
   cal.shown = d;
-  const n = d.events.length;
+  const shown = d.events.map((e, i) => [e, i]).filter(([e]) => !aspOff.has(e.type));     // sin los aspectos apagados (i sigue siendo el de d.events)
+  const n = shown.length;
   $("#calCount").textContent = (n === 1 ? "1 aspecto exacto" : `${n} aspectos exactos`) +
     (d.truncated ? ". Hay más: acortá el período o elegí menos planetas." : "");
   if (!n) { $("#calTable").innerHTML = `<p class="muted pad">No hay aspectos exactos en este período.</p>`; return; }
 
   let html = `<table class="cal"><tbody>`;
   let month = "";
-  d.events.forEach((e, i) => {
+  shown.forEach(([e, i]) => {
     const [dayIso, hm] = e.local.split(" ");
     const [y, m, day] = dayIso.split("-").map(Number);
     const stamp = new Date(Date.UTC(y, m - 1, 1));
@@ -906,10 +909,17 @@ hoverFocus("#panel-tpos", false);
 hoverFocus("#panel-over", false);
 
 // Tocar un planeta (en la rueda, en una tabla o en la cruz de elementos) abre su lectura.
-const reading = initPlanetDialog(() => ({ mode, chart, transit, syn, orbMax }), () => { wheel?.clear(); highlightRows(null); });
+// lo que ven las ventanas de lectura: los datos de la vista sin los aspectos apagados en Configuración
+const readCtx = () => ({
+  mode, orbMax,
+  chart: chart && { ...chart, aspects: vis(chart.aspects) },
+  transit: transit && { ...transit, aspects: vis(transit.aspects) },
+  syn: syn && { ...syn, aspects: vis(syn.aspects) },
+});
+const reading = initPlanetDialog(readCtx, () => { wheel?.clear(); highlightRows(null); });
 function openReading(id) { if (chart && interpOn) reading.open(id); }
 // Tocar un aspecto (en la lista, el cuadro o la cuadrícula) abre la ventana que lo explica; desde ahí se salta a cada planeta.
-const aspectDlg = initAspectDialog(() => ({ mode, chart, transit, syn, orbMax }), (key) => openReading(key), () => { wheel?.clear(); });
+const aspectDlg = initAspectDialog(readCtx, (key) => openReading(key), () => { wheel?.clear(); });
 const aspectCell = (e) => e.target.closest("[data-a][data-b]");
 function openAspect(el) { if (chart && interpOn && el) aspectDlg.open(el.dataset.a, el.dataset.b); }
 // Con lecturas, cada aspecto se puede tocar y alcanzar con el teclado; en «solo datos», no.
@@ -1152,6 +1162,14 @@ setClassic(initSettings((cfg, what) => {
     aspectDlg.close();
     armAspects();
     if (chart) { drawWheel(); renderSummary(); }
+  }
+  aspOff = new Set(cfg.aspOff);
+  if (what === "asp" && chart) {         // un tipo de aspecto prendido o apagado: se rehace todo lo que muestra aspectos
+    renderAspects();
+    renderStair();
+    renderGrid();
+    drawWheel();
+    if (cal.data) renderCalendar();
   }
   if (what === "gfx") {
     setClassic(cfg.gfx === "classic");
@@ -1490,7 +1508,7 @@ function renderHomeTr() {
   sec.hidden = !items.length;                      // sin cartas guardadas no hay con qué calcular
   if (!items.length) return;
   const on = items.filter((it) => homeTr.on.has(it.id));      // al abrir la app no hay ninguna elegida: se eligen a mano
-  $("#homeTrNote").textContent = "Elegí las cartas. Los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto cerrado con el Sol, la Luna, los ángulos o los planetas hasta Saturno de cada una." +
+  $("#homeTrNote").textContent = "Elegí las cartas. Los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto cerrado con el Sol, la Luna o los planetas hasta Saturno de cada una." +
     (isPublic() ? " Al calcular, los datos de nacimiento de las cartas elegidas se envían al servidor solo para eso; no se guardan." : "");
   const pick = $("#homeTrPick");
   pick.replaceChildren(...items.map((it) => {

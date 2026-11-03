@@ -29,6 +29,10 @@ BODIES = [
     ("node", swe.TRUE_NODE),
 ]
 
+# El Nodo norte está sacado a pedido: no se calcula ni se muestra en ningún lado. Para volver a ponerlo, SHOW_NODE = True
+# (y sacar el `hidden` del campo «Nodo lunar» de Configuración en static/index.html).
+SHOW_NODE = False
+
 HOUSE_SYSTEMS = {
     "P": "Placidus",
     "K": "Koch",
@@ -39,15 +43,42 @@ HOUSE_SYSTEMS = {
     "W": "Signos enteros",
 }
 
-# (clave, ángulo, orbe máximo en grados)
+# (clave, ángulo)
 ASPECTS = [
-    ("conjunction", 0, 8.0),
-    ("opposition", 180, 8.0),
-    ("trine", 120, 7.0),
-    ("square", 90, 7.0),
-    ("sextile", 60, 5.0),
-    ("quincunx", 150, 2.0),
+    ("conjunction", 0),
+    ("opposition", 180),
+    ("trine", 120),
+    ("square", 90),
+    ("sextile", 60),
+    ("semisquare", 45),
+    ("sesquiquadrate", 135),
+    ("quincunx", 150),
 ]
+
+# Orbes máximos en grados: tabla por grupo de planetas (filas) y tipo de aspecto (columnas):
+#   0 = conjunción, oposición y cuadratura · 1 = trígono · 2 = sextil · 3 = semicuadratura, sesquicuadratura y quincuncio.
+# Entre dos cuerpos de grupos distintos manda el orbe mayor (Sol con Neptuno: el del Sol).
+# En los trígonos de Mercurio, Venus y Marte (7/6) y de Júpiter y Saturno (6/5) la tabla trae dos valores: se usa el
+# primero, el mayor. Para cambiarlo, tocá solo esos dos números.
+ORB_TABLE = {
+    "luminaries": (10.0, 8.0, 6.0, 2.0),    # Sol y Luna
+    "personal":   (8.0, 7.0, 5.0, 2.0),     # Mercurio, Venus y Marte
+    "social":     (7.0, 6.0, 5.0, 2.0),     # Júpiter y Saturno
+    "outer":      (5.0, 3.0, 3.0, 2.0),     # Urano, Neptuno y Plutón (y el Nodo, que la tabla no trae)
+}
+ORB_GROUP = {
+    "sun": "luminaries", "moon": "luminaries",
+    "mercury": "personal", "venus": "personal", "mars": "personal",
+    "jupiter": "social", "saturn": "social",
+}
+ORB_COLUMN = {"conjunction": 0, "opposition": 0, "square": 0, "trine": 1, "sextile": 2,
+              "semisquare": 3, "sesquiquadrate": 3, "quincunx": 3}
+
+
+def orb_limit(a_id: str, b_id: str, kind: str) -> float:
+    """Orbe máximo del aspecto `kind` entre dos cuerpos: el mayor de los dos."""
+    col = ORB_COLUMN[kind]
+    return max(ORB_TABLE[ORB_GROUP.get(i, "outer")][col] for i in (a_id, b_id))
 
 # swisseph no es seguro entre hilos (estado global): serializamos los cálculos.
 _lock = threading.Lock()
@@ -128,12 +159,13 @@ def _house_of(lon: float, cusps: list[float]) -> int:
 
 
 def _aspect_between(a: dict, b: dict) -> dict | None:
-    """Aspecto entre dos puntos {id, lon, speed|None, angle}, o None. `a` y `b` conservan su orden."""
+    """Aspecto entre dos cuerpos {id, lon, speed|None}, o None. `a` y `b` conservan su orden.
+    Solo entre cuerpos: el Ascendente y el Medio Cielo no forman aspectos."""
     d = _norm180(b["lon"] - a["lon"])
     dist = abs(d)
-    for key, angle, max_orb in ASPECTS:
+    for key, angle in ASPECTS:
         orb = abs(dist - angle)
-        if orb > max_orb:
+        if orb > orb_limit(a["id"], b["id"], key):
             continue
         applying = None
         if a["speed"] is not None and b["speed"] is not None:
@@ -151,10 +183,7 @@ def _aspects(points: list[dict]) -> list[dict]:
     out = []
     for i in range(len(points)):
         for j in range(i + 1, len(points)):
-            a, b = points[i], points[j]
-            if a["angle"] and b["angle"]:
-                continue
-            asp = _aspect_between(a, b)
+            asp = _aspect_between(points[i], points[j])
             if asp:
                 out.append(asp)
     out.sort(key=lambda x: x["orb"])
@@ -167,8 +196,6 @@ def _cross_aspects(inner: list[dict], outer: list[dict]) -> list[dict]:
     out = []
     for a in inner:
         for b in outer:
-            if a["angle"] and b["angle"]:
-                continue
             asp = _aspect_between(a, b)
             if asp:
                 out.append(asp)
@@ -206,9 +233,11 @@ def _julday(utc: datetime) -> float:
 
 
 def _calc_bodies(jd: float, node_kind: str, cusps: list[float] | None = None) -> list[dict]:
-    """Posiciones de los 11 cuerpos en un instante. Llamar con _lock tomado."""
+    """Posiciones de los cuerpos (Sol a Plutón, y el nodo si SHOW_NODE) en un instante. Llamar con _lock tomado."""
     bodies = []
     for bid, code in BODIES:
+        if bid == "node" and not SHOW_NODE:
+            continue
         if bid == "node" and node_kind == "mean":
             code = swe.MEAN_NODE
         xx, _ = swe.calc_ut(jd, code, FLAGS)
@@ -259,11 +288,7 @@ def compute_chart(p: dict) -> dict:
         node_kind = "mean" if p.get("node") == "mean" else "true"
         bodies = _calc_bodies(jd, node_kind, cusps)
 
-    points = [dict(id=b["id"], lon=b["lon"], speed=b["speed"], angle=False) for b in bodies]
-    points += [
-        dict(id="asc", lon=asc, speed=None, angle=True),
-        dict(id="mc", lon=mc, speed=None, angle=True),
-    ]
+    points = [dict(id=b["id"], lon=b["lon"], speed=b["speed"]) for b in bodies]
 
     return {
         "input": {
@@ -294,12 +319,9 @@ def compute_chart(p: dict) -> dict:
 # ======================================================================
 
 def _points_of(chart: dict, speeds: bool) -> list[dict]:
-    """Cuerpos de una carta + Asc y MC como puntos para calcular aspectos.
+    """Cuerpos de una carta como puntos para calcular aspectos (el Asc y el MC no forman aspectos).
     `speeds=False` deja la velocidad en None (sin fase aplicativa/separativa)."""
-    pts = [dict(id=b["id"], lon=b["lon"], speed=b["speed"] if speeds else None, angle=False) for b in chart["bodies"]]
-    pts.append(dict(id="asc", lon=chart["angles"]["asc"], speed=None, angle=True))
-    pts.append(dict(id="mc", lon=chart["angles"]["mc"], speed=None, angle=True))
-    return pts
+    return [dict(id=b["id"], lon=b["lon"], speed=b["speed"] if speeds else None) for b in chart["bodies"]]
 
 
 def compute_transits(natal: dict, at: dict) -> dict:
@@ -315,7 +337,7 @@ def compute_transits(natal: dict, at: dict) -> dict:
         bodies = _calc_bodies(jd, chart["node_kind"], chart["houses"]["cusps"])
 
     natal_pts = [dict(p, speed=0.0) for p in _points_of(chart, speeds=True)]   # puntos natales: quietos
-    transit_pts = [dict(id=b["id"], lon=b["lon"], speed=b["speed"], angle=False) for b in bodies]
+    transit_pts = [dict(id=b["id"], lon=b["lon"], speed=b["speed"]) for b in bodies]
     return {
         "natal": chart,
         "at": {
@@ -400,9 +422,8 @@ def transit_calendar(natal: dict, start: dict, months: int, scope: str = "slow")
     utc1 = _resolve_utc(naive1, {**start, "date": naive1.strftime("%Y-%m-%d")})[0]
 
     targets = [(b["id"], b["lon"]) for b in chart["bodies"]]
-    targets += [("asc", chart["angles"]["asc"]), ("mc", chart["angles"]["mc"])]
     # (clave, ángulo, desplazamientos respecto del punto natal): 0° y 180° tienen un solo punto exacto
-    kinds = [(k, a, (float(a),) if a in (0, 180) else (float(a), -float(a))) for k, a, _ in ASPECTS]
+    kinds = [(k, a, (float(a),) if a in (0, 180) else (float(a), -float(a))) for k, a in ASPECTS]
 
     events = []
     with _lock:
@@ -503,7 +524,7 @@ def _local_str(jd: float, tz) -> str:
 # -- tránsitos destacados: planetas lentos con un aspecto cerrado a un punto personal de la carta
 
 FEATURED_BODIES = ["pluto", "neptune", "uranus", "saturn", "jupiter"]            # del más al menos «pesado»
-FEATURED_TARGETS = ["sun", "moon", "asc", "mc", "mercury", "venus", "mars", "jupiter", "saturn"]
+FEATURED_TARGETS = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"]
 # (clave, ángulo, orbe máximo): los de armonía duran más, así que se miran con menos orbe
 FEATURED_ASPECTS = [("conjunction", 0, 3.0), ("opposition", 180, 3.0), ("square", 90, 3.0),
                     ("trine", 120, 2.0), ("sextile", 60, 2.0)]
@@ -552,14 +573,13 @@ def _transit_window(code: int, grid: list[float], lons: list[float], i0: int, go
 
 
 def featured_transits(natal: dict, at: dict) -> dict:
-    """Tránsitos de Júpiter a Plutón que en el instante `at` forman un aspecto cerrado con el Sol, la Luna,
-    los ángulos o los planetas hasta Saturno de la carta natal. De cada uno: orbe, fase, desde y hasta cuándo
+    """Tránsitos de Júpiter a Plutón que en el instante `at` forman un aspecto cerrado con el Sol, la Luna
+    o los planetas hasta Saturno de la carta natal. De cada uno: orbe, fase, desde y hasta cuándo
     dura (con las retrogradaciones) y los momentos exactos."""
     chart = compute_chart(natal)
     utc, off_h, _, warnings = _resolve_utc(_parse_naive(at), at)
     tz = _tz_for_display(at.get("tz"), off_h)
     pts = {b["id"]: b["lon"] for b in chart["bodies"]}
-    pts["asc"], pts["mc"] = chart["angles"]["asc"], chart["angles"]["mc"]
 
     items = []
     with _lock:

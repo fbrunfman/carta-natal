@@ -105,6 +105,7 @@ export function subjectFor(ctx, rawId) {
 
   return {
     key: rawId, id, name: BODY[id].name, outer,
+    angle: id === "asc" || id === "mc",         // el Ascendente y el Medio Cielo no forman aspectos
     context: outer ? (inTransit ? "Planeta en tránsito" : `De ${B}`) : inSyn ? `De ${A}` : "",
     // el planeta del anillo exterior se lee como «lo que activa»: el texto es el mismo, el rótulo cambia
     houseWord: outer ? (inTransit ? "Casa natal que recorre" : `Casa de ${A} que ocupa`) : "Casa",
@@ -117,7 +118,7 @@ export function subjectFor(ctx, rawId) {
   };
 }
 
-const ANGLE = { conjunction: 0, opposition: 180, trine: 120, square: 90, sextile: 60, quincunx: 150 };    // grados exactos de cada aspecto
+const ANGLE = { conjunction: 0, opposition: 180, trine: 120, square: 90, sextile: 60, semisquare: 45, sesquiquadrate: 135, quincunx: 150 };    // grados exactos de cada aspecto
 
 /**
  * Qué se muestra al tocar un aspecto (en el cuadro, la lista o la cuadrícula): los dos puntos, el orbe y lo que significa.

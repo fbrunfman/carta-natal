@@ -14,7 +14,7 @@ export function aspectText(a) {
  * @param orbMax orbe máximo en grados
  */
 export function stairHTML(chart, orbMax) {
-  const ids = [...chart.bodies.map((b) => b.id), "asc", "mc"];
+  const ids = chart.bodies.map((b) => b.id);        // el Ascendente y el Medio Cielo no forman aspectos
   const found = new Map();
   for (const a of chart.aspects) {
     if (a.orb > orbMax) continue;
