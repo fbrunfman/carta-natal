@@ -47,10 +47,24 @@ export const SIGN_SVG = [
   `<path d="M4.6 3.6C9.6 6.4 9.6 17.6 4.6 20.4M19.4 3.6C14.4 6.4 14.4 17.6 19.4 20.4M4 12H20"/>`,
 ];
 
+/** Contenido SVG de los 8 aspectos (caja de 24 × 24, trazo redondeado; el color es el del texto). */
+export const ASPECT_SVG = {
+  conjunction: `<circle cx="8.2" cy="15.8" r="3.6"/><path d="M10.8 13.2L19 5"/>`,
+  opposition: `<circle cx="6.8" cy="17.2" r="3.3"/><circle cx="17.2" cy="6.8" r="3.3"/><path d="M9.2 14.8L14.8 9.2"/>`,
+  trine: `<path d="M12 4.4L20.2 19.2H3.8Z"/>`,
+  square: `<path d="M5 5H19V19H5Z"/>`,
+  sextile: `<path d="M12 3.2V20.8M4.4 7.6L19.6 16.4M4.4 16.4L19.6 7.6"/>`,
+  semisquare: `<path d="M4.2 19.4H19.8M4.2 19.4L15.2 8.4"/>`,
+  sesquiquadrate: `<path d="M5 3.4H19V16.8H5Z"/><path d="M7 21.4H17.4M7 21.4L15.4 11.2"/>`,
+  quincunx: `<path d="M5.4 5H18.6M12 5L7 19.2M12 5L17 19.2"/>`,
+};
+
 const wrap = (inner, cls) => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
 
 /** Símbolo de un cuerpo como <svg> para HTML, o null si no tiene (Asc, MC). */
 export const bodySVG = (id, cls = "gsvg") => (BODY_SVG[id] ? wrap(BODY_SVG[id], cls) : null);
+/** Símbolo de un aspecto como <svg> para HTML. */
+export const aspectSVG = (type, cls = "asv") => wrap(ASPECT_SVG[type], cls);
 /** Símbolo de un signo (0 = Aries … 11 = Piscis) como <svg> para HTML. */
 export const signSVG = (i, cls = "gsvg sgsvg") => wrap(SIGN_SVG[i], cls);
 

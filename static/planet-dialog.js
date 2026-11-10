@@ -28,7 +28,7 @@ export function initPlanetDialog(getContext, onClose) {
       : "";
     return `<li class="pdl-asp">
       <div class="pdl-ahead">
-        <span class="a-ic ${T.cls}" aria-hidden="true">${T.glyph}</span>
+        <span class="a-ic ${T.cls}" aria-hidden="true">${T.icon}</span>
         <span class="pdl-atype">${T.name}</span><span class="pdl-with">con</span>
         <button type="button" class="pdl-go" data-go="${esc(it.target)}">${badge(it.other, "s")}<span>${esc(it.name)}</span></button>${owner}
         <span class="pdl-meta">${meta}</span>

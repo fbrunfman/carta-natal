@@ -224,6 +224,8 @@
         <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
 
         <h3 class="sub">Mandala</h3>
+        <label class="check"><input type="checkbox" id="cfgCusp"><span>Anillo exterior con las cúspides de las casas</span></label>
+        <p class="fine">Prendido: un anillo por afuera del zodíaco con los grados, el signo y los minutos de cada cúspide, y los bordes de las casas llegan hasta él. Apagado: los grados van sueltos afuera del zodíaco, sin el signo, y el mandala se ve un poco más grande.</p>
         <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
         <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
 
@@ -387,7 +389,8 @@
         <figcaption class="legend">
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-soft"/></svg>Trígono y sextil</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
-          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio y aspectos menores</span>
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard-dash"/></svg>Semicuadratura y sesquicuadratura</span>
+          <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
           <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
                   <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos; al pasar el mouse se ve el orbe de cada aspecto.</span>
         </figcaption>

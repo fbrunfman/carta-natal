@@ -1,6 +1,6 @@
 // Cuadro de aspectos en escalera: cada planeta es un círculo en la diagonal y, a su izquierda, un símbolo
 // por cada aspecto que forma con los anteriores. Sin DOM: devuelve HTML (también se puede probar en node).
-import { ASPECT, BODY, badge, esc, fmtOrb } from "./astro-data.js";
+import { ASPECT, BODY, badge, esc, fmtOrb, orbCode } from "./astro-data.js";
 
 const phaseText = (a) => (a.applying === null || a.applying === undefined ? "" : a.applying ? " · aplicativo" : " · separativo");
 
@@ -8,6 +8,12 @@ const phaseText = (a) => (a.applying === null || a.applying === undefined ? "" :
 export function aspectText(a) {
   return `${BODY[a.a].name} ${ASPECT[a.type].name.toLowerCase()} ${BODY[a.b].name} · orbe ${fmtOrb(a.orb)}${phaseText(a)}`;
 }
+
+/** Pista debajo del cuadro; lo de leer el significado solo se ve si las lecturas están prendidas (clase .interp). */
+export const STAIR_HINT = `Pasá el cursor por un aspecto para ver el orbe<span class="interp">; tocalo para leer qué significa</span>.`;
+
+/** Cómo se lee el orbe que va en cada celda (grados, A o S, minutos). */
+export const ORB_LEGEND = `<p class="fine tight orb-legend">El número de cada celda es el orbe: grados, <strong>A</strong> (aplicativo: se acerca al exacto) o <strong>S</strong> (separativo: se aleja) y minutos. Por ejemplo, <strong>0S41</strong> = 0°41′ separativo.</p>`;
 
 /**
  * @param chart carta natal ({bodies, aspects})
@@ -30,10 +36,10 @@ export function stairHTML(chart, orbMax) {
       if (!a) { html += `<div class="sc" role="cell"></div>`; continue; }
       const T = ASPECT[a.type];
       const text = esc(aspectText(a));
-      html += `<div class="sc hit" role="cell" data-a="${ids[j]}" data-b="${row}" data-info="${text}" title="${text}">` +
-        `<span class="a-ic ${T.cls}">${T.glyph}</span></div>`;
+      html += `<div class="sc hit" role="cell" data-a="${ids[j]}" data-b="${row}" data-t="${a.type}" data-info="${text}" title="${text}">` +
+        `<span class="a-ic ${T.cls}">${T.icon}</span><span class="a-or">${orbCode(a.orb, a.applying)}</span></div>`;
     }
     html += `<div class="sc diag" role="columnheader">${badge(row)}</div></div>`;
   });
-  return html + `</div><p class="fine tight" id="stairInfo" aria-live="polite">Pasá el cursor por un aspecto para ver el orbe; tocalo para leer qué significa.</p>`;
+  return html + `</div><p class="fine tight" id="stairInfo" aria-live="polite">${STAIR_HINT}</p>` + ORB_LEGEND;
 }

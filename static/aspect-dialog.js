@@ -58,7 +58,7 @@ export function initAspectDialog(getContext, onOpenPlanet, onClose) {
     const s = aspectFor(getContext(), aKey, bKey);
     if (!s) return false;
     const T = ASPECT[s.type];
-    $("#aspBadges").innerHTML = `${badge(s.points[0].id, "l")}<span class="a-ic ${T.cls}" aria-hidden="true">${T.glyph}</span>${badge(s.points[1].id, "l")}`;
+    $("#aspBadges").innerHTML = `${badge(s.points[0].id, "l")}<span class="a-ic ${T.cls}" aria-hidden="true">${T.icon}</span>${badge(s.points[1].id, "l")}`;
     const ctxEl = $("#aspCtx");
     ctxEl.hidden = !s.context;
     ctxEl.textContent = s.context;

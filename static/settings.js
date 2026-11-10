@@ -18,6 +18,7 @@ export const DEFAULTS = Object.freeze({
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
   aspOff: [],        // tipos de aspecto apagados (claves de ASPECT: "square", "sextile"…); [] = se muestran todos
+  cuspRing: true,    // anillo exterior de la rueda con los grados y el signo de cada cúspide
   interp: INTERP_ENABLED,   // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
 });
 
@@ -52,6 +53,7 @@ export function load() {
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     fs: clamp(raw.fs ?? DEFAULTS.fs, LIMITS.fs, DEFAULTS.fs),
     wheel: clamp(raw.wheel ?? DEFAULTS.wheel, LIMITS.wheel, DEFAULTS.wheel),
+    cuspRing: typeof raw.cuspRing === "boolean" ? raw.cuspRing : DEFAULTS.cuspRing,
     aspOff: Array.isArray(raw.aspOff) ? [...new Set(raw.aspOff.filter((t) => Object.hasOwn(ASPECT, t)))] : [],
     interp: INTERP_ENABLED && raw.interp !== false,
   };
@@ -86,7 +88,7 @@ export function initSettings(onChange) {
     gfx: [...document.querySelectorAll("#cfgGfx button")],
     tint: $("#cfgTint"), font: $("#cfgFont"),
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
-    big: $("#cfgBig"), reset: $("#cfgReset"),
+    big: $("#cfgBig"), reset: $("#cfgReset"), cusp: $("#cfgCusp"),
     interp: [...document.querySelectorAll("#cfgInterp button")],
     asp: $("#cfgAsp"),
   };
@@ -94,7 +96,7 @@ export function initSettings(onChange) {
   el.asp.replaceChildren(...Object.entries(ASPECT).map(([type, A]) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "asp-toggle"; b.dataset.asp = type;
-    b.innerHTML = `<span class="a-ic ${A.cls}" aria-hidden="true">${A.glyph}</span>${A.name}`;
+    b.innerHTML = `<span class="a-ic ${A.cls}" aria-hidden="true">${A.icon}</span>${A.name}`;
     return b;
   }));
 
@@ -106,6 +108,7 @@ export function initSettings(onChange) {
   function paint() {
     for (const b of el.gfx) b.setAttribute("aria-pressed", b.dataset.gfx === cfg.gfx);
     el.tint.checked = cfg.tint;
+    el.cusp.checked = cfg.cuspRing;
     el.font.value = cfg.font;
     el.fs.value = Math.round(cfg.fs * 100); el.fsV.textContent = pct(cfg.fs);
     el.wheel.value = Math.round(cfg.wheel * 100); el.wheelV.textContent = pct(cfg.wheel);
@@ -134,6 +137,7 @@ export function initSettings(onChange) {
     change({ aspOff: cfg.aspOff.includes(t) ? cfg.aspOff.filter((x) => x !== t) : [...cfg.aspOff, t] }, "asp");
   });
   el.tint.addEventListener("change", () => change({ tint: el.tint.checked }, "tint"));
+  el.cusp.addEventListener("change", () => change({ cuspRing: el.cusp.checked }, "cusp"));
   el.font.addEventListener("change", () => change({ font: el.font.value }, "font"));
   el.fs.addEventListener("input", () => change({ fs: clamp(el.fs.value / 100, LIMITS.fs, 1) }, "fs"));
   el.wheel.addEventListener("input", () => change({ wheel: clamp(el.wheel.value / 100, LIMITS.wheel, 1) }, "wheel"));

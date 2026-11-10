@@ -110,7 +110,7 @@ function featuredCard(it, interp) {
   const link = interp ? ` tabindex="0" data-id="o:${it.t}" title="Tocá para leer ${esc(BODY[it.t].name)} en tránsito"` : "";
   return `<article class="fcard${interp ? "" : " static"}"${link}>
     <div class="fc-top">
-      <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.glyph}</span>${badge(it.n, "s")}</span>
+      <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.icon}</span>${badge(it.n, "s")}</span>
       <span class="fc-until">${esc(until)}</span>
     </div>
     <p class="fc-line"><strong>${esc(BODY[it.t].name)}</strong> en tránsito · ${esc(A.name.toLowerCase())} · <strong>${esc(BODY[it.n].name)}</strong> natal</p>
@@ -146,7 +146,7 @@ export function featuredRowsHTML(data) {
     const until = it.until ? `hasta ${monthYear(it.until)}` : "por varios años";
     const next = it.exacts.find((e) => !e.past);
     return `<li class="htr-row">
-      <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.glyph}</span>${badge(it.n, "s")}</span>
+      <span class="fc-glyphs" aria-hidden="true">${badge(it.t, "s")}<span class="a-ic ${A.cls}">${A.icon}</span>${badge(it.n, "s")}</span>
       <span class="htr-txt">
         <span class="htr-line"><strong>${esc(BODY[it.t].name)}</strong>${it.retro ? `<span class="rx-t" title="Retrógrado">R</span>` : ""} · ${esc(A.name.toLowerCase())} · <strong>${esc(BODY[it.n].name)}</strong> natal</span>
         <span class="htr-sub"><span class="${it.peak ? "peak" : ""}">${phase}</span> · orbe ${fmtOrb(it.orb)} · ${esc(until)}${next ? ` · exacto ${esc(dayMonthYear(next.local))}` : ""}</span>

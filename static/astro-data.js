@@ -1,12 +1,14 @@
 // Nombres, símbolos y formato. Todo en español.
 // Los símbolos de planetas y signos son vectores propios (glyphs.js): no dependen de la fuente del sistema.
-// Los de los aspectos siguen siendo texto; ︎ fuerza presentación de texto (evita emojis de colores en macOS).
-import { BODY_SVG, bodySVG, signSVG } from "./glyphs.js";
+// Los de los aspectos también son vectores propios (`icon`); `glyph` es el mismo símbolo como texto (︎ fuerza presentación de texto).
+import { BODY_SVG, bodySVG, signSVG, aspectSVG } from "./glyphs.js";
 const VS = "︎";
 
 /** Estilo de los gráficos: nuevo (vectores propios, círculos de color) o clásico (símbolos de texto, como antes). */
-export const look = { classic: false };
+export const look = { classic: false, cuspRing: true };
 export const setClassic = (on) => { look.classic = !!on; };
+/** Anillo exterior con las cúspides de las casas (grados, signo y minutos); apagado, van como texto suelto afuera del zodíaco. */
+export const setCuspRing = (on) => { look.cuspRing = on !== false; };
 
 // Símbolos de texto del estilo clásico (los dibuja la fuente del sistema). Plutón siempre es vector.
 const TEXT_BODY = {
@@ -42,14 +44,14 @@ export const BODY = {
 };
 
 export const ASPECT = {
-  conjunction: { name: "Conjunción", glyph: "☌" + VS, cls: "neutral" },
-  opposition: { name: "Oposición", glyph: "☍" + VS, cls: "hard" },
-  trine: { name: "Trígono", glyph: "△" + VS, cls: "soft" },
-  square: { name: "Cuadratura", glyph: "□" + VS, cls: "hard" },
-  sextile: { name: "Sextil", glyph: "⚹" + VS, cls: "soft" },
-  semisquare: { name: "Semicuadratura", glyph: "∠" + VS, cls: "minor" },
-  sesquiquadrate: { name: "Sesquicuadratura", glyph: "⚼" + VS, cls: "minor" },
-  quincunx: { name: "Quincuncio", glyph: "⚻" + VS, cls: "minor" },
+  conjunction: { name: "Conjunción", glyph: "☌" + VS, cls: "neutral", icon: aspectSVG("conjunction") },
+  opposition: { name: "Oposición", glyph: "☍" + VS, cls: "hard", icon: aspectSVG("opposition") },
+  trine: { name: "Trígono", glyph: "△" + VS, cls: "soft", icon: aspectSVG("trine") },
+  square: { name: "Cuadratura", glyph: "□" + VS, cls: "hard", icon: aspectSVG("square") },
+  sextile: { name: "Sextil", glyph: "⚹" + VS, cls: "soft", icon: aspectSVG("sextile") },
+  semisquare: { name: "Semicuadratura", glyph: "∠" + VS, cls: "hard", icon: aspectSVG("semisquare") },
+  sesquiquadrate: { name: "Sesquicuadratura", glyph: "⚼" + VS, cls: "hard", icon: aspectSVG("sesquiquadrate") },
+  quincunx: { name: "Quincuncio", glyph: "⚻" + VS, cls: "minor", icon: aspectSVG("quincunx") },
 };
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -74,6 +76,13 @@ export const fmtPos = (lon) => {
 export const fmtOrb = (orb) => {
   const t = Math.floor(orb * 60 + 1e-7);
   return `${Math.floor(t / 60)}°${pad(t % 60)}′`;
+};
+
+/** Orbe para las celdas de la grilla: grados, A (aplicativo) o S (separativo) y minutos; p. ej. «0S41» = 0°41′ separativo. */
+export const orbCode = (orb, applying) => {
+  const t = Math.floor(orb * 60 + 1e-7);
+  const ph = applying === null || applying === undefined ? "·" : applying ? "A" : "S";
+  return `${Math.floor(t / 60)}${ph}${pad(t % 60)}`;
 };
 
 /** Símbolo de un cuerpo para HTML (tablas): <svg> en línea, o texto en el estilo clásico. Asc y MC: null. */

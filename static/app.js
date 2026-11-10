@@ -1,6 +1,6 @@
-import { SIGNS, signHTML, BODY, ASPECT, split, fmtPos, fmtOrb, mark, glyphHTML, badge, esc, setClassic } from "./astro-data.js";
+import { SIGNS, signHTML, BODY, ASPECT, split, fmtPos, fmtOrb, orbCode, mark, glyphHTML, badge, esc, setClassic, setCuspRing } from "./astro-data.js";
 import { renderWheel } from "./wheel.js";
-import { stairHTML } from "./stair.js";
+import { stairHTML, ORB_LEGEND, STAIR_HINT } from "./stair.js";
 import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
@@ -615,8 +615,8 @@ function renderAspects() {
     const phase = a.applying === null ? "" : a.applying ? "aplicativo" : "separativo";
     const b = cross ? "o:" + a.b : a.b;
     const pair = isTransit
-      ? `${mark(a.b)}${retroTag(trBody(a.b).retro)}<span class="a-ic ${A.cls}">${A.glyph}</span>${mark(a.a)}`
-      : `${mark(a.a)}<span class="a-ic ${A.cls}">${A.glyph}</span>${mark(a.b)}`;
+      ? `${mark(a.b)}${retroTag(trBody(a.b).retro)}<span class="a-ic ${A.cls}">${A.icon}</span>${mark(a.a)}`
+      : `${mark(a.a)}<span class="a-ic ${A.cls}">${A.icon}</span>${mark(a.b)}`;
     html += `<tr data-a="${a.a}" data-b="${b}">
       <td class="pair">${pair}</td>
       <td class="small">${A.name}</td>
@@ -660,12 +660,12 @@ function renderGrid() {
       if (!a) { html += "<td></td>"; continue; }
       const T = ASPECT[a.type];
       const phase = a.applying === null || a.applying === undefined ? "" : a.applying ? " · aplicativo" : " · separativo";
-      html += `<td class="hit" data-a="${r}" data-b="o:${c}" title="${BODY[r].name}${owner(A)} ${T.name.toLowerCase()} ${BODY[c].name}${owner(B)} · orbe ${fmtOrb(a.orb)}${phase}">` +
-        `<span class="a-ic ${T.cls}">${T.glyph}</span></td>`;
+      html += `<td class="hit" data-a="${r}" data-b="o:${c}" data-t="${a.type}" title="${BODY[r].name}${owner(A)} ${T.name.toLowerCase()} ${BODY[c].name}${owner(B)} · orbe ${fmtOrb(a.orb)}${phase}">` +
+        `<span class="a-ic ${T.cls}">${T.icon}</span><span class="a-or">${orbCode(a.orb, a.applying)}</span></td>`;
     }
     html += "</tr>";
   }
-  el.innerHTML = html + "</tbody></table>";
+  el.innerHTML = html + "</tbody></table>" + ORB_LEGEND;
   armAspects();
 }
 
@@ -754,7 +754,7 @@ function renderCalendar() {
     html += `<tr class="ev${cal.current === i ? " cur" : ""}" tabindex="0" data-i="${i}" data-a="${e.n}" data-b="o:${e.t}" data-type="${e.type}"
         title="${BODY[e.t].name} ${A.name.toLowerCase()} ${BODY[e.n].name} natal · tocá para ver la rueda en ese momento">
       <td class="when"><span class="dd">${day}</span> ${monthShort.format(stamp).replace(".", "")}<span class="tm">${hm}</span></td>
-      <td class="pair">${mark(e.t)}${retroTag(e.retro)}<span class="a-ic ${A.cls}">${A.glyph}</span>${mark(e.n)}</td>
+      <td class="pair">${mark(e.t)}${retroTag(e.retro)}<span class="a-ic ${A.cls}">${A.icon}</span>${mark(e.n)}</td>
       <td class="small">${A.name}${sub ? `<span class="sub2">${sub}</span>` : ""}</td></tr>`;
   });
   $("#calTable").innerHTML = html + "</tbody></table>" +
@@ -950,7 +950,6 @@ for (const sel of ["#panel-pos", "#panel-tpos", "#panel-over", "#panel-elem"]) {
   });
 }
 
-const STAIR_HINT = "Pasá el cursor por un aspecto para ver el orbe; tocalo para leer qué significa.";
 for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
   $(sel).addEventListener("mouseover", (e) => {
     const el = e.target.closest("[data-a][data-b]");
@@ -958,12 +957,12 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
     if (wheel) wheel.pair(el.dataset.a, el.dataset.b);
     const info = $("#stairInfo");
     // con el dedo no hay «pasar por encima»: cambiar el texto de acá mueve la página justo cuando se toca y el toque cae en otro lado
-    if (sel === "#stairTable" && info && !matchMedia("(hover: none)").matches) info.textContent = el.dataset.info || STAIR_HINT;
+    if (sel === "#stairTable" && info && !matchMedia("(hover: none)").matches) { if (el.dataset.info) info.textContent = el.dataset.info; else info.innerHTML = STAIR_HINT; }
   });
   $(sel).addEventListener("mouseleave", () => {
     wheel?.clear();
     const info = $("#stairInfo");
-    if (info) info.textContent = STAIR_HINT;
+    if (info) info.innerHTML = STAIR_HINT;
   });
 }
 
@@ -1154,7 +1153,8 @@ setupPrint({ root, getMode: () => mode });
 
 // ---------- configuración: estilo, letra, mandala --------------------------
 // Solo cambiar el estilo de los gráficos obliga a volver a dibujar; lo demás lo resuelve la CSS.
-setClassic(initSettings((cfg, what) => {
+const cfg0 = initSettings((cfg, what) => {
+  setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
   interpOn = cfg.interp;
   if (interpChanged) {                  // «solo datos»: se cierra la ventana de lectura y se redibuja lo que la ofrecía
@@ -1171,13 +1171,16 @@ setClassic(initSettings((cfg, what) => {
     drawWheel();
     if (cal.data) renderCalendar();
   }
+  if ((what === "cusp" || (what === "fs" && cfg.cuspRing)) && chart) drawWheel();     // el tamaño de la letra cambia el lugar de los rótulos del anillo
   if (what === "gfx") {
     setClassic(cfg.gfx === "classic");
     refreshCombine();
     if (page === "home" && moon.now) paintSky();
     if (chart) render();
   }
-}).gfx === "classic");
+});
+setClassic(cfg0.gfx === "classic");
+setCuspRing(cfg0.cuspRing);
 // «Restablecer» deja el menú como viene de fábrica: fijo en pantallas grandes, oculto en el celular
 $("#cfgReset").addEventListener("click", () => {
   const hidden = matchMedia("(max-width: 820px)").matches;

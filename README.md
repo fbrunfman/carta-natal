@@ -139,23 +139,42 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
   línea resaltada aparece su orbe** (en una etiqueta del color del aspecto, sin pisarse con las otras; lo mismo con el
   teclado al enfocar el planeta).
+- **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
+  (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
+  panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,
+  y también la semicuadratura y la sesquicuadratura), **azul** los fluidos (trígono, sextil) y **dorado** el quincuncio.
+  Los tres aspectos menores (45°, 135° y 150°) llevan la **raya punteada**, aunque la semi y la sesquicuadratura sean rojas.
+  El símbolo de la sesquicuadratura es un cuadrado con la semicuadratura (∠) cruzándole la base. Al resaltar un planeta quedan a pleno los de sus rayas y
+  el resto se atenúa, y las etiquetas de orbe se acomodan para no taparlos. Son íconos vectoriales (`ASPECT_SVG` en
+  `glyphs.js`), así que se ven igual en todas las fuentes; los usan también la lista de Aspectos, el Cuadro, la cuadrícula,
+  el calendario, los botones de Configuración y las ventanas de lectura. El estilo **Clásico** también los usa para los
+  aspectos (lo que cambia entre estilos son los signos y los planetas).
 - **Conjunciones en la rueda**: no llevan raya (sería un punto). En su lugar va un **circulito rojo** en el punto medio
   entre los dos cuerpos, sobre el círculo de los aspectos. Al pasar el cursor por uno de los planetas se resalta y muestra
   su orbe, igual que las rayas.
-- **Grados de las cúspides**: la rueda lleva, en el borde de afuera, los **grados y minutos de la cúspide de cada casa**
-  (sin el signo, que ya está en el anillo). Los de las casas 1, 4, 7 y 10 van junto al rótulo «Asc», «IC», «Dsc» y «MC»
-  (el grado debajo o al lado del nombre); las otras se acomodan sin pisar nada, con cualquier sistema de casas y también
-  en la rueda doble de tránsitos y sinastría (ahí son los de la carta de adentro). La pestaña Casas ya los traía en tabla.
+- **Anillo exterior con las cúspides**: por afuera del zodíaco hay un anillo (una banda con su circunferencia) que lleva, en
+  cada cúspide, **grados · signo · minutos** apilados a lo largo del arco, como en otros programas: arriba o a la izquierda
+  los grados, en el medio el **signo con el color de su elemento** (rojo fuego, verde tierra, dorado aire, azul agua) y
+  abajo o a la derecha los minutos. **Los bordes de las 12 casas saltan el anillo de colores del zodíaco (no lo pisan) y reaparecen en
+  este anillo**, con un hueco donde se asienta el signo; los de los ejes (casas 1, 4, 7 y 10) van más gruesos. Los nombres **Asc, MC, Dsc e IC** quedan
+  afuera, sobre la prolongación del eje (Asc y MC siguen siendo tocables si las lecturas están prendidas). Si dos cúspides
+  quedan tan cerca que sus rótulos se pisarían (casas de tamaños muy distintos), los rótulos se separan lo justo y su borde
+  va entero. La letra grande (Configuración) los reacomoda. Funciona con cualquier sistema de casas, en el estilo Clásico
+  (el signo va como símbolo de texto) y en la **rueda doble** de tránsitos y sinastría: ahí el anillo va por afuera del de
+  tránsitos y los bordes cruzan ese anillo más tenues; las cúspides son las de la carta de adentro. El mandala se achica un poco
+  (≈ 8 %) para que entre. **Se puede apagar** (Configuración → *Mandala* → «Anillo exterior con las cúspides»): vuelven
+  los grados y minutos sueltos afuera del zodíaco, sin el signo, como antes. La pestaña Casas ya los traía en tabla.
 - **Qué aspectos se ven** (Configuración → *Aspectos*): ocho botones, uno por tipo (conjunción, oposición, trígono,
-  cuadratura, sextil, semicuadratura, sesquicuadratura y quincuncio). Apagar uno lo saca de **la rueda** (rayas y circulitos),
+  cuadratura, sextil, semicuadratura, sesquicuadratura y quincuncio). Apagar uno lo saca de **la rueda** (rayas, símbolos y circulitos),
   **la lista de Aspectos**, **el Cuadro y la cuadrícula**, **los aspectos de tránsitos y sinastría** y **el calendario de
   aspectos exactos**; volver a prenderlo los trae de vuelta. Es solo de la vista: el cálculo no cambia, y «Tránsitos
   destacados» y «Próximamente» (que buscan sus propios aspectos cerrados) no se filtran. Se recuerda en el navegador
   (`aspOff` dentro de `carta:cfg`) y «Restablecer» los prende todos.
 - **Cuadro** (pestaña en las tres vistas; en la carta natal es la **primera** y la que se abre): los aspectos en escalera, con cada planeta como un círculo de
-  color en la diagonal y un símbolo por aspecto en las celdas, vacías si no hay. Natal: todos contra todos
+  color en la diagonal y, en cada celda, el **símbolo del aspecto con su orbe debajo**, como `0S41` o `3A49`
+  (grados, **A** aplicativo o **S** separativo, minutos; la clave se explica abajo del Cuadro). Las celdas vacías son pares sin aspecto. Natal: todos contra todos
   (sin Ascendente ni Medio Cielo). Tránsitos y sinastría: filas = la carta de adentro, columnas = la de
-  afuera. Al pasar el cursor se ve el orbe y la fase, y la rueda resalta el par y muestra su orbe sobre la línea. En el
+  afuera. En tránsitos y sinastría la **cuadrícula** de aspectos lleva el mismo símbolo y orbe en cada celda. Al pasar el cursor se ve el orbe y la fase completos, y la rueda resalta el par y muestra su orbe sobre la línea. En el
   celular o la tablet, donde no hay cursor, se toca la celda y se abre la ventana del aspecto.
 - **Elementos** (solo natal): una cruz con Fuego arriba a la izquierda, Aire arriba a la derecha, Tierra abajo
   a la izquierda y Agua abajo a la derecha. Cada cuadrante lista los planetas personales (Sol a Saturno, sin
@@ -212,10 +231,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     Monoespaciada. Usan las fuentes que ya trae macOS. **De fábrica: Redondeada.**
   - *Tamaño de la letra*: 85 % a 130 %. Escala todo el texto de la página; el de la rueda sube con un tope
     (×1,25) para que no se pise con los símbolos.
+  - *Anillo exterior con las cúspides* (en «Mandala»): prendido o apagado, ver arriba. **Viene prendido de fábrica.**
   - *Tamaño del mandala*: 60 % a 140 %. Por encima de 100 % el mandala pasa a ocupar todo el ancho y las
     tablas bajan debajo de él.
   - «Restablecer» vuelve a los valores de fábrica (estilo Nuevo, con tinte por elemento, letra Redondeada, tamaños al
-    100 %, todos los aspectos prendidos). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
+    100 %, anillo de cúspides prendido, todos los aspectos prendidos). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
     página, así que no hay parpadeo al abrir. Mientras nadie toque la configuración no se guarda nada y rige lo de
     fábrica. Una configuración guardada antes de este cambio (sin `v`) que seguía en los valores de entonces (letra del
     sistema, sin tinte en el estilo Nuevo) cuenta como «sin elegir» y pasa a los de ahora; lo que se haya elegido de

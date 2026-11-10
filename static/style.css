@@ -317,13 +317,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .axis-label { font: 600 calc(11.5px * var(--fw)) var(--sans); }
 .wheel .cusplbl { font: 500 calc(9.5px * var(--fw)) var(--sans); fill: var(--ink-2); font-variant-numeric: tabular-nums; }
 
+/* anillo exterior de las cúspides: el borde de cada casa salta el anillo de signos y sigue por la banda (con un hueco donde
+   va el signo); los grados y los minutos acompañan al signo, que lleva el color de su elemento */
+.wheel .cusp-o, .wheel .cusp-b { fill: none; }
+.wheel .cusp-o { stroke: var(--line-strong); stroke-width: .8; opacity: .3; }
+.wheel .cusp-o.axis { stroke: var(--ink); stroke-width: 1.2; opacity: .45; }
+.wheel .cusp-b { stroke: var(--ink-2); stroke-width: .9; opacity: .75; }
+.wheel .cusp-b.axis { stroke: var(--ink); stroke-width: 1.7; opacity: 1; }
+.wheel .cuspt { font: 500 calc(9.5px * var(--fw)) var(--sans); fill: var(--ink-2); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.wheel .cs { stroke-width: 2.6; }
+.wheel .cs.el-fire { stroke: var(--fire-solid); } .wheel .cs.el-earth { stroke: var(--earth-solid); }
+.wheel .cs.el-air { stroke: var(--air-solid); } .wheel .cs.el-water { stroke: var(--water-solid); }
+.wheel .cs-t { font-size: calc(13px * var(--fw)); text-anchor: middle; }
+.wheel .cs-t.el-fire { fill: var(--fire-solid); } .wheel .cs-t.el-earth { fill: var(--earth-solid); }
+.wheel .cs-t.el-air { fill: var(--air-solid); } .wheel .cs-t.el-water { fill: var(--water-solid); }
+
 .wheel .asp { stroke-linecap: round; fill: none; opacity: var(--o, .7); transition: opacity .12s; }
 .wheel .asp.t1 { stroke-width: 1.8; --o: .95; }
 .wheel .asp.t2 { stroke-width: 1.2; --o: .72; }
 .wheel .asp.t3 { stroke-width: .8; --o: .42; }
-.wheel .asp-opposition, .wheel .asp-square { stroke: var(--hard); }
+.wheel .asp-opposition, .wheel .asp-square, .wheel .asp-semisquare, .wheel .asp-sesquiquadrate { stroke: var(--hard); }
 .wheel .asp-trine, .wheel .asp-sextile { stroke: var(--soft); }
-.wheel .asp-quincunx, .wheel .asp-semisquare, .wheel .asp-sesquiquadrate { stroke: var(--minor); stroke-dasharray: 5 4; }
+/* los menores (45°, 135° y 150°) van punteados; la semi y la sesquicuadratura en rojo, el quincuncio en dorado */
+.wheel .asp-quincunx { stroke: var(--minor); }
+.wheel .asp-quincunx, .wheel .asp-semisquare, .wheel .asp-sesquiquadrate { stroke-dasharray: 5 4; }
 .wheel .adot { fill: var(--ink); }
 /* conjunción: un circulito rojo entre los dos cuerpos (no lleva raya) */
 .wheel .asp.conj { fill: var(--hard); stroke: var(--field); stroke-width: 1.4; --o: 1; }
@@ -348,6 +365,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .rx { font: 700 calc(9px * var(--fw)) var(--sans); text-anchor: middle; fill: var(--hard); }
 .wheel .pl:focus-visible .hit { stroke: var(--focus); stroke-opacity: .35; }
 
+/* símbolo del aspecto en el punto medio de cada raya */
+.wheel .amark { opacity: var(--mo, .95); transition: opacity .12s; }
+.wheel .amark.t2 { --mo: .85; }
+.wheel .amark.t3 { --mo: .62; }
+.wheel .amk-bg { fill: var(--field); stroke: none; }
+.wheel .amk-ic { fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+.wheel .amark-opposition, .wheel .amark-square, .wheel .amark-semisquare, .wheel .amark-sesquiquadrate { color: var(--hard); }
+.wheel .amark-trine, .wheel .amark-sextile { color: var(--soft); }
+.wheel .amark-quincunx { color: var(--minor); }
+.wheel.has-focus .amark { opacity: .08; }
+.wheel.has-focus .amark.on { opacity: 1; }
 .wheel.has-focus .asp { opacity: .06; }
 .wheel.has-focus .asp.on { opacity: 1; stroke-width: 2.2; }
 .wheel.has-focus .pl { opacity: .3; }
@@ -405,6 +433,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .k-soft { stroke: var(--soft); }
 .k-hard { stroke: var(--hard); }
 .k-minor { stroke: var(--minor); stroke-dasharray: 5 4; }
+.k-hard-dash { stroke: var(--hard); stroke-dasharray: 5 4; }
 .k-out { fill: var(--bg); stroke: var(--out); stroke-width: 2; }
 
 /* ---------- tablas ---------- */
@@ -433,6 +462,9 @@ td .g { margin-right: 4px; }
 .contains .g { min-width: 1.2em; margin: 0; }
 .pair { white-space: nowrap; }
 .pair .a-ic { font-family: var(--glyph); display: inline-block; min-width: 1.3em; text-align: center; font-size: 1.1em; }
+.a-ic svg, svg.asv { width: 1em; height: 1em; display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.a-ic { line-height: 0; }
+.pair .a-ic { vertical-align: -.2em; }
 .a-ic.hard { color: var(--hard); }
 .a-ic.soft { color: var(--soft); }
 .a-ic.minor { color: var(--minor); }
@@ -487,7 +519,9 @@ table.grid { table-layout: fixed; margin-top: 6px; }
 .grid td { border: 1px solid var(--line); }
 .grid tbody tr:first-child td { border-top-color: var(--line); }
 .grid td.hit:hover { background: var(--hover); }
-.grid .a-ic { min-width: 0; font-size: calc(14px * var(--fs)); }
+.grid td { height: 38px; }
+.grid .a-ic { min-width: 0; font-size: calc(16px * var(--fs)); margin: 0 auto; }
+.grid .a-or { display: block; margin-top: 2px; font-size: calc(9.5px * var(--fs)); }
 .grid .g { min-width: 0; margin: 0; font-size: calc(13px * var(--fs)); }
 .grid th { padding: 2px 0; }
 .tag.s { min-width: 0; font-size: calc(10.5px * var(--fs)); }
@@ -527,9 +561,13 @@ table.grid { table-layout: fixed; margin-top: 6px; }
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
   background: var(--hover); box-shadow: inset 0 0 0 .5px var(--bg);
 }
+.sc { flex-direction: column; gap: calc(100cqw / var(--n) * .04); }
 .sc.diag { background: none; box-shadow: none; }
 .sc.hit:hover { background: var(--line); }
-.stair .a-ic { font-family: var(--glyph); font-size: clamp(12px, calc(100cqw / var(--n) * .56), 22px); line-height: 1; }
+.stair .a-ic { font-size: clamp(11px, calc(100cqw / var(--n) * .42), 21px); }
+.a-or { font: 600 10px/1 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: var(--ink-2); white-space: nowrap; }
+.stair .a-or { font-size: clamp(7.5px, calc(100cqw / var(--n) * .19), 11px); }
+.orb-legend strong { color: var(--ink); }
 .stair .pb { --d: calc(100cqw / var(--n) * .84); }
 
 /* ---------- balance de elementos ---------- */
