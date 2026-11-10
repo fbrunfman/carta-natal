@@ -195,6 +195,22 @@
         <div class="asp-toggles" id="cfgAsp" role="group" aria-label="Aspectos que se muestran"></div>
         <p class="fine">Tocá un aspecto para sacarlo o volver a ponerlo. Los apagados no se ven en la rueda, las listas, el cuadro ni el calendario.</p>
 
+        <h3 class="sub">Orbes</h3>
+        <p class="fine">Hasta cuántos grados de distancia cuenta cada aspecto. Entre dos planetas de grupos distintos manda el orbe mayor (el Sol con Neptuno usa el del Sol). Valen para la carta natal, los tránsitos y la sinastría; los tránsitos destacados del inicio tienen sus propios orbes.</p>
+        <div class="orb-wrap"><table class="orb-table" id="cfgOrbAsp"></table></div>
+        <h3 class="sub">Planetas en las casas</h3>
+        <p class="fine">Para el botón «Entre casas» de la carta natal. Se cuenta siempre hacia adelante: lo que importa es cuántos grados le faltan al planeta para la cúspide de la casa que sigue (cúspide angular: la de las casas 1, 4, 7 y 10). <strong>En cúspide</strong>: si le faltan hasta esos grados, el planeta cuenta en la casa que sigue y ya no en la suya. <strong>En las 2 casas</strong>: si le faltan más que eso y hasta estos grados, cuenta en las dos. Un planeta que ya pasó la cúspide es de esa casa y nada más.</p>
+        <div class="orb-wrap"><table class="orb-table" id="cfgOrbHouse"></table></div>
+        <button type="button" class="secondary compact" id="cfgOrbReset">Restablecer orbes</button>
+
+        <h3 class="sub">Viajes de planetas</h3>
+        <p class="fine">Para la sección «Viajes» y el botón «Viajes» de la carta natal. Un planeta viaja a otra casa en tres casos, todos con aspectos duros. <strong>Por aspecto</strong>: dos planetas en aspecto duro se intercambian de casa. <strong>Por eje</strong>: un planeta pegado a una cúspide viaja a la casa opuesta. <strong>Por implicancia</strong>: un planeta en aspecto duro con otro viaja a las casas cuya cúspide está en un signo que rige ese otro. Los aspectos usan los orbes de arriba, estén o no a la vista en la rueda. Los regentes son los modernos (Escorpio, de Plutón; Acuario, de Urano; Piscis, de Neptuno).</p>
+        <p class="fine"><strong>Aspectos duros</strong> (los apagados no generan viajes)</p>
+        <div class="asp-toggles" id="cfgTripAsp" role="group" aria-label="Aspectos duros para los viajes"></div>
+        <p class="fine"><strong>Pegado a la cúspide</strong> (viaje por eje): hasta cuántos grados de la cúspide, antes o después. Cúspide angular: la de las casas 1, 4, 7 y 10.</p>
+        <div class="orb-wrap"><table class="orb-table" id="cfgTripOrb"></table></div>
+        <button type="button" class="secondary compact" id="cfgTripReset">Restablecer viajes</button>
+
         <h3 class="sub">Menú lateral</h3>
         <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
           <button type="button" data-side="shown" aria-pressed="true">Fijo</button>
@@ -343,9 +359,17 @@
         <button type="button" data-mode="transit" aria-pressed="false">Tránsitos</button>
         <button type="button" data-mode="syn" aria-pressed="false">Sinastría</button>
       </div>
-      <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
-      </button>
+      <div class="modeacts">
+        <button type="button" id="spillBtn" class="secondary compact with-ic" aria-pressed="false" hidden title="Marcar los planetas que pasan a la casa que sigue o que están en las dos (los orbes se cambian en Configuración)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18" stroke-dasharray="2.6 2.6"/><circle cx="7" cy="12" r="3.2"/><circle cx="17" cy="12" r="3.2" stroke-dasharray="2 2"/></svg>Entre casas
+        </button>
+        <button type="button" id="tripBtn" class="secondary compact with-ic" aria-pressed="false" hidden title="Dibujar en la rueda los viajes de los planetas por las casas (los aspectos, orbes y regentes se cambian en Configuración)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="7" r="3" stroke-dasharray="2 2"/><path d="M8.2 14.8 15.6 9.2M12.6 8.6l3.4.6-.6 3.4"/></svg>Viajes
+        </button>
+        <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
+        </button>
+      </div>
     </div>
 
     <div class="tools" id="toolsTransit" hidden>
@@ -385,12 +409,37 @@
 
     <div class="stage" id="stage" hidden>
       <figure class="wheel-fig">
+        <div class="trip-pick" id="tripPick" role="group" aria-label="Qué viajes se dibujan en la rueda" hidden>
+          <div class="tp-row">
+            <span class="tp-lab">Ver los viajes por</span>
+            <span class="seg tp-by" id="tripBy" role="group" aria-label="Elegir los viajes por planeta o por casa">
+              <button type="button" data-by="planet" aria-pressed="true">Planeta</button>
+              <button type="button" data-by="house" aria-pressed="false">Casa</button>
+            </span>
+          </div>
+          <div class="tp-row" id="tripPlanetRow">
+            <span class="tp-chips" id="tripChips"></span>
+            <span class="tp-acts">
+              <button type="button" class="secondary compact" id="tripAll">Marcar todos</button>
+              <button type="button" class="secondary compact" id="tripNone">Desmarcar todos</button>
+            </span>
+          </div>
+          <div class="tp-row" id="tripHouseRow" hidden>
+            <span class="tp-chips" id="tripHouses"></span>
+            <span class="tp-acts">
+              <button type="button" class="secondary compact" id="tripHAll">Marcar todas</button>
+              <button type="button" class="secondary compact" id="tripHNone">Desmarcar todas</button>
+            </span>
+          </div>
+        </div>
         <svg id="wheel" class="wheel" viewBox="-345 -345 690 690" role="img"></svg>
         <figcaption class="legend">
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-soft"/></svg>Trígono y sextil</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard"/></svg>Cuadratura y oposición</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-hard-dash"/></svg>Semicuadratura y sesquicuadratura</span>
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-minor"/></svg>Quincuncio</span>
+          <span class="key" id="reachKey" hidden><svg width="40" height="14" aria-hidden="true"><circle cx="8" cy="7" r="5.4" class="k-reach-dot solid"/><circle cx="29" cy="7" r="5.4" class="k-reach-dot"/></svg>Borde macizo: cuenta solo en la casa que sigue · punteado: en las dos</span>
+          <span class="key" id="tripKey" hidden><svg width="80" height="22" aria-hidden="true"><circle cx="10" cy="11" r="6" class="k-trip-dot solid"/><circle cx="40" cy="11" r="5.2" class="k-trip-dot dbl"/><circle cx="40" cy="11" r="8.6" class="k-trip-dot dbl"/><circle cx="70" cy="11" r="6" class="k-trip-dot dot"/></svg>Viajeros, con borde: macizo, por aspecto · doble, por eje · punteado, por implicancia</span>
           <span class="key" id="outKey" hidden><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" class="k-out"/></svg><span id="outKeyText"></span></span>
                   <span class="hint interp">Tocá un planeta para ver su signo, su casa y sus aspectos; al pasar el mouse se ve el orbe de cada aspecto.</span>
         </figcaption>
@@ -401,6 +450,7 @@
           <button role="tab" id="tab-stair" data-modes="natal" aria-controls="panel-stair" aria-selected="true" title="Cuadro de aspectos">Cuadro</button>
           <button role="tab" id="tab-pos" data-modes="natal" aria-controls="panel-pos" aria-selected="false" tabindex="-1">Posiciones</button>
           <button role="tab" id="tab-casas" data-modes="natal" aria-controls="panel-casas" aria-selected="false" tabindex="-1">Casas</button>
+          <button role="tab" id="tab-viajes" data-modes="natal" aria-controls="panel-viajes" aria-selected="false" tabindex="-1">Viajes</button>
           <button role="tab" id="tab-sum" data-modes="transit" aria-controls="panel-sum" aria-selected="false" tabindex="-1" hidden>Resumen</button>
           <button role="tab" id="tab-tpos" data-modes="transit" aria-controls="panel-tpos" aria-selected="false" tabindex="-1" hidden>Tránsitos</button>
           <button role="tab" id="tab-asp" data-modes="natal transit syn" aria-controls="panel-asp" aria-selected="false" tabindex="-1">Aspectos</button>
@@ -412,6 +462,7 @@
 
         <div id="panel-pos" role="tabpanel" aria-labelledby="tab-pos"></div>
         <div id="panel-casas" role="tabpanel" aria-labelledby="tab-casas" hidden></div>
+        <div id="panel-viajes" role="tabpanel" aria-labelledby="tab-viajes" hidden></div>
         <div id="panel-sum" role="tabpanel" aria-labelledby="tab-sum" hidden>
           <div class="seg sumview" id="sumView" role="group" aria-label="Qué mostrar">
             <button type="button" data-v="feat" aria-pressed="true">Destacados</button>

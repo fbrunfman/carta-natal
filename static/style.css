@@ -15,6 +15,8 @@
   --soft: #2E6FB7;
   --minor: #A87A12;
   --out: #A24A00;
+  --reach: #6C3FB0;
+  --trip: #14796A;
 
   --ring-bg: #292849;
   --ring-ink: #F4F3FA;
@@ -56,6 +58,8 @@
   --soft: #78B4FF;
   --minor: #E3BC52;
   --out: #FFB066;
+  --reach: #C9A2FF;
+  --trip: #5FD3BC;
 
   --ring-bg: #2A2950;
   --ring-ink: #F4F3FA;
@@ -76,7 +80,7 @@
     --bg: #0D161C; --surface: #121D25; --field: #0A1218;
     --ink: #E8EEF2; --ink-2: #A3B2BF; --line: #243541; --line-strong: #4A6073;
     --hover: rgba(255, 255, 255, .06); --focus: #78B4FF;
-    --hard: #FF8873; --soft: #78B4FF; --minor: #E3BC52; --out: #FFB066;
+    --hard: #FF8873; --soft: #78B4FF; --minor: #E3BC52; --out: #FFB066; --reach: #C9A2FF; --trip: #5FD3BC;
     --fire: rgba(255, 128, 100, .17); --earth: rgba(150, 196, 110, .15);
     --air: rgba(236, 192, 78, .16); --water: rgba(104, 170, 226, .17);
     --fire-solid: #FF8064; --earth-solid: #96C46E; --air-solid: #ECC04E; --water-solid: #68AAE2;
@@ -365,6 +369,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .rx { font: 700 calc(9px * var(--fw)) var(--sans); text-anchor: middle; fill: var(--hard); }
 .wheel .pl:focus-visible .hit { stroke: var(--focus); stroke-opacity: .35; }
 
+/* planetas entre casas: arco sobre el anillo de las casas hasta la cúspide + circulito con el planeta del otro lado */
+/* planetas que pasan a otra casa: la pila de siempre, con un borde violeta (macizo si cuentan solo en la casa que sigue, punteado si cuentan en las dos) */
+.wheel .reach-ring { fill: none; stroke: var(--reach); stroke-width: 1.9; pointer-events: none; }
+.wheel .reach-both .reach-ring { stroke-dasharray: 3.4 2.4; }
+.wheel .reach-ring { transition: stroke .12s; }
+.wheel .reach .link { stroke: var(--reach); }
+.wheel .reach-both .link { stroke-dasharray: 2.6 2.4; }
+.wheel .reach:focus-visible .reach-ring { stroke: var(--focus); }
+/* viajes de los planetas: el círculo del planeta en la casa a la que viaja, con borde macizo (por aspecto), doble (por eje) o punteado (por implicancia) */
+.wheel .trip-ring { fill: none; stroke: var(--trip); stroke-width: 2.1; pointer-events: none; }
+.wheel .trip-axis .trip-ring { stroke-width: 1.7; }                   /* por eje: dos anillos concéntricos */
+.wheel .trip-implied .trip-ring { stroke-width: 2.5; stroke-dasharray: .1 3.6; stroke-linecap: round; }
+.wheel .trip:focus-visible .trip-ring { stroke: var(--focus); }
+.wheel .trip-arrow { display: none; fill: none; stroke: var(--trip); stroke-width: 2.2; stroke-dasharray: 7 4; pointer-events: none; }
+.wheel .trip-arrow.on { display: block; }
+.wheel .trip-head { fill: var(--trip); }
+.wheel.has-focus .pl.trip.sel .pdi { transform: none; }
+.reach-tip {
+  position: fixed; z-index: 60; max-width: min(300px, calc(100vw - 16px)); padding: 9px 11px 10px;
+  background: var(--surface); color: var(--ink); border: 1.5px solid var(--reach); border-radius: 8px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .28); font-size: calc(13.5px * var(--fs, 1)); line-height: 1.4;
+}
+.reach-tip p { margin: 0; }
+.reach-tip-read { margin-top: 7px; padding: 3px 10px; font: inherit; font-size: .9em; font-weight: 600; color: var(--reach); background: none; border: 1px solid var(--reach); border-radius: 6px; cursor: pointer; }
+.reach-tip-read:hover, .reach-tip-read:focus-visible { background: var(--reach); color: var(--bg); outline: none; }
+
 /* símbolo del aspecto en el punto medio de cada raya */
 .wheel .amark { opacity: var(--mo, .95); transition: opacity .12s; }
 .wheel .amark.t2 { --mo: .85; }
@@ -491,6 +521,11 @@ td .g { margin-right: 4px; }
 .stepper button:hover { background: var(--hover); }
 .stepper select { width: auto; height: 100%; border: 0; border-radius: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background-color: transparent; font-size: calc(14px * var(--fs)); }
 .secondary.compact { height: 38px; padding: 0 16px; font-size: calc(14px * var(--fs)); }
+.modeacts { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.modeacts .secondary { margin: 0; }
+#spillBtn[aria-pressed="true"] { background: var(--reach); border-color: var(--reach); color: var(--bg); }
+#spillBtn[aria-pressed="true"]:hover { filter: brightness(1.08); }
+#spillBtn svg circle { fill: none; }
 
 .calbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-top: 12px; }
 .calbar .tf input { width: 9.6em; height: 34px; font-size: calc(13.5px * var(--fs)); }
@@ -673,6 +708,23 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .asp-toggle[aria-pressed="false"] { border-color: var(--line-strong); background: transparent; color: var(--ink-2); font-weight: 500; text-decoration: line-through; }
 .asp-toggle[aria-pressed="false"] .a-ic { opacity: .4; }
 .asp-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* orbes en Configuración: una tabla chica por tema (entra en el menú lateral), con los valores editados resaltados */
+.orb-wrap { margin-top: 10px; overflow-x: auto; }
+.orb-table { border-collapse: collapse; width: 100%; font-size: calc(12.5px * var(--fs)); }
+.orb-table th, .orb-table td { padding: 4px 2px; border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
+.orb-table thead th { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--line-strong); line-height: 1.2; }
+.orb-table thead .a-ic { display: inline-block; font-family: var(--glyph); font-size: 1.05em; margin: 0 1px; vertical-align: middle; }
+.orb-table tbody th { text-align: left; font-weight: 500; color: var(--ink); padding-right: 6px; line-height: 1.25; }
+.orb-table .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.orb-table .two { white-space: nowrap; }
+.orb-table .slash { color: var(--ink-2); margin: 0 2px; }
+.orb-table input.orb-in { width: 3em; height: 34px; padding: 0 2px; border-radius: 5px; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+.orb-table .orb-in::-webkit-outer-spin-button, .orb-table .orb-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.orb-table input.orb-in.edited { border-color: var(--reach); box-shadow: inset 0 0 0 1px var(--reach); font-weight: 600; }
+.orb-table input.orb-in:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.cfg #cfgOrbReset { margin-top: 14px; }
+.cfg #cfgOrbReset:disabled { opacity: .45; cursor: default; }
 .asp-open { cursor: pointer; }
 .asp-open:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 4px; }
 
@@ -1199,7 +1251,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
-  .legend .hint, .interp, #stairInfo, dialog { display: none !important; }
+  .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }
   main { padding: 0; }
 
@@ -1239,6 +1291,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   #panel-asp { order: 6; } #panel-elem { order: 7; break-inside: avoid; }
   :root[data-print]:not([data-print~="wheel"]) .wheel-fig { display: none !important; }
   :root[data-print="wheel"] .wheel { max-width: 17cm; max-height: 17cm; }
+  :root[data-print="wheel stair"] .wheel { max-width: 11.8cm; max-height: 11.8cm; }         /* natal, «Mandala y cuadro»: con la aclaración de A/S el cuadro no entraba en la misma hoja */
   :root[data-print="wheel grid"] .wheel { max-width: 11.5cm; max-height: 11.5cm; }        /* tránsitos y sinastría: el cuadro es cuadrado y no entra con la rueda grande */
   :root[data-print] .data > [role="tabpanel"]::before {
     display: block; margin: 0 0 3pt; padding-bottom: 2pt; border-bottom: 1px solid #999;
@@ -1265,3 +1318,61 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   #panel-asp th { padding: 3pt 3pt 2pt; }
   #panel-asp td { padding: 2pt 3pt; }
 }
+
+/* planetas entre casas: marcas en las tablas y en la leyenda */
+.reach-chip { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 9px; border: 1px solid var(--reach); color: var(--reach); font-size: .78em; font-weight: 600; line-height: 1.5; white-space: nowrap; vertical-align: .08em; }
+.reach-chip.both { border-style: dashed; }
+.reach-note .reach-chip { margin: 0 3px 0 0; }
+.contains .g.also { outline: 1.5px dashed var(--reach); outline-offset: 1.5px; border-radius: 50%; }
+.contains .g.also.pass { outline-style: solid; }
+.k-reach-dot { fill: none; stroke: var(--reach); stroke-width: 1.6; stroke-dasharray: 3 2.2; }
+.k-reach-dot.solid { stroke-dasharray: none; stroke-width: 2; }
+
+/* leyenda de los viajes */
+.k-trip-dot { fill: none; stroke: var(--trip); stroke-width: 1.8; }
+.k-trip-dot.dbl { stroke-width: 1.5; }
+.k-trip-dot.dot { stroke-width: 2.4; stroke-dasharray: .1 3.4; stroke-linecap: round; }
+#tripBtn[aria-pressed="true"] { background: var(--trip); border-color: var(--trip); color: var(--bg); }
+
+/* sección «Viajes»: la notación del pizarrón, y al tocar una fila, la explicación en palabras */
+.trip-pick { display: flex; flex-direction: column; gap: 8px; margin: 0 0 8px; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
+.tp-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; }
+.trip-pick[hidden] { display: none; }
+.tp-lab { font-weight: 600; }
+.tp-row[hidden] { display: none; }
+.seg.tp-by { margin: 0; }
+.seg.tp-by button { min-height: 34px; padding: 5px 16px; font-weight: 500; }
+.seg.tp-by button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tp-chips, .tp-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+.tp-acts .secondary { margin: 0; }
+.trip-chip { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 40px; min-height: 36px; padding: 3px 9px; border: 1.5px solid var(--trip); border-radius: 999px; background: color-mix(in srgb, var(--trip) 16%, transparent); color: var(--ink); font-size: calc(15px * var(--fs)); cursor: pointer; }
+.trip-chip .g { font-family: var(--glyph); font-size: 1.1em; }
+.trip-chip.hs { min-width: 38px; padding: 3px 7px; font-size: calc(13.5px * var(--fs)); }
+.trip-chip .hn { font-weight: 700; letter-spacing: .01em; }
+.trip-chip .tp-n { font-size: .72em; font-weight: 700; color: var(--trip); }
+.trip-chip:hover { background: color-mix(in srgb, var(--trip) 28%, transparent); }
+.trip-chip[aria-pressed="false"] { border-color: var(--line-strong); background: transparent; color: var(--ink-2); }
+.trip-chip[aria-pressed="false"] .g { opacity: .45; }
+.trip-chip.none { opacity: .55; }
+.trip-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.trip-h { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; font-size: calc(13.5px * var(--fs)); font-weight: 600; color: var(--ink-2); letter-spacing: .02em; }
+.trip-h:first-child { margin-top: 2px; }
+.trip-n { font-weight: 500; font-size: .86em; color: var(--ink-2); opacity: .8; }
+.trips { list-style: none; margin: 0; padding: 0; }
+.trips li { border-bottom: 1px solid var(--line); }
+.trip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; padding: 7px 4px; border: 0; background: none; color: var(--ink); font: inherit; font-size: calc(15px * var(--fs)); text-align: left; cursor: pointer; }
+.trip-row:hover, .trip-row[aria-expanded="true"] { background: var(--hover); }
+.trip-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.trip-row .tn-main, .trip-row .tn-why { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.trip-row .tn-main { font-weight: 600; }
+.trip-row .tn-arr { margin: 0 2px; }
+.trip-row .tn-why { color: var(--ink-2); font-size: .94em; }
+.trip-row .g { min-width: 1.2em; margin: 0; }
+.trip-row .rn { font-weight: 600; font-variant-numeric: lining-nums; letter-spacing: .02em; }
+.trip-row .tn-why .rn { font-weight: 500; }
+.trip-row .reg { font-size: .88em; font-style: italic; margin: 0 2px; }
+.trip-row .a-ic { font-family: var(--glyph); font-size: 1.1em; min-width: 1.1em; }
+.trip-words { margin: 0; padding: 4px 6px 10px; font-size: calc(14px * var(--fs)); line-height: 1.5; color: var(--ink); border-left: 3px solid var(--trip); background: var(--hover); }
+.trip-words[hidden] { display: none; }
+.trip-none { margin: 2px 4px 6px; }
+.trip-note { margin-top: 14px; }

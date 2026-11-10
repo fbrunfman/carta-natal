@@ -134,8 +134,12 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   | Urano, Neptuno, Plutón | 5° | 3° | 3° | 2° |
 
   El Nodo norte (apagado) no está en la tabla: usaría la última fila. En los trígonos de Mercurio, Venus y Marte (7/6) y de
-  Júpiter y Saturno (6/5) la hoja trae dos valores; se usa el primero. Los números están en `ORB_TABLE` (`astro.py`).
+  Júpiter y Saturno (6/5) la hoja trae dos valores; se usa el primero. Los números de fábrica están en `ORB_TABLE` y `HOUSE_ORBS` (`astro.py`) y, iguales, en `ORB_DEFAULTS` (`static/settings.js`): si se cambian, cambiarlos en los dos.
   El orbe de «Tránsitos destacados» es aparte (3°, y 2° en trígonos y sextiles), porque ahí se buscan los aspectos cerrados.
+  **Esa tabla es la de fábrica y se puede cambiar** (Configuración → *Orbes*, ver abajo): el navegador manda los orbes
+  elegidos con cada pedido (`orbs` en el cuerpo de la solicitud de la carta, los tránsitos y la sinastría) y el servidor
+  los sanea (números de 0° a 15°; lo que falte o venga mal queda en el valor de fábrica, así que un pedido sin `orbs`
+  calcula como siempre). En la sinastría mandan los de la carta A.
   Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
   línea resaltada aparece su orbe** (en una etiqueta del color del aspecto, sin pisarse con las otras; lo mismo con el
   teclado al enfocar el planeta).
@@ -164,6 +168,62 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   tránsitos y los bordes cruzan ese anillo más tenues; las cúspides son las de la carta de adentro. El mandala se achica un poco
   (≈ 8 %) para que entre. **Se puede apagar** (Configuración → *Mandala* → «Anillo exterior con las cúspides»): vuelven
   los grados y minutos sueltos afuera del zodíaco, sin el signo, como antes. La pestaña Casas ya los traía en tabla.
+- **Planetas entre casas** (botón «Entre casas», arriba a la derecha de la carta natal; viene apagado y solo está en la
+  vista Natal): marca los planetas que **pasan a la casa que sigue** y los que **están en las dos**. **Se cuenta siempre
+  hacia adelante**, nunca para atrás: lo que importa es cuántos grados le **faltan** al planeta para llegar a la cúspide de
+  la casa que sigue; un planeta que ya pasó una cúspide es de esa casa y nada más. Los orbes de fábrica salen de la segunda
+  tabla de la hoja (en las otras casas la hoja trae «3/2» y se toma un solo valor, 2,5°, el promedio):
+
+  | | cúspide angular (casas 1, 4, 7, 10) | cúspide de las otras casas |
+  |---|---|---|
+  | En cúspide: pasa a la casa que sigue | hasta 4° | hasta 2,5° |
+  | En las 2 casas: cuenta en las dos | de 4° a 7° | de 2,5° a 5° |
+
+  *En cúspide*: si le faltan hasta esos grados, el planeta cuenta en la casa que sigue **y ya no en la suya**. *En las 2
+  casas*: si le faltan más que eso y hasta estos grados, cuenta **en las dos**. Lo calcula el servidor (`_house_reach` en
+  `astro.py`; la respuesta de la carta trae `house_reach`, con `kind` = `pass` o `both`, la casa donde cae, `also` = la
+  que sigue y `dist` = los grados que le faltan). Cómo se ve: en la **rueda**, los planetas que pasan se dibujan **adentro de la casa que sigue**, con la pila de siempre (círculo, grados, signo y minutos, en la misma zona de los demás planetas) y un **borde violeta**: macizo si cuentan solo en la que sigue (el planeta sale de su casa), punteado si cuentan en las dos (queda su pila en la casa propia y otra copia en la que sigue). Una raya sale de la posición real, sobre la graduación. Se acomodan con el mismo reparto de siempre (`placePlanets`): como acaban de pasar la cúspide, quedan antes que los planetas de esa casa. Al pasar el cursor se resalta el planeta (las dos copias) y sus aspectos; al **tocar**, o con Enter, sale un **cartelito** con la misma explicación del hover («Venus está en la casa 5, a 0°28′ de la cúspide de la 6: cuenta en la 6 y no en la 5»); se cierra al tocar afuera, con Esc o al desplazar, y con las lecturas prendidas trae un botón «Ver lectura». En **Posiciones**, junto a la casa, `→ 11` (cuenta en la 11 y no en
+  la suya) o `+ 11` (cuenta en las dos). En **Casas**, el planeta que pasa sale de su casa y aparece en la que sigue con
+  borde macizo; el que cuenta en las dos queda en la suya y aparece también en la que sigue con borde punteado. La leyenda
+  de la rueda y una nota debajo de las tablas lo explican con los orbes que se estén usando. Se recuerda (`spill` en
+  `carta:cfg`). Los orbes se cambian en Configuración → *Orbes*. No cambia la casa que figura en el resto de la app.
+  **Servidor de una versión anterior**: el cálculo vive en `astro.py`, y la página nueva puede estar hablando con un servidor que sigue
+  abierto con el cálculo viejo (hay que cerrar la ventana de Carta natal, esperar unos segundos y volver a abrirla). La
+  respuesta de la carta trae `orbs_v: 2`; si falta, la página no usa lo que el servidor calculó de las casas y avisa arriba
+  (solo si hay orbes cambiados o «Entre casas» prendido).
+- **Viajes de los planetas por las casas** (solo carta natal): un planeta «viaja» a una casa que no es la suya y ahí también actúa.
+  Se calcula en el navegador (`static/trips.js`, sin DOM) a partir de los aspectos que ya trae el servidor
+  (los mismos orbes de Configuración, estén o no a la vista en la rueda), las casas de cada planeta y las cúspides. Hay tres
+  tipos, todos con aspectos duros: **por aspecto** (dos planetas en aspecto duro se intercambian de casa: Saturno en la III en
+  oposición a Venus en la IX → Saturno viaja a la IX y Venus a la III), **por eje** (un planeta pegado a una cúspide, antes o
+  después, viaja a la casa opuesta: Mercurio pegado a la cúspide de la V → viaja a la XI) y **por implicancia** (un planeta en
+  aspecto duro con otro viaja a las casas cuya cúspide está en un signo que rige ese otro: Venus se opone a Saturno, que rige
+  Capricornio, y la VIII tiene Capricornio → Venus viaja a la VIII; Saturno se opone a Venus, que rige Libra y Tauro → Saturno
+  viaja a la V y a la XII). Un planeta nunca viaja a la casa donde ya está. Probado con la carta del pizarrón: da exactamente
+  esos seis viajes.
+  - **Pestaña «Viajes»** (carta natal, después de Casas): los tres grupos con la cantidad, y cada viaje con la notación del
+    pizarrón y números romanos, `♄ → IX (♄ ☍ ♀ IX)` · `☿ → XI (☿ ☌ V)` · `♀ → VIII (♀ ☍ ♄ reg. de ♑ VIII)`. Al tocar una fila
+    se lee la explicación en palabras (otra vez para cerrarla); al pasar el cursor, la rueda resalta el planeta.
+  - **Botón «Viajes»** (arriba a la derecha de la carta natal, apagado de fábrica): dibuja en la rueda a cada viajero, solo el
+    círculo del planeta, dentro de la casa a la que viaja, con borde **macizo** (por aspecto), **doble** (dos anillos, por eje) o
+    **punteado** (por implicancia); si un planeta llega a una casa por más de un camino es un solo círculo, con el borde del
+    tipo más fuerte. Al enfocar al planeta o a uno de sus viajeros sale una **flecha** desde su lugar hasta cada casa a la que
+    viaja. Al **tocar** un viajero (o Enter) sale el cartelito con la explicación en palabras, un párrafo por camino; se cierra
+    al tocar afuera, con Esc o al desplazar. Funciona junto con «Entre casas». Se recuerda (`tripsOn` en `carta:cfg`).
+    Al prenderlo aparece sobre la rueda el **selector de viajes**: se elige ver los viajes **«por Planeta»** (de fábrica) o **«por
+    Casa»**, y nunca las dos cosas a la vez; se despliega solo la lista elegida. Por Planeta: una ficha por planeta con a cuántas
+    casas viaja. Por Casa: una ficha por casa, I a XII, con cuántos viajeros llegan a ella (la casa de llegada, que es donde se
+    dibuja). Vienen todas marcadas y se desmarcan de a una, con **Marcar todos / Desmarcar todos** (planetas) o **Marcar todas /
+    Desmarcar todas** (casas). Al cambiar entre Planeta y Casa, o al volver a prender «Viajes», vuelve a estar todo marcado y
+    rige solo el filtro elegido (no se guarda). La pestaña «Viajes» sigue mostrando todos los viajes. No sale en la hoja impresa.
+  - **Configuración → «Viajes de planetas»** (`trips` en `carta:cfg`): los **aspectos duros** que cuentan (de fábrica conjunción,
+    oposición y cuadratura; se pueden sumar semicuadratura y sesquicuadratura, o sacar cualquiera) y el **orbe a la cúspide**
+    del viaje por eje (de fábrica 1° en las angulares y 1° en las otras, de 0° a 15°). Los **regentes** son siempre los modernos,
+    como en la cruz de elementos (Escorpio de Plutón, Acuario de Urano, Piscis de Neptuno): ya no hay opción de regentes
+    tradicionales. «Restablecer viajes» vuelve a los de fábrica. Lo guardado con los valores de fábrica de antes (oposición y
+    cuadratura, 4° y 2,5°) pasa solo a los de ahora; lo que se haya elegido a mano se respeta. Solo viajan los diez planetas
+    (sin nodo).
+  - No sale en la hoja impresa (la rueda sí, con los viajeros si el botón está prendido).
 - **Qué aspectos se ven** (Configuración → *Aspectos*): ocho botones, uno por tipo (conjunción, oposición, trígono,
   cuadratura, sextil, semicuadratura, sesquicuadratura y quincuncio). Apagar uno lo saca de **la rueda** (rayas, símbolos y circulitos),
   **la lista de Aspectos**, **el Cuadro y la cuadrícula**, **los aspectos de tránsitos y sinastría** y **el calendario de
@@ -203,7 +263,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   El *sistema de casas* ya no está en el formulario: es una preferencia de la vista, está en
   Configuración, vale para todas las cartas y se aplica al instante, sin apretar nada.
 - **Imprimir** (botón arriba a la derecha de la carta): abre un cuadro para **elegir qué va en la hoja**: el mandala y,
-  según la vista, las tablas (natal: Cuadro de aspectos, Posiciones, Casas, Aspectos y Elementos; tránsitos: Tránsitos,
+  según la vista, las tablas (natal: Cuadro de aspectos, Posiciones, Casas, Viajes, Aspectos y Elementos; tránsitos: Tránsitos,
   Cuadro y Aspectos; sinastría: Superposición, Cuadro y Aspectos). Con tres atajos: **Solo el mandala** (sale grande,
   en una hoja), **Mandala y cuadro** (también en una hoja) y **Todo** (en la carta natal, dos hojas: el título, la rueda
   y las tablas de Posiciones y Casas en la primera; el Cuadro, los Aspectos y los Elementos en la segunda). También se
@@ -216,6 +276,16 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros).
     Recalcula la carta que estás viendo al elegir.
   - *Aspectos*: qué tipos de aspecto se ven (ver «Qué aspectos se ven», arriba).
+  - *Orbes*: dos tablas para editar, con los valores de fábrica ya puestos (los de la hoja). La primera, los **orbes de
+    los aspectos** por grupo de planetas y tipo de aspecto (Sol y Luna · Mercurio, Venus y Marte · Júpiter y Saturno ·
+    Urano, Neptuno y Plutón × conjunción/oposición/cuadratura · trígono · sextil · 45°, 135° y 150°). Se aplican a la
+    carta natal, los tránsitos y la sinastría (y recalculan al instante la carta que estás viendo); los de «Tránsitos
+    destacados» y «Próximamente» son aparte, y el calendario de aspectos exactos busca el momento exacto, así que no los usa.
+    La segunda, los **orbes de los planetas en las casas** (ver «Planetas entre casas»). Cada casilla acepta de 0° a 15°
+    (más se acomoda a 15°; vacía vuelve a su valor de fábrica), las modificadas se resaltan y **«Restablecer orbes»** vuelve a
+    la tabla de fábrica. El «Restablecer» general no los toca. Se recuerdan en el navegador (`orbs` en `carta:cfg`).
+    Los «7/6» y «6/5» de la hoja (trígonos de personales y sociales) se cargan con el primer número; el «3/2» de las otras
+    casas en cúspide se cargó como un solo valor, 2,5°.
   - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
   - *Interpretación*: **ya no está** (ver «Cosas apagadas a pedido»). La app queda siempre en «solo datos»: sin la
     ventana de lectura al tocar un planeta (rueda, tablas y Elementos) ni la de los aspectos (lista, Cuadro y cuadrícula;
@@ -235,7 +305,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - *Tamaño del mandala*: 60 % a 140 %. Por encima de 100 % el mandala pasa a ocupar todo el ancho y las
     tablas bajan debajo de él.
   - «Restablecer» vuelve a los valores de fábrica (estilo Nuevo, con tinte por elemento, letra Redondeada, tamaños al
-    100 %, anillo de cúspides prendido, todos los aspectos prendidos). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
+    100 %, anillo de cúspides prendido, todos los aspectos prendidos; los orbes tienen su propio botón). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
     página, así que no hay parpadeo al abrir. Mientras nadie toque la configuración no se guarda nada y rige lo de
     fábrica. Una configuración guardada antes de este cambio (sin `v`) que seguía en los valores de entonces (letra del
     sistema, sin tinte en el estilo Nuevo) cuenta como «sin elegir» y pasa a los de ahora; lo que se haya elegido de
@@ -427,7 +497,8 @@ static/           interfaz
   wheel.js                          dibujo de la rueda
   layout.js                         planetas dentro de su casa; separación del anillo exterior
   astro-data.js                     nombres, aspectos, formato de posiciones, círculos de color de cada cuerpo
-  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños, tipos de aspecto (se guarda y se aplica)
+  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños, tipos de aspecto, orbes, «Entre casas» y viajes (se guarda y se aplica)
+  trips.js                          viajes de los planetas por las casas (por aspecto, por eje, por implicancia): cálculo, notación y explicaciones
   print.js                          el cuadro de «Imprimir»: qué va en la hoja (la hoja misma la arma el @media print de style.css)
   summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
   planet-dialog.js                  ventana de lectura que se abre al tocar un planeta

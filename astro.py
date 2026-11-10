@@ -60,6 +60,7 @@ ASPECTS = [
 # Entre dos cuerpos de grupos distintos manda el orbe mayor (Sol con Neptuno: el del Sol).
 # En los trígonos de Mercurio, Venus y Marte (7/6) y de Júpiter y Saturno (6/5) la tabla trae dos valores: se usa el
 # primero, el mayor. Para cambiarlo, tocá solo esos dos números.
+# Son los valores de fábrica: Configuración → Orbes los puede cambiar (el pedido trae `orbs`, ver clean_orbs).
 ORB_TABLE = {
     "luminaries": (10.0, 8.0, 6.0, 2.0),    # Sol y Luna
     "personal":   (8.0, 7.0, 5.0, 2.0),     # Mercurio, Venus y Marte
@@ -74,11 +75,57 @@ ORB_GROUP = {
 ORB_COLUMN = {"conjunction": 0, "opposition": 0, "square": 0, "trine": 1, "sextile": 2,
               "semisquare": 3, "sesquiquadrate": 3, "quincunx": 3}
 
+# Planetas en las casas, en grados. Se cuenta siempre hacia adelante: lo que importa es cuánto le falta a un planeta para
+# llegar a la cúspide de la casa que sigue (un planeta que ya pasó una cúspide es de esa casa y nada más).
+#   cusp = «en cúspide»: si le faltan hasta tantos grados, el planeta cuenta en la casa que sigue y NO en la suya.
+#          [cúspide de una casa angular (1, 4, 7, 10), cúspide de cualquier otra] → 4 / 2,5
+#   span = «en las 2 casas»: si le faltan más que el orbe de cúspide y hasta tantos grados, cuenta en las dos.
+#          [angular, otra] → 7 / 5
+# La hoja trae «3/2» para las otras casas en cúspide; el cálculo toma un solo valor (2,5, el promedio).
+HOUSE_ORBS = {"cusp": (4.0, 2.5), "span": (7.0, 5.0)}
+ORB_MAX = 15.0        # tope de cualquier orbe que llegue en un pedido
+ORBS_VERSION = 2      # la respuesta de la carta lo trae (`orbs_v`): así la página sabe si el servidor entiende los orbes elegidos
+_ANGULAR = (1, 4, 7, 10)
 
-def orb_limit(a_id: str, b_id: str, kind: str) -> float:
+
+def default_orbs() -> dict:
+    return {"asp": dict(ORB_TABLE), "cusp": HOUSE_ORBS["cusp"], "span": HOUSE_ORBS["span"]}
+
+
+def _orb_values(raw, default: tuple) -> tuple:
+    """Una fila de orbes del pedido: números entre 0 y ORB_MAX; una fila de otro largo, o un valor que no sea número, queda en el de fábrica."""
+    if not isinstance(raw, (list, tuple)) or len(raw) != len(default):
+        return default
+    out = []
+    for i, d in enumerate(default):
+        try:
+            x = float(raw[i])
+        except (TypeError, ValueError):
+            x = d
+        out.append(d if x != x else round(min(ORB_MAX, max(0.0, x)), 2))      # x != x: NaN
+    return tuple(out)
+
+
+def clean_orbs(raw) -> dict:
+    """Orbes de un pedido: {"asp": {grupo: [4 valores]}, "cusp": [2], "span": [2]}. Todo lo que no sea válido vuelve al
+    valor de fábrica, así que un pedido sin `orbs` (o con basura) calcula como siempre."""
+    out = default_orbs()
+    if not isinstance(raw, dict):
+        return out
+    asp = raw.get("asp")
+    if isinstance(asp, dict):
+        for g, d in ORB_TABLE.items():
+            out["asp"][g] = _orb_values(asp.get(g), d)
+    out["cusp"] = _orb_values(raw.get("cusp"), HOUSE_ORBS["cusp"])
+    out["span"] = _orb_values(raw.get("span"), HOUSE_ORBS["span"])
+    return out
+
+
+def orb_limit(a_id: str, b_id: str, kind: str, table: dict | None = None) -> float:
     """Orbe máximo del aspecto `kind` entre dos cuerpos: el mayor de los dos."""
+    table = table or ORB_TABLE
     col = ORB_COLUMN[kind]
-    return max(ORB_TABLE[ORB_GROUP.get(i, "outer")][col] for i in (a_id, b_id))
+    return max(table[ORB_GROUP.get(i, "outer")][col] for i in (a_id, b_id))
 
 # swisseph no es seguro entre hilos (estado global): serializamos los cálculos.
 _lock = threading.Lock()
@@ -158,14 +205,36 @@ def _house_of(lon: float, cusps: list[float]) -> int:
     return 12
 
 
-def _aspect_between(a: dict, b: dict) -> dict | None:
+def _house_reach(bodies: list[dict], cusps: list[float], orbs: dict) -> list[dict]:
+    """Planetas que están cerca de la cúspide de la casa que sigue (siempre hacia adelante, nunca hacia atrás).
+    - «pass»: le faltan hasta HOUSE_ORBS["cusp"] grados: cuenta en la casa que sigue y no en la suya.
+    - «both»: le faltan más que eso y hasta HOUSE_ORBS["span"] grados: cuenta en las dos.
+    `house` es la casa donde cae, `also` la que sigue y `dist` los grados que le faltan para su cúspide."""
+    cusp_orb, span_orb = orbs["cusp"], orbs["span"]
+    out = []
+    for b in bodies:
+        h = _house_of(b["lon"], cusps)
+        nxt = h % 12 + 1
+        left = _norm360(cusps[nxt - 1] - b["lon"])
+        k = 0 if nxt in _ANGULAR else 1
+        if left <= cusp_orb[k]:
+            kind = "pass"
+        elif left <= span_orb[k]:
+            kind = "both"
+        else:
+            continue
+        out.append({"id": b["id"], "house": h, "also": nxt, "kind": kind, "dist": round(left, 5)})
+    return out
+
+
+def _aspect_between(a: dict, b: dict, table: dict | None = None) -> dict | None:
     """Aspecto entre dos cuerpos {id, lon, speed|None}, o None. `a` y `b` conservan su orden.
     Solo entre cuerpos: el Ascendente y el Medio Cielo no forman aspectos."""
     d = _norm180(b["lon"] - a["lon"])
     dist = abs(d)
     for key, angle in ASPECTS:
         orb = abs(dist - angle)
-        if orb > orb_limit(a["id"], b["id"], key):
+        if orb > orb_limit(a["id"], b["id"], key, table):
             continue
         applying = None
         if a["speed"] is not None and b["speed"] is not None:
@@ -179,24 +248,24 @@ def _aspect_between(a: dict, b: dict) -> dict | None:
     return None
 
 
-def _aspects(points: list[dict]) -> list[dict]:
+def _aspects(points: list[dict], table: dict | None = None) -> list[dict]:
     out = []
     for i in range(len(points)):
         for j in range(i + 1, len(points)):
-            asp = _aspect_between(points[i], points[j])
+            asp = _aspect_between(points[i], points[j], table)
             if asp:
                 out.append(asp)
     out.sort(key=lambda x: x["orb"])
     return out
 
 
-def _cross_aspects(inner: list[dict], outer: list[dict]) -> list[dict]:
+def _cross_aspects(inner: list[dict], outer: list[dict], table: dict | None = None) -> list[dict]:
     """Aspectos entre dos juegos de puntos. `a` es siempre del interior (natal / carta A) y
     `b` del exterior (tránsito / carta B). Con velocidad en ambos lados se calcula la fase."""
     out = []
     for a in inner:
         for b in outer:
-            asp = _aspect_between(a, b)
+            asp = _aspect_between(a, b, table)
             if asp:
                 out.append(asp)
     out.sort(key=lambda x: x["orb"])
@@ -289,6 +358,7 @@ def compute_chart(p: dict) -> dict:
         bodies = _calc_bodies(jd, node_kind, cusps)
 
     points = [dict(id=b["id"], lon=b["lon"], speed=b["speed"]) for b in bodies]
+    orbs = clean_orbs(p.get("orbs"))
 
     return {
         "input": {
@@ -309,7 +379,9 @@ def compute_chart(p: dict) -> dict:
         "angles": {"asc": round(asc, 6), "mc": round(mc, 6)},
         "node_kind": node_kind,
         "bodies": bodies,
-        "aspects": _aspects(points),
+        "aspects": _aspects(points, orbs["asp"]),
+        "house_reach": _house_reach(bodies, cusps, orbs),
+        "orbs_v": ORBS_VERSION,
         "warnings": warnings,
     }
 
@@ -330,6 +402,7 @@ def compute_transits(natal: dict, at: dict) -> dict:
     Cruzados: `a` = punto natal, `b` = planeta en tránsito. La carta natal es un punto fijo,
     así que la fase (aplicativo / separativo) depende solo del movimiento del planeta."""
     chart = compute_chart(natal)
+    table = clean_orbs(natal.get("orbs"))["asp"]
     naive = _parse_naive(at)
     utc, offset_h, tzinfo, warnings = _resolve_utc(naive, at)
     with _lock:
@@ -348,7 +421,7 @@ def compute_transits(natal: dict, at: dict) -> dict:
             "jd": round(jd, 6),
         },
         "bodies": bodies,
-        "aspects": _cross_aspects(natal_pts, transit_pts),
+        "aspects": _cross_aspects(natal_pts, transit_pts, table),
         "warnings": warnings,
     }
 
@@ -357,7 +430,8 @@ def compute_synastry(a_params: dict, b_params: dict) -> dict:
     """Dos cartas natales: aspectos cruzados y planetas de cada una en las casas de la otra.
     Ambas son posiciones de nacimiento, así que no se calcula fase."""
     a = compute_chart(a_params)
-    b = compute_chart(b_params)
+    b = compute_chart(dict(b_params, orbs=a_params.get("orbs")))     # los dos usan los orbes de quien mira
+    table = clean_orbs(a_params.get("orbs"))["asp"]
 
     def overlay(src: dict, host: dict) -> list[dict]:
         cusps = host["houses"]["cusps"]
@@ -367,7 +441,7 @@ def compute_synastry(a_params: dict, b_params: dict) -> dict:
 
     return {
         "a": a, "b": b,
-        "aspects": _cross_aspects(_points_of(a, speeds=False), _points_of(b, speeds=False)),
+        "aspects": _cross_aspects(_points_of(a, speeds=False), _points_of(b, speeds=False), table),
         "overlay": {"b_in_a": overlay(b, a), "a_in_b": overlay(a, b)},
         "warnings": [f"{who}: {w}" for who, ch in (("Carta A", a), ("Carta B", b)) for w in ch["warnings"]],
     }

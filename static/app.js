@@ -5,7 +5,7 @@ import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
-import { initSettings, load as loadSettings } from "./settings.js";
+import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs } from "./settings.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
 import { profection, profectionHTML, featuredHTML, featuredRowsHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
@@ -13,6 +13,7 @@ import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, mont
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
+import { computeTrips, groupTrips, groupWords, tripNotation, tripWords, tripPlain, TRIP_TYPES, TRIP_TITLES, TRIP_PLANETS, roman } from "./trips.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form");
@@ -33,7 +34,22 @@ let PLACES = [];
 let mode = "natal";        // natal | transit | syn
 let birth = null;          // lo que había en el formulario al calcular (los tránsitos y la sinastría parten de acá)
 let aspOff = new Set(loadSettings().aspOff);     // tipos de aspecto apagados en Configuración
+// Los planetas entre casas los calcula el servidor. Un servidor de una versión anterior (que seguía abierto al actualizar los
+// archivos) no entiende los orbes elegidos y trae otro cálculo de las casas: no se usa su respuesta y se avisa.
+const reachData = () => (chart?.orbs_v === ORBS_VERSION ? chart.house_reach || [] : []);
+const staleOrbs = () => !!chart && chart.orbs_v !== ORBS_VERSION && (spillOn || !sameOrbs(orbs, ORB_DEFAULTS));
 const vis = (list) => (aspOff.size ? list.filter((a) => !aspOff.has(a.type)) : list);
+let orbs = loadSettings().orbs;           // orbes elegidos en Configuración: viajan con cada pedido de cálculo
+let spillOn = loadSettings().spill;       // carta natal: marcar los planetas que pasan a la casa que sigue o están en las dos
+let tripCfg = loadSettings().trips;        // qué cuenta para los viajes de los planetas por las casas (Configuración)
+let tripsOn = loadSettings().tripsOn;      // carta natal: dibujar esos viajes en la rueda
+const HOUSES = Array.from({ length: 12 }, (_, i) => i + 1);
+// Los viajes se eligen por planeta o por casa (la de llegada), nunca las dos a la vez: de fábrica, por planeta, con todos marcados.
+// Al prender «Viajes», o al cambiar de «Planeta» a «Casa» (o al revés), vuelve a estar todo marcado.
+let tripBy = "planet";
+let tripSel = new Set(TRIP_PLANETS);       // por planeta: cuáles se dibujan
+let tripHSel = new Set(HOUSES);            // por casa: a cuáles llegan
+const tripReset = (by = "planet") => { tripBy = by; tripSel = new Set(TRIP_PLANETS); tripHSel = new Set(HOUSES); };
 let interpOn = loadSettings().interp;      // false = «solo datos»: ninguna lectura ni descripción (Configuración)
 let chart = null;          // carta natal mostrada (en sinastría, la carta A)
 let transit = null;        // respuesta de /api/transits
@@ -91,6 +107,7 @@ function natalBody(v) {
     lat: v.lat, lon: v.lon, tz: v.tz, hsys: v.hsys, node: v.node,
   };
   if (v.manual) o.offset = v.offset;
+  o.orbs = orbs;
   return o;
 }
 function partnerBody(item, v) {
@@ -99,6 +116,7 @@ function partnerBody(item, v) {
     lat: item.lat, lon: item.lon, tz: item.tz, hsys: v.hsys, node: v.node,
   };
   if (item.manual) o.offset = item.offset;
+  o.orbs = orbs;
   return o;
 }
 
@@ -437,6 +455,7 @@ function showError(err) {
   if (!offline) $("#error").append(document.createTextNode(err.message));
   $("#stage").hidden = true;
   $("#printBtn").hidden = true;
+  $("#spillBtn").hidden = true;
   $("#warnings").hidden = true;
   $("#timeNote").hidden = true;
 }
@@ -493,10 +512,62 @@ function outerRing() {
   return null;
 }
 
+// El selector de «Viajes»: una ficha por planeta (con cuántas casas visita) y una por casa (con cuántos viajeros llegan), marcadas o no.
+$("#tripHouses").innerHTML = HOUSES.map((h) =>
+  `<button type="button" class="trip-chip hs" data-h="${h}" aria-pressed="true"><span class="hn">${roman(h)}</span><span class="tp-n"></span></button>`).join("");
+$("#tripChips").innerHTML = TRIP_PLANETS.map((id) =>
+  `<button type="button" class="trip-chip" data-id="${id}" aria-pressed="true"><span class="g" aria-hidden="true">${glyphHTML(id)}</span><span class="tp-n"></span></button>`).join("");
+function syncTripPick(all) {
+  $("#tripPick").hidden = !all;
+  if (!all) return;
+  for (const b of $("#tripBy").children) b.setAttribute("aria-pressed", b.dataset.by === tripBy);
+  $("#tripPlanetRow").hidden = tripBy !== "planet";
+  $("#tripHouseRow").hidden = tripBy !== "house";
+  for (const b of $("#tripChips").children) {
+    const id = b.dataset.id, n = all.filter((g) => g.id === id).length;
+    b.setAttribute("aria-pressed", tripSel.has(id));
+    b.classList.toggle("none", n === 0);
+    b.querySelector(".tp-n").textContent = n || "";
+    const txt = `${BODY[id].name}: ${n === 0 ? "sin viajes" : n === 1 ? "viaja a 1 casa" : `viaja a ${n} casas`}`;
+    b.title = txt; b.setAttribute("aria-label", txt);
+  }
+  for (const b of $("#tripHouses").children) {
+    const h = +b.dataset.h, n = all.filter((g) => g.to === h).length;
+    b.setAttribute("aria-pressed", tripHSel.has(h));
+    b.classList.toggle("none", n === 0);
+    b.querySelector(".tp-n").textContent = n || "";
+    const txt = `Casa ${roman(h)}: ${n === 0 ? "no llega ningún planeta" : n === 1 ? "llega 1 planeta" : `llegan ${n} planetas`}`;
+    b.title = txt; b.setAttribute("aria-label", txt);
+  }
+  $("#tripAll").disabled = TRIP_PLANETS.every((id) => tripSel.has(id));
+  $("#tripNone").disabled = tripSel.size === 0;
+  $("#tripHAll").disabled = HOUSES.every((h) => tripHSel.has(h));
+  $("#tripHNone").disabled = tripHSel.size === 0;
+}
+const flip = (set, x) => { const s = new Set(set); s.has(x) ? s.delete(x) : s.add(x); return s; };
+$("#tripPick").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t || !chart) return;
+  if (t.dataset.by) { if (t.dataset.by === tripBy) return; tripReset(t.dataset.by); }
+  else if (t.id === "tripAll") tripSel = new Set(TRIP_PLANETS);
+  else if (t.id === "tripNone") tripSel = new Set();
+  else if (t.dataset.id) tripSel = flip(tripSel, t.dataset.id);
+  else if (t.id === "tripHAll") tripHSel = new Set(HOUSES);
+  else if (t.id === "tripHNone") tripHSel = new Set();
+  else if (t.dataset.h) tripHSel = flip(tripHSel, +t.dataset.h);
+  else return;
+  drawWheel();
+});
+
 function drawWheel() {
   const outer = outerRing();
-  wheel = renderWheel($("#wheel"), { ...chart, aspects: vis(chart.aspects) }, { outer, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
+  const allTrips = tripsOn && !outer && mode === "natal" ? groupTrips(computeTrips(chart, tripCfg)) : null;
+  const trips = allTrips ? allTrips.filter((g) => (tripBy === "planet" ? tripSel.has(g.id) : tripHSel.has(g.to))).map((g) => ({ ...g, words: groupWords(g) })) : null;
+  syncTripPick(allTrips);
+  wheel = renderWheel($("#wheel"), { ...chart, aspects: vis(chart.aspects) }, { outer, reach: spillOn && mode === "natal" ? reachData() : null, trips, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
   $("#outKey").hidden = !outer;
+  $("#reachKey").hidden = !(spillOn && !outer && reachData().length);
+  $("#tripKey").hidden = !(trips && trips.length);
   if (outer) $("#outKeyText").textContent = mode === "transit" ? "Tránsitos" : outer.short;
 }
 
@@ -506,6 +577,8 @@ function render() {
   $("#intro").hidden = true;
   $("#stage").hidden = false;
   $("#printBtn").hidden = false;
+  $("#spillBtn").hidden = mode !== "natal";
+  $("#tripBtn").hidden = mode !== "natal";
   header(c);
 
   const t = c.time;
@@ -515,9 +588,10 @@ function render() {
     (t.manual ? " Offset fijado a mano." : t.dst ? " Horario de verano vigente." : "");
   timeNote.hidden = false;
 
-  const warnings = mode === "syn" && syn ? syn.warnings
+  const warnings = [...(mode === "syn" && syn ? syn.warnings
     : mode === "transit" && transit ? [...c.warnings, ...transit.warnings.map((w) => `Fecha del tránsito: ${w}`)]
-    : c.warnings;
+    : c.warnings)];
+  if (staleOrbs()) warnings.push("El servidor de la app es de una versión anterior: no aplica los orbes de Configuración ni calcula los planetas entre casas. Cerrá la ventana de Carta natal, esperá unos segundos y volvé a abrirla.");
   const w = $("#warnings");
   w.hidden = !warnings.length;
   w.replaceChildren(...warnings.map((text) => {
@@ -530,6 +604,7 @@ function render() {
   drawWheel();
   renderPositions(c);
   renderHouses(c);
+  renderTrips(c);
   renderTransitList();
   renderAspects();
   renderStair();
@@ -540,34 +615,85 @@ function render() {
 }
 
 function renderPositions(c) {
+  const reach = spillOn && mode === "natal" ? new Map(reachData().map((r) => [r.id, r])) : new Map();
   const row = (id, lon, house, retro) => {
     const s = split(lon);
     return `<tr data-id="${id}">
       <td>${mark(id)}${BODY[id].name}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
       <td class="num">${fmtPos(lon)}${retro ? '<span class="rx-t" title="Retrógrado">R</span>' : ""}</td>
-      <td class="num">${house}</td></tr>`;
+      <td class="num">${house}${reachChip(reach.get(id))}</td></tr>`;
   };
   let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num">Casa</th></tr></thead><tbody>`;
   html += row("asc", c.angles.asc, "—") + row("mc", c.angles.mc, "—");
   c.bodies.forEach((b, i) => {
     html += row(b.id, b.lon, b.house, b.retro).replace("<tr ", i === 0 ? '<tr class="sep" ' : "<tr ");
   });
-  $("#panel-pos").innerHTML = html + "</tbody></table>";
+  $("#panel-pos").innerHTML = html + "</tbody></table>" + (reach.size ? reachNote() : "");
 }
 
+/** Qué dice «Entre casas» de un planeta: «→ 11» si cuenta en la casa que sigue y no en la suya, «+ 11» si cuenta en las dos. */
+const reachTip = (r) => `${BODY[r.id].name}: a ${fmtOrb(r.dist)} de la cúspide de la casa ${r.also}; ` +
+  (r.kind === "pass" ? `cuenta en la ${r.also} y no en la ${r.house}` : `cuenta en las dos, la ${r.house} y la ${r.also}`);
+function reachChip(r) {
+  if (!r) return "";
+  return `<span class="reach-chip ${r.kind}" title="${reachTip(r)}">${r.kind === "pass" ? "→" : "+"} ${r.also}</span>`;
+}
+/** Explicación de las marcas, con los orbes que se están usando. */
+function reachNote() {
+  const [ca, co] = orbs.cusp, [sa, so] = orbs.span;
+  return `<p class="fine tight reach-note"><span class="reach-chip pass">→ N</span> le faltan hasta ${fmtGrad(ca)} (cúspide angular) o ${fmtGrad(co)} (otras) para la cúspide de la casa N: cuenta en la N y no en la suya. ` +
+    `<span class="reach-chip both">+ N</span> le faltan hasta ${fmtGrad(sa)} (angular) o ${fmtGrad(so)} (otras): cuenta en las dos. Los orbes se cambian en Configuración.</p>`;
+}
+const fmtGrad = (n) => `${String(n).replace(".", ",")}°`;
+
 function renderHouses(c) {
+  const reach = spillOn && mode === "natal" ? reachData() : [];
+  const passed = new Set(reach.filter((r) => r.kind === "pass").map((r) => r.id));       // cuentan en la casa que sigue, no en la suya
   let html = `<table><thead><tr><th>Casa</th><th>Cúspide</th><th class="num">Posición</th><th>Contiene</th></tr></thead><tbody>`;
   c.houses.cusps.forEach((lon, i) => {
     const s = split(lon);
-    const inside = c.bodies.filter((b) => b.house === i + 1)
-      .map((b) => `<span class="g" title="${BODY[b.id].name}">${glyphHTML(b.id)}</span>`).join("");
+    const inside = c.bodies.filter((b) => b.house === i + 1 && !passed.has(b.id))
+      .map((b) => `<span class="g" title="${BODY[b.id].name}">${glyphHTML(b.id)}</span>`).join("") +
+      // los que vienen de la casa anterior («Entre casas»): con borde macizo si cuentan solo acá, punteado si cuentan en las dos
+      reach.filter((r) => r.also === i + 1)
+        .map((r) => `<span class="g also ${r.kind}" title="${reachTip(r)}">${glyphHTML(r.id)}</span>`).join("");
     html += `<tr><td class="num" style="text-align:left">${i + 1}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
       <td class="num">${fmtPos(lon)}</td><td class="contains">${inside}</td></tr>`;
   });
-  $("#panel-casas").innerHTML = html + "</tbody></table>";
+  $("#panel-casas").innerHTML = html + "</tbody></table>" +
+    (reach.length ? `<p class="fine tight reach-note">Con borde: planetas de la casa anterior que cuentan acá, macizo si cuentan solo en esta y punteado si cuentan en las dos (ver los orbes en Configuración).</p>` : "");
 }
+
+// -- viajes de los planetas por las casas: la notación del pizarrón, y al tocar una fila, la explicación en palabras
+function renderTrips(c) {
+  const el = $("#panel-viajes");
+  if (mode !== "natal") { el.innerHTML = ""; return; }
+  const trips = computeTrips(c, tripCfg);
+  let html = "";
+  for (const type of TRIP_TYPES) {
+    const rows = trips.map((t, i) => [t, i]).filter(([t]) => t.type === type);
+    html += `<h4 class="trip-h">${TRIP_TITLES[type]}<span class="trip-n">${rows.length}</span></h4>`;
+    html += rows.length
+      ? `<ul class="trips">${rows.map(([t, i]) => `<li data-id="${t.id}"><button type="button" class="trip-row" data-trip="${i}" aria-expanded="false" aria-label="${esc(tripPlain(t))}">${tripNotation(t)}</button>` +
+        `<p class="trip-words" hidden>${esc(tripWords(t))}</p></li>`).join("")}</ul>`
+      : `<p class="fine tight trip-none">Ninguno.</p>`;
+  }
+  const hard = tripCfg.asp.map((t) => ASPECT[t].name.toLowerCase());
+  const list = hard.length > 1 ? `${hard.slice(0, -1).join(", ")} y ${hard.at(-1)}` : hard[0];
+  html += `<p class="fine tight trip-note">${hard.length ? `Aspectos duros: ${list}.` : "No hay aspectos duros elegidos: solo cuentan los viajes por eje."} ` +
+    `Pegado a la cúspide: hasta ${fmtGrad(tripCfg.cusp[0])} (angular) o ${fmtGrad(tripCfg.cusp[1])} (otras). Regentes modernos. ` +
+    `Tocá un viaje para leerlo; todo se cambia en Configuración, «Viajes de planetas».</p>`;
+  el.innerHTML = html;
+}
+$("#panel-viajes").addEventListener("click", (e) => {
+  const row = e.target.closest(".trip-row");
+  if (!row) return;
+  const words = row.parentElement.querySelector(".trip-words");
+  words.hidden = !words.hidden;
+  row.setAttribute("aria-expanded", !words.hidden);
+});
 
 const needPartner = `<p class="muted pad">Elegí arriba una carta guardada para compararla con la que tenés abierta.</p>`;
 const retroTag = (on) => (on ? '<span class="rx-t" title="Retrógrado">R</span>' : "");
@@ -905,6 +1031,7 @@ const hoverFocus = (panel, skipAngles) => {
 };
 hoverFocus("#panel-pos", true);
 hoverFocus("#panel-elem", true);
+hoverFocus("#panel-viajes", false);
 hoverFocus("#panel-tpos", false);
 hoverFocus("#panel-over", false);
 
@@ -1007,6 +1134,7 @@ function paintMode() {
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === mode));
   $("#toolsTransit").hidden = mode !== "transit";
   $("#toolsSyn").hidden = mode !== "syn";
+  if (!$("#stage").hidden) { $("#spillBtn").hidden = mode !== "natal"; $("#tripBtn").hidden = mode !== "natal"; }
 }
 
 async function setMode(next) {
@@ -1164,6 +1292,14 @@ const cfg0 = initSettings((cfg, what) => {
     if (chart) { drawWheel(); renderSummary(); }
   }
   aspOff = new Set(cfg.aspOff);
+  orbs = cfg.orbs;
+  spillOn = cfg.spill;
+  tripCfg = cfg.trips;
+  if (cfg.tripsOn && !tripsOn) tripReset();
+  tripsOn = cfg.tripsOn;
+  if (what === "orbs") { if (birth) run(load); }       // los aspectos y los planetas entre casas los calcula el servidor
+  if (what === "spill" && chart) render();
+  if ((what === "trips" || what === "tripsOn") && chart) render();
   if (what === "asp" && chart) {         // un tipo de aspecto prendido o apagado: se rehace todo lo que muestra aspectos
     renderAspects();
     renderStair();

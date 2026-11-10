@@ -2,6 +2,7 @@
 import { SIGNS, ELEMENT, BODY, ASPECT, split, fmtPos, fmtOrb, discWheel, look, bodyText, signText } from "./astro-data.js";
 import { BODY_SVG, SIGN_SVG, ASPECT_SVG, glyphAt } from "./glyphs.js";
 import { placePlanets, spreadRing } from "./layout.js";
+import { roman } from "./trips.js";
 
 // Radios en unidades del viewBox (690 × 690). Cada planeta es una pila radial:
 // círculo con el símbolo, grados, signo y minutos (y "R" debajo si es retrógrado).
@@ -62,7 +63,57 @@ const stackSign = (i, x, y, size) => (look.classic
   ? `<text class="sgdt" x="${x}" y="${y}" dy=".35em">${signText(i)}</text>`
   : glyphAt(SIGN_SVG[i], x, y, size, "sgd"));
 
+// Cartelito de los planetas que pasan a otra casa: lo que sale al pasar el mouse (el <title>) se ve también al tocar o con Enter.
+// Hay uno solo en toda la página; se cierra al tocar afuera, con Esc, al desplazar o achicar la ventana, o al redibujar la rueda.
+let tipEl = null, tipFor = null, tipOff = null;
+function hideTip() {
+  tipEl?.remove();
+  tipOff?.();
+  tipEl = tipFor = tipOff = null;
+}
+function showTip(anchor, text, onRead) {
+  hideTip();
+  const el = document.createElement("div");
+  el.className = "reach-tip";
+  el.setAttribute("role", "tooltip");
+  for (const line of String(text).split("\n")) {         // un párrafo por línea (un viaje puede llegar a una casa por más de un camino)
+    const p = document.createElement("p");
+    p.textContent = line;
+    el.append(p);
+  }
+  if (onRead) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "reach-tip-read";
+    b.textContent = "Ver lectura";
+    b.addEventListener("click", () => { hideTip(); onRead(); });
+    el.append(b);
+  }
+  document.body.append(el);
+  const ref = (anchor.querySelector(".reach-ring") || anchor).getBoundingClientRect();
+  const w = el.offsetWidth, h = el.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  let top = ref.top - h - 8;
+  if (top < 8) top = Math.min(ref.bottom + 8, vh - h - 8);
+  const left = Math.min(Math.max(8, ref.left + ref.width / 2 - w / 2), Math.max(8, vw - w - 8));
+  el.style.left = `${Math.round(left)}px`;
+  el.style.top = `${Math.round(Math.max(8, top))}px`;
+  const away = (e) => { if (!el.contains(e.target) && !anchor.contains(e.target)) hideTip(); };
+  const key = (e) => { if (e.key === "Escape") hideTip(); };
+  document.addEventListener("pointerdown", away, true);
+  document.addEventListener("keydown", key, true);
+  window.addEventListener("scroll", hideTip, true);
+  window.addEventListener("resize", hideTip);
+  tipEl = el; tipFor = anchor;
+  tipOff = () => {
+    document.removeEventListener("pointerdown", away, true);
+    document.removeEventListener("keydown", key, true);
+    window.removeEventListener("scroll", hideTip, true);
+    window.removeEventListener("resize", hideTip);
+  };
+}
+
 export function renderWheel(svg, chart, hooks = {}) {
+  hideTip();
   const outer = hooks.outer || null;     // { bodies, angles?, aspects (a: interior, b: exterior), short, houseWord }
   // con lecturas, tocar un planeta abre su ventana; en «solo datos» (sin onPick) son solo imágenes con foco
   const act = hooks.onPick ? ' role="button" aria-haspopup="dialog"' : ' role="img"';
@@ -278,12 +329,40 @@ export function renderWheel(svg, chart, hooks = {}) {
   }
   s += `<g class="aspects">${lineSvg}</g><g class="amarks">${markSvg}</g>${dotSvg}`;
 
-  // Planetas: cada uno queda dentro de su casa (ver layout.js)
-  const placed = placePlanets(chart.bodies, cusps, asc);
-  let planets = "";
+  // Planetas entre casas (solo en la rueda natal, y si se pidió): se cuenta hacia adelante, así que cada planeta marcado está
+  // antes de una cúspide. Si cuenta solo en la casa que sigue («pass»), su pila se dibuja allá, con un borde macizo; si cuenta en las
+  // dos («both»), queda su pila en la casa propia y otra, con borde punteado, en la que sigue. Una raya sale de su posición real.
+  const reachBy = {};
+  if (!outer) for (const r of hooks.reach || []) if (chart.bodies.some((b) => b.id === r.id)) reachBy[r.id] = r;
+  const GHOST = "g:";
+  const TRIP = "t:";
+  // Viajes de los planetas (solo en la rueda natal, y si se pidió): cada planeta viajero se dibuja en la casa a la que viaja
+  // (una pila chica, con borde según el tipo de viaje) y, al enfocarlo, una flecha va desde su lugar hasta ahí.
+  const trips = !outer ? (hooks.trips || []).filter((g) => chart.bodies.some((b) => b.id === g.id)) : [];
+  const tripKey = (g) => `${TRIP}${g.id}:${g.to}`;
+  const reachText = (r) => {
+    const name = BODY[r.id].name;
+    return `${name} está en la casa ${r.house}, a ${fmtOrb(r.dist)} de la cúspide de la ${r.also}: ` +
+      (r.kind === "pass" ? `cuenta en la ${r.also} y no en la ${r.house}` : `cuenta en las dos, la ${r.house} y la ${r.also}`);
+  };
+
+  // Planetas: cada uno queda dentro de su casa (ver layout.js). Los que pasan a la casa que sigue se reparten en ella:
+  // como recién pasaron la cúspide, quedan antes que los de esa casa (y, entre ellos, en el orden de la rueda).
+  const items = [];
   for (const b of chart.bodies) {
-    const disp = placed[b.id];
-    const at = (r) => pt(r, disp);
+    const r = reachBy[b.id];
+    const lead = r ? { id: b.id, lon: cusps[r.also - 1] + (15 - r.dist) * 0.01, house: r.also } : null;
+    if (r?.kind === "pass") items.push(lead);
+    else items.push({ id: b.id, lon: b.lon, house: b.house });
+    if (r?.kind === "both") items.push({ ...lead, id: GHOST + b.id });
+  }
+  // los viajeros van al final de la casa a la que viajan (el reparto los separa de los que ya estén ahí)
+  trips.forEach((g, i) => items.push({ id: tripKey(g), lon: cusps[g.to % 12] - 0.5 + i * 0.001, house: g.to }));
+  const placed = placePlanets(items, cusps, asc);
+  let planets = "";
+  const stack = (b, key, r, ghost) => {
+    const disp = placed[key];
+    const at = (rad) => pt(rad, disp);
     const sp = split(b.lon);
     const [gx, gy] = at(R.glyph), [dx, dy] = at(R.deg), [sx, sy] = at(R.sign), [mx, my] = at(R.min);
     const [rx, ry] = at(R.retro);
@@ -291,19 +370,53 @@ export function renderWheel(svg, chart, hooks = {}) {
     const [lx, ly] = pt(R.glyph + SIZE.disc / 2 + 1, disp);
     const [h1x, h1y] = at(R.glyph + 14), [h2x, h2y] = at(b.retro ? R.retro - 7 : R.min - 7);
     const moved = Math.abs(((disp - phi(b.lon) + 540) % 360) - 180) > 0.6;
-    planets +=
-      `<g class="pl" data-id="${b.id}" data-house="${b.house}" data-disp="${n2(disp)}" tabindex="0"${act} ` +
-      `aria-label="${BODY[b.id].name}, ${sp.deg} grados ${sp.min} minutos de ${SIGNS[sp.sign]}, casa ${b.house}${b.retro ? ", retrógrado" : ""}">` +
+    const tip = r ? reachText(r) : "";
+    const cls = r ? ` reach reach-${r.kind}${ghost ? " ghost" : ""}` : "";
+    return `<g class="pl${cls}" data-id="${b.id}" data-house="${b.house}" data-disp="${n2(disp)}"` +
+      (r ? ` data-also="${r.also}" data-tip="${esc(tip)}"` : "") + ` tabindex="0"${act} ` +
+      `aria-label="${BODY[b.id].name}, ${sp.deg} grados ${sp.min} minutos de ${SIGNS[sp.sign]}, casa ${b.house}${b.retro ? ", retrógrado" : ""}${r ? `. ${esc(tip)}` : ""}">` +
+      (r ? `<title>${esc(tip)}</title>` : "") +
       (moved ? `<line class="link" x1="${tx}" y1="${ty}" x2="${lx}" y2="${ly}"/>` : "") +
       `<line class="hit" x1="${h1x}" y1="${h1y}" x2="${h2x}" y2="${h2y}"/>` +
+      (r ? `<circle class="reach-ring" cx="${gx}" cy="${gy}" r="${look.classic ? 15.5 : SIZE.disc / 2 + 1.7}"/>` : "") +
       planetMark(b.id, gx, gy, SIZE.disc) +
       `<text class="degtxt" x="${dx}" y="${dy}" dy=".35em">${sp.deg}°</text>` +
       stackSign(sp.sign, sx, sy, SIZE.sign) +
       `<text class="mnt" x="${mx}" y="${my}" dy=".35em">${pad(sp.min)}′</text>` +
       (b.retro ? `<text class="rx" x="${rx}" y="${ry}" dy=".35em"><title>Retrógrado</title>R</text>` : "") +
       `</g>`;
+  };
+  for (const b of chart.bodies) {
+    const r = reachBy[b.id];
+    planets += stack(b, b.id, r, false);
+    if (r?.kind === "both") planets += stack(b, GHOST + b.id, r, true);
   }
-  s += planets;
+
+  // el viajero: solo el círculo del planeta, con borde macizo (por aspecto), doble (por eje) o punteado (por implicancia)
+  const tripStack = (g) => {
+    const disp = placed[tripKey(g)];
+    const ringR = look.classic ? 15.5 : SIZE.disc / 2 + 1.7;
+    const [gx, gy] = pt(R.glyph, disp), [h1x, h1y] = pt(R.glyph + 15, disp), [h2x, h2y] = pt(R.glyph - 15, disp);
+    const words = esc(g.words);
+    return `<g class="pl trip trip-${g.kind}" data-id="${g.id}" data-house="${g.to}" data-from="${g.from}" data-disp="${n2(disp)}" data-tip="${words}" tabindex="0"${act} ` +
+      `aria-label="${BODY[g.id].name} viaja a la casa ${roman(g.to)}. ${words.replace(/\n/g, " ")}">` +
+      `<title>${words}</title><line class="hit" x1="${h1x}" y1="${h1y}" x2="${h2x}" y2="${h2y}"/>` +
+      `<circle class="trip-ring" cx="${gx}" cy="${gy}" r="${ringR}"/>` +
+      (g.kind === "axis" ? `<circle class="trip-ring trip-ring2" cx="${gx}" cy="${gy}" r="${ringR + 3.3}"/>` : "") +
+      `${planetMark(g.id, gx, gy, SIZE.disc)}</g>`;
+  };
+  let arrows = "";
+  for (const g of trips) {
+    const a1 = placed[g.id], a2 = placed[tripKey(g)];
+    const gap = Math.abs(((a2 - a1 + 540) % 360) - 180);                   // 0°..180° entre un lugar y el otro
+    const mid = a1 + (((a2 - a1 + 540) % 360) - 180) / 2;
+    const [x1, y1] = pt(R.glyph - 15, a1), [x2, y2] = pt(R.glyph - 17, a2), [cx, cy] = pt(R.asp * (1 - gap / 180) * 0.95, mid);
+    arrows += `<path class="trip-arrow" data-id="${g.id}" data-house="${g.to}" d="M${x1} ${y1}Q${cx} ${cy} ${x2} ${y2}" marker-end="url(#trip-head)"/>`;
+  }
+  if (arrows) {
+    s += `<defs><marker id="trip-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="trip-head" d="M0 0L10 5L0 10z"/></marker></defs>`;
+  }
+  s += `<g class="trip-arrows" aria-hidden="true">${arrows}</g>` + planets + trips.map(tripStack).join("");
 
   // Anillo exterior: pila compacta; solo se separan para no pisarse
   if (outer) {
@@ -346,6 +459,7 @@ export function renderWheel(svg, chart, hooks = {}) {
   const pls = [...svg.querySelectorAll(".pl")];
   const lines = [...svg.querySelectorAll(".asp")];
   const marks = [...svg.querySelectorAll(".amark")];             // los símbolos que van sobre las rayas
+  const tripArrows = [...svg.querySelectorAll(".trip-arrow")];    // las flechas de los viajes (solo se ven con el planeta enfocado)
 
   // Orbe sobre cada línea resaltada: una etiqueta chica en el medio de la raya (o corrida a lo largo de ella si ahí
   // taparía a otra etiqueta). En las conjunciones, que no tienen raya, va al lado del circulito rojo.
@@ -413,6 +527,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       if (g.dataset.id === id) g.classList.add("sel");
       else if (rel.has(g.dataset.id)) g.classList.add("rel");
     }
+    for (const a of tripArrows) if (a.dataset.id === id) a.classList.add("on");
     showOrbs();
   }
   function pair(a, b) {
@@ -432,9 +547,20 @@ export function renderWheel(svg, chart, hooks = {}) {
     });
   };
   for (const t of svg.querySelectorAll(".axis-label.pick")) pickable(t, t.dataset.pick);
+  // los planetas que pasan a otra casa muestran su explicación al tocarlos; la lectura queda en un botón del cartelito
+  const tipable = (g, id) => {
+    const toggle = () => {
+      if (tipFor === g) hideTip();
+      else showTip(g, g.dataset.tip, hooks.onPick ? () => hooks.onPick(id) : null);
+    };
+    g.addEventListener("click", toggle);
+    g.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+  };
   for (const g of pls) {
     const id = g.dataset.id;
-    pickable(g, id);
+    if (g.dataset.tip) tipable(g, id); else pickable(g, id);
     g.addEventListener("mouseenter", () => { focus(id); hooks.onFocus?.(id); });
     g.addEventListener("focus", () => { focus(id); hooks.onFocus?.(id); });
     g.addEventListener("mouseleave", () => { reset(); hooks.onClear?.(); });
