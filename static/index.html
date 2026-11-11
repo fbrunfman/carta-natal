@@ -538,6 +538,23 @@
       </section>
     </div>
     </div>
+
+    <!-- celular: la ficha del planeta que se tocó en la rueda y la barra de abajo (Carta · Tablas · Tránsitos · Sinastría) -->
+    <div class="pfi" id="pfi" role="dialog" aria-modal="false" aria-labelledby="pfiTitle" hidden></div>
+    <nav class="mbar" id="mbar" aria-label="Vistas de la carta">
+      <button type="button" data-v="carta" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/></svg><span>Carta</span>
+      </button>
+      <button type="button" data-v="tablas" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10M15 9.5v10"/></svg><span>Tablas</span>
+      </button>
+      <button type="button" data-v="transit" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg><span>Tránsitos</span>
+      </button>
+      <button type="button" data-v="syn" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>Sinastría</span>
+      </button>
+    </nav>
   </main>
 
 </div>

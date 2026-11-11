@@ -843,6 +843,81 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .stage, :root[data-side="hidden"] .stage { grid-template-columns: minmax(0, 1fr); }
   .data { max-width: 560px; width: 100%; margin: 0 auto; }
 }
+/* ---------- ficha del planeta tocado (con el dedo) ---------- */
+.pfi {
+  position: fixed; z-index: 42; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(440px, calc(100vw - 24px)); max-height: min(46vh, 380px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 12px 10px 8px 14px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+.pfi-head { display: flex; align-items: center; gap: 12px; }
+.pfi-b { flex: none; display: flex; }
+.pfi-t { flex: 1 1 auto; min-width: 0; }
+.pfi h3 { margin: 0; font: 600 calc(16.5px * var(--fs))/1.2 var(--sans); }
+.pfi-tag { display: inline-block; margin-left: 4px; padding: 0 7px; border: 1px solid var(--line-strong); border-radius: 99px; font-size: calc(11.5px * var(--fs)); font-weight: 500; line-height: 1.5; color: var(--ink-2); vertical-align: 1px; }
+.pfi-pos { margin: 3px 0 0; font-size: calc(14px * var(--fs)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pfi-pos .g { color: var(--ink); }
+.pfi-pos .rx { font-size: .85em; font-weight: 700; color: var(--hard); }
+.pfi-x { flex: none; align-self: flex-start; margin: -4px 0 0; }
+.pfi-list { list-style: none; margin: 10px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line); }
+.pfi-list li { display: flex; align-items: center; gap: 9px; padding: 6px 2px; font-size: calc(14px * var(--fs)); line-height: 1.3; }
+.pfi-list li + li { border-top: 1px solid var(--line); }
+.pfi-list .a-ic { flex: none; font-size: calc(16px * var(--fs)); }
+.pfi-g { flex: none; display: inline-flex; width: 1.2em; justify-content: center; }
+.pfi-an { flex: 1 1 auto; min-width: 0; }
+.pfi-an .pfi-tag { margin-left: 2px; }
+.pfi-at { color: var(--ink-2); }
+.pfi-orb { flex: none; font-size: calc(13px * var(--fs)); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.pfi-none { margin: 10px 0 2px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
+
+/* ---------- celular: barra de abajo (Carta · Tablas · Tránsitos · Sinastría), encabezado compacto y pestañas pegadas ---------- */
+.mbar { display: none; }
+@media (max-width: 640px) {
+  :root[data-mbar] .mbar {
+    display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+  }
+  .mbar button {
+    flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 6px 2px 5px;
+    border: 0; border-radius: 10px; background: none; color: var(--ink-2); font-size: calc(11.5px * var(--fs)); font-weight: 500;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mbar svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .mbar button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+  .mbar button[aria-pressed="true"] svg { stroke-width: 2.1; }
+  .mbar button[aria-pressed="true"] svg { color: var(--ink); }
+  .mbar span { white-space: nowrap; }
+  :root[data-mbar] main { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  :root[data-mbar] .pfi { bottom: calc(74px + env(safe-area-inset-bottom)); }
+
+  /* arriba: la barra reemplaza al selector de modos; los botones de la rueda, chicos y en una fila */
+  :root[data-mbar] #modes { display: none; }
+  :root[data-mbar] .modebar { margin-top: 14px; }
+  :root[data-mbar] .modeacts { margin-left: 0; flex-wrap: nowrap; }
+  :root[data-mbar] .modeacts .secondary.compact { height: 34px; padding: 0 12px; font-size: calc(13px * var(--fs)); gap: 6px; }
+  :root[data-mbar] .modeacts .with-ic svg { width: 15px; height: 15px; }
+  :root[data-mbar] #printBtn { font-size: 0; gap: 0; padding: 0 10px; }       /* solo el ícono (el nombre sigue para el lector de pantalla) */
+  :root[data-mbar] #printBtn svg { width: 17px; height: 17px; }
+
+  /* el encabezado de la carta, más chico: la rueda entra en la primera pantalla */
+  #chartPage > .head h2 { font-size: calc(30px * var(--fs)); }
+  #chartPage > .head p { margin-top: 6px; font-size: calc(13.5px * var(--fs)); line-height: 1.4; }
+  #chartPage > #timeNote { font-size: calc(12.5px * var(--fs)); }
+
+  /* carta natal: «Carta» es la rueda sola y «Tablas» las tablas solas */
+  :root[data-mbar][data-mode="natal"][data-mview="carta"] .stage > .data { display: none; }
+  :root[data-mbar][data-mode="natal"][data-mview="tablas"] .stage > .wheel-fig,
+  :root[data-mbar][data-mode="natal"][data-mview="tablas"] #spillBtn,
+  :root[data-mbar][data-mode="natal"][data-mview="tablas"] #tripBtn { display: none; }
+  :root[data-mbar][data-mode="natal"][data-mview="tablas"] .stage { margin-top: 6px; }
+
+  /* las pestañas quedan pegadas arriba al bajar; pegadas, dejan lugar al botón del menú */
+  .tabs { position: sticky; top: -1px; z-index: 6; padding-top: 12px; background: var(--bg); }      /* el alto alcanza para el botón del menú */
+  .tabs.stuck { padding-left: 52px; box-shadow: inset 0 -1px 0 var(--line), 0 8px 12px -10px rgba(0, 0, 0, .5); }
+}
+
 /* ---------- resumen de tránsitos: profecciones, destacados, próximamente ---------- */
 .sumview { margin: 4px 0 0; }
 #sumBody { margin-top: 14px; }
@@ -964,6 +1039,12 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .home-side .sky-moon-cal { display: inline-block; margin-top: 4px; font-size: calc(12.5px * var(--fs)); }      /* el calendario lo lleva la tarjeta */
 }
 #home:has(#homeMoonSlot > .sky-moon) .sky-foot-cal { display: none; }
+/* en una sola columna (celular, tableta), «Tus cartas» va arriba de todo: abrir una carta es lo que más se hace */
+@container (max-width: 859.98px) {
+  .home-grid { display: flex; flex-direction: column; }
+  .home-side { display: contents; }
+  #homeCharts { order: -1; margin: 0 0 24px; }
+}
 
 .sky-wrap {
   --gap: 12px; container-type: inline-size; position: relative; width: min(100%, 760px, max(300px, calc(100dvh - 190px)));
@@ -1312,6 +1393,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+  .mbar, .pfi,
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }

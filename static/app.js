@@ -57,6 +57,7 @@ let syn = null;            // respuesta de /api/synastry
 let partnerId = null;      // carta guardada con la que se compara
 let wheel = null;
 let orbMax = 99;
+let mview = "carta";       // celular, carta natal: la rueda sola («carta») o las tablas («tablas»)
 
 // ---------- formulario ----------------------------------------------------
 function readForm() {
@@ -458,6 +459,7 @@ function showError(err) {
   $("#spillBtn").hidden = true;
   $("#warnings").hidden = true;
   $("#timeNote").hidden = true;
+  paintBar();
 }
 
 // ---------- presentación --------------------------------------------------
@@ -564,7 +566,10 @@ function drawWheel() {
   const allTrips = tripsOn && !outer && mode === "natal" ? groupTrips(computeTrips(chart, tripCfg)) : null;
   const trips = allTrips ? allTrips.filter((g) => (tripBy === "planet" ? tripSel.has(g.id) : tripHSel.has(g.to))).map((g) => ({ ...g, words: groupWords(g) })) : null;
   syncTripPick(allTrips);
+  hideFicha();
   wheel = renderWheel($("#wheel"), { ...chart, aspects: vis(chart.aspects) }, { outer, reach: spillOn && mode === "natal" ? reachData() : null, trips, onFocus: highlightRows, onClear: () => highlightRows(null), onPick: interpOn ? openReading : null });
+  const clear0 = wheel.clear;
+  wheel.clear = () => { clear0(); hideFicha(); };       // soltar lo resaltado (cerrar una lectura, cambiar de pestaña) también cierra la ficha
   $("#outKey").hidden = !outer;
   $("#reachKey").hidden = !(spillOn && !outer && reachData().length);
   $("#tripKey").hidden = !(trips && trips.length);
@@ -604,6 +609,7 @@ function render() {
   $("#spillBtn").hidden = mode !== "natal";
   $("#tripBtn").hidden = mode !== "natal";
   header(c);
+  paintBar();
 
   const t = c.time;
   const timeNote = $("#timeNote");
@@ -1059,6 +1065,60 @@ hoverFocus("#panel-viajes", false);
 hoverFocus("#panel-tpos", false);
 hoverFocus("#panel-over", false);
 
+// -- la ficha del planeta tocado en la rueda (con el dedo y sin lecturas): signo, grados, casa y sus aspectos, en una
+// tarjeta abajo de la pantalla. Se va al soltar el planeta (tocar afuera, de nuevo el mismo o la ×).
+function hideFicha() {
+  const el = $("#pfi");
+  if (!el.hidden) { el.hidden = true; el.replaceChildren(); }
+}
+function showFicha(id) {
+  const ring = outerRing(), out = id.startsWith("o:"), bid = out ? id.slice(2) : id;
+  const body = (out ? ring?.bodies : chart?.bodies)?.find((b) => b.id === bid);
+  if (!body || !wheel) { hideFicha(); return; }
+  const nm = (oid) => {
+    const o = oid.startsWith("o:"), b = o ? oid.slice(2) : oid;
+    return { b, html: esc(BODY[b]?.name || b) + (ring ? ` <span class="pfi-tag">${esc(o ? ring.short : "natal")}</span>` : "") };
+  };
+  const s = split(body.lon), me = nm(id);
+  const house = body.house ? `${out ? cap(ring.houseWord) : "Casa"} ${body.house}` : "";
+  const asps = wheel.aspectsOf(id).map((a) => ({ ...a, other: a.a === id ? a.b : a.a })).sort((x, y) => x.orb - y.orb);
+  const rows = asps.map((a) => {
+    const A = ASPECT[a.type], o = nm(a.other);
+    const ph = a.applying === true ? "aplicativo" : a.applying === false ? "separativo" : "";
+    return `<li><span class="a-ic ${A.cls}" title="${A.name}">${A.icon}</span><span class="pfi-g" aria-hidden="true">${glyphHTML(o.b) || ""}</span>` +
+      `<span class="pfi-an"><span class="pfi-at">${A.name}</span> ${o.html}</span><span class="pfi-orb" title="${ph}">${fmtOrb(a.orb)}${ph ? ` ${ph[0].toUpperCase()}` : ""}</span></li>`;
+  }).join("");
+  const el = $("#pfi");
+  el.innerHTML = `<div class="pfi-head"><span class="pfi-b" aria-hidden="true">${badge(bid)}</span><div class="pfi-t">` +
+    `<h3 id="pfiTitle">${me.html}</h3><p class="pfi-pos"><span class="g" aria-hidden="true">${signHTML(s.sign)}</span> ${SIGNS[s.sign]} ` +
+    `${s.deg}°${String(s.min).padStart(2, "0")}′${body.retro ? ' <span class="rx">R</span>' : ""}${house ? ` · ${house}` : ""}</p></div>` +
+    `<button type="button" class="iconbtn pfi-x" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>` +
+    (rows ? `<ul class="pfi-list" aria-label="Aspectos">${rows}</ul>` : `<p class="pfi-none">Sin aspectos en la rueda.</p>`);
+  el.hidden = false;
+}
+
+// -- celular: la barra de abajo. «Carta» es la rueda natal sola, «Tablas» las tablas de la carta natal; «Tránsitos» y
+// «Sinastría» son sus vistas (rueda y tablas). Reemplaza al selector Natal / Tránsitos / Sinastría de arriba.
+function paintBar() {
+  const root = document.documentElement;
+  root.toggleAttribute("data-mbar", page === "chart" && !$("#stage").hidden);
+  root.dataset.mview = mview;
+  const cur = mode === "natal" ? mview : mode;
+  $("#mbar").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === cur)));
+}
+$("#mbar").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-v]");
+  if (!b) return;
+  const v = b.dataset.v, cur = mode === "natal" ? mview : mode;
+  if (v === cur) { scrollTo({ top: 0, behavior: "smooth" }); return; }
+  wheel?.clear(); highlightRows(null);
+  if (v === "carta" || v === "tablas") mview = v;
+  paintBar();
+  scrollTo(0, 0);
+  await setMode(v === "carta" || v === "tablas" ? "natal" : v);
+  paintBar();
+});
+
 // Con el dedo no hay «sacar el mouse»: lo que se toca queda resaltado en la rueda y no hay cómo soltarlo. Tocar afuera, o de nuevo
 // lo mismo, vuelve a mostrar todos los aspectos (con el mouse y el teclado todo sigue como antes).
 {
@@ -1073,20 +1133,25 @@ hoverFocus("#panel-over", false);
     const pl = el.closest("[data-id]");
     if (!pl) return null;
     const id = pl.dataset.id;
-    if (pl.closest("#wheel")) return pl.classList.contains("pl") ? { key: id, on: () => { wheel.focus(id); highlightRows(id); } } : null;
+    // (los viajeros y los que pasan a otra casa ya muestran su cartelito: no llevan ficha)
+    if (pl.closest("#wheel")) return pl.classList.contains("pl") ? { key: id, inWheel: !pl.dataset.tip, on: () => { wheel.focus(id); highlightRows(id); } } : null;
     for (const p of PANELS) if (pl.closest(p)) return noAngles.has(p) && (id === "asc" || id === "mc") ? null : { key: id, on: () => wheel.focus(id) };
     return null;
   };
-  const release = () => { wheel?.clear(); highlightRows(null); };
+  const release = () => { wheel?.clear(); highlightRows(null); hideFicha(); };
+  $("#pfi").addEventListener("click", (e) => { if (e.target.closest(".pfi-x")) release(); });
   let tap = null;       // el apoyo en curso: con qué dedo y qué estaba resaltado
   document.addEventListener("pointerdown", (e) => { tap = { type: e.pointerType, held: wheel?.current() ?? null }; }, true);
   // se resuelve en el click (no al apoyar) para que arrastrar para desplazarse no suelte el resaltado
   document.addEventListener("click", (e) => {
     const t = tap; tap = null;
-    if (!wheel || !t || !t.type || t.type === "mouse") return;
+    if (!wheel || !t || !t.type || t.type === "mouse" || e.target.closest?.("#pfi")) return;      // (dentro de la ficha se lee, no se suelta)
     const hit = target(e.target);
     if (hit && t.held === hit.key) release();             // el mismo otra vez
-    else if (hit) { hit.on(); wheel.hold(); }             // otro, o el primero: queda resaltado hasta soltarlo (no hay un «mouseover» nuevo si el dedo ya estaba ahí)
+    else if (hit) {                                       // otro, o el primero: queda resaltado hasta soltarlo (no hay un «mouseover» nuevo si el dedo ya estaba ahí)
+      hit.on(); wheel.hold();
+      if (hit.inWheel && !interpOn) showFicha(hit.key); else hideFicha();      // con lecturas se abre la ventana del planeta
+    }
     else if (wheel.current()) release();                  // afuera
   }, true);
 }
@@ -1183,6 +1248,11 @@ function showTab(tab) {
   tabEdges();
 }
 tabRow.addEventListener("scroll", tabEdges, { passive: true });
+// en el celular la fila queda pegada arriba al bajar (style.css); pegada, deja lugar al botón del menú
+if (typeof IntersectionObserver !== "undefined") {
+  new IntersectionObserver(([e]) => tabRow.classList.toggle("stuck", e.intersectionRatio < 1 && e.boundingClientRect.top < 1 && getComputedStyle(tabRow).position === "sticky"),
+    { threshold: [1] }).observe(tabRow);
+}
 if (typeof ResizeObserver !== "undefined") new ResizeObserver(tabEdges).observe(tabRow);
 
 function applyTabs() {
@@ -1209,6 +1279,7 @@ function paintMode() {
   $("#toolsTransit").hidden = mode !== "transit";
   $("#toolsSyn").hidden = mode !== "syn";
   if (!$("#stage").hidden) { $("#spillBtn").hidden = mode !== "natal"; $("#tripBtn").hidden = mode !== "natal"; }
+  paintBar();
 }
 
 async function setMode(next) {
@@ -1509,6 +1580,8 @@ function setPage(r) {
   $("#lunar").hidden = page !== "lunar";
   $("#combine").hidden = page !== "combine";
   $("#chartPage").hidden = page !== "chart";
+  paintBar();
+  if (page !== "chart") hideFicha();
   for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }

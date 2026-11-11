@@ -77,7 +77,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     **En escritorio (a partir de unos 860 px de ancho de contenido, o sea una notebook con el menú abierto) el inicio es un
     tablero**: el mapa a la izquierda, tan alto como deja la ventana, y a la derecha una columna con «Tus cartas», la Luna
     (`app.js::placeMoon` mueve la tarjeta del rincón del mapa a `#homeMoonSlot`), «Tránsitos destacados de hoy» y «Buscar
-    por posición». En pantallas más angostas y en el celular todo va en una columna, como antes.
+    por posición». En pantallas más angostas y en el celular todo va en una columna, **con «Tus cartas» arriba de todo**
+    (abrir una carta es lo que más se hace), después el mapa, la Luna, los tránsitos destacados y el buscador.
     **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
     4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
     cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
@@ -109,7 +110,13 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     se achica según el alto de la ventana y lo que tiene arriba (modos, fecha de los tránsitos, selector de viajes), sin
     bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
     pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
-    que corta se esfuma y la elegida queda a la vista.
+    que corta se esfuma y la elegida queda a la vista. Test: `e2e_escritorio`.
+    **En el celular (hasta 640 px de ancho)**, con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
+    Tránsitos · Sinastría** que reemplaza al selector Natal / Tránsitos / Sinastría de arriba. «Carta» es la rueda natal
+    sola (con el encabezado más chico entra entera en la primera pantalla); «Tablas», las tablas de la carta natal solas;
+    «Tránsitos» y «Sinastría», sus vistas de siempre (rueda doble y tablas). Entre casas, Viajes e Imprimir (solo el
+    ícono) van chicos en una fila. Al bajar, **las pestañas de las tablas quedan pegadas arriba** (dejando lugar al botón
+    del menú). La barra no está en el Inicio, la Luna ni Combinar, ni en la tableta o el escritorio. Test: `e2e_celu`.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
     se pintan con su color. Con uno o más pintados se habilita «Buscar» y sale uno al azar de lo que coincide: con
     **un** planeta, lo que es de ese planeta solo («Neptuno solo»); con dos o más, lo que tiene **todos** los
@@ -163,7 +170,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   teclado al enfocar el planeta). **Con el dedo** (celular, iPad) lo que se toca —un planeta de la rueda, una fila de la
   tabla o un aspecto— queda resaltado, y para volver a ver todos los aspectos se toca **afuera** o **de nuevo lo mismo**
   (tocar otro pasa al otro; arrastrar para desplazarse no lo suelta). Con el mouse sigue como antes: se suelta al salir.
-  Test: `e2e_toque`.
+  Test: `e2e_toque`. **Ficha del planeta**: con el dedo y las lecturas apagadas, tocar un planeta de la rueda abre abajo una
+  tarjeta con su signo, grados (y «R»), su casa y sus aspectos —los mismos que resalta la rueda—, del más cerrado al más
+  abierto, con el orbe y «A» (aplicativo) o «S» (separativo). En tránsitos y sinastría dice de qué carta es cada planeta
+  («tránsito», «natal» o el nombre). Se cierra con la ×, tocando afuera, tocando de nuevo el planeta o cambiando de
+  vista; leerla (tocar dentro) no la cierra. Con lecturas se abre la ventana del planeta, como siempre.
 - **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
   (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
   panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,

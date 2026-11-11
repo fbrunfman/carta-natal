@@ -577,5 +577,5 @@ export function renderWheel(svg, chart, hooks = {}) {
     g.addEventListener("mouseleave", () => { if (leave()) hooks.onClear?.(); });
     g.addEventListener("blur", () => { if (leave()) hooks.onClear?.(); });
   }
-  return { focus, pair, clear: reset, leave, hold: () => { held = cur; }, current: () => cur };
+  return { focus, pair, clear: reset, leave, hold: () => { held = cur; }, current: () => cur, aspectsOf: (id) => aspects.filter((x) => x.a === id || x.b === id) };
 }
