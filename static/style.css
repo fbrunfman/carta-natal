@@ -138,7 +138,7 @@ main { padding: 32px clamp(20px, 2.6vw, 40px) 56px; min-width: 0; }
 
 .stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) calc(clamp(360px, 25vw, 372px) * var(--ui));
+  grid-template-columns: minmax(0, 1fr) calc(clamp(372px, 26vw, 400px) * var(--ui));     /* con 372 entran las 6 pestañas de la carta natal */
   gap: clamp(20px, 2.2vw, 32px);
   align-items: start;
   margin-top: 14px;
@@ -299,6 +299,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .note { margin-top: 18px; padding: 10px 12px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); border-left: 2px solid var(--line-strong); background: var(--hover); border-radius: 0 6px 6px 0; }
 .note.warn { border-left-color: var(--minor); color: var(--ink); }
 #chartPage > .note { margin-top: 12px; max-width: 78ch; }
+/* el encabezado de la carta ocupa poco: el subtítulo en una línea si hay ancho y la equivalencia de la hora como una línea
+   más, sin recuadro (los avisos de verdad sí lo llevan). Así la rueda sube y entra entera en la pantalla. */
+#chartPage > .head p { max-width: 120ch; }
+@media screen {
+  #chartPage > #timeNote { margin-top: 4px; padding: 0; border: 0; background: none; border-radius: 0; }
+}
 .fine { margin: 22px 0 0; font-size: calc(12.5px * var(--fs)); color: var(--ink-2); }
 
 .error { margin-top: 24px; padding: 16px 18px; max-width: 60ch; border-left: 3px solid var(--hard); background: var(--hover); border-radius: 0 6px 6px 0; }
@@ -467,11 +473,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .k-out { fill: var(--bg); stroke: var(--out); stroke-width: 2; }
 
 /* ---------- tablas ---------- */
-.tabs { display: flex; flex-wrap: wrap; gap: 0 9px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
-.tabs button { position: relative; padding: 8px 0 10px; border: 0; background: none; color: var(--ink-2); font-size: calc(13.5px * var(--fs)); font-weight: 500; }
+/* las pestañas van siempre en una fila: si no entran (pantalla angosta, letra grande) se deslizan de costado y el borde que
+   corta se esfuma para que se note que hay más */
+.tabs {
+  display: flex; flex-wrap: nowrap; gap: 0 9px; margin-bottom: 6px; box-shadow: inset 0 -1px 0 var(--line);
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs.fade-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+.tabs.fade-l { -webkit-mask-image: linear-gradient(to right, transparent, #000 32px); mask-image: linear-gradient(to right, transparent, #000 32px); }
+.tabs.fade-l.fade-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+.tabs button { flex: none; white-space: nowrap; position: relative; padding: 8px 0 10px; border: 0; background: none; color: var(--ink-2); font-size: calc(13.5px * var(--fs)); font-weight: 500; }
 .tabs button[aria-selected="true"] { color: var(--ink); }
-.tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+.tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--ink); }
 .tabs button:hover { color: var(--ink); }
+.tabs button:focus-visible { outline-offset: -2px; }          /* la fila corta lo que sale de ella */
 
 table { width: 100%; border-collapse: collapse; font-size: calc(14.5px * var(--fs)); }
 th { padding: 10px 6px 6px; text-align: left; font-size: calc(13px * var(--fs)); font-weight: 500; color: var(--ink-2); }
@@ -686,7 +702,11 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   :root[data-side="hidden"] .side-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: 10px; z-index: 44; }
 }
 :root[data-side="hidden"] main { padding-top: 64px; }
-:root[data-side="hidden"] .wheel { max-width: min(920px, calc(100dvh - 190px)); }
+/* la rueda (y su leyenda) entran en la pantalla: --wheel-room lo calcula app.js con el alto de la ventana y lo que hay
+   arriba de la rueda; nunca baja de 440 px. Con el mandala agrandado en Configuración manda ese tamaño. */
+@media screen {
+  :root:not([data-big]) .wheel { max-width: min(920px, var(--wheel-room, 920px)); }
+}
 
 /* mandala de más de 100 %: crece y las tablas pasan debajo */
 :root[data-big] .stage { grid-template-columns: minmax(0, 1fr); }
@@ -913,17 +933,37 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 /* ---------- inicio: el cielo de ahora, visto desde la Tierra ----------
    Un cuadrado con los 12 signos alrededor, la Tierra al centro y cada planeta en su lugar; la Luna, con su info, abajo a
    la izquierda. Los tamaños salen del ancho del mapa (cqw), el mismo cálculo que hace sky.js para que no se tapen. */
-/* en escritorio (con lugar de sobra), el mapa queda a la izquierda y, en una columna a la derecha, los tránsitos destacados
-   y «Tus cartas»; en pantallas angostas todo va en una sola columna, como siempre */
+/* en escritorio el inicio es un tablero: el mapa a la izquierda (tan alto como deja la ventana) y, en una columna a la
+   derecha, «Tus cartas», la Luna (que sale del rincón del mapa), los tránsitos destacados y el buscador. En pantallas
+   angostas todo va en una sola columna, como siempre. */
 #home { container-type: inline-size; }
-@container (min-width: 1100px) {
+.home-moon-slot:empty { display: none; }
+@container (min-width: 860px) {
   .home-grid {
-    display: grid; align-items: start; column-gap: 40px;
-    grid-template-columns: min(760px, max(300px, calc(100dvh - 190px))) minmax(300px, 680px);
+    display: grid; align-items: start; column-gap: clamp(28px, 3vw, 40px);
+    grid-template-columns: minmax(0, min(760px, max(300px, calc(100dvh - 190px)))) minmax(300px, 1fr);
   }
-  .home-side > .home-charts { margin-top: 28px; max-width: none; }
-  .home-side > .home-charts:first-child, .home-side > [hidden] + .home-charts { margin-top: 0; }
+  .home-side { display: flex; flex-direction: column; gap: 28px; min-width: 0; max-width: 640px; }
+  .home-side > .home-charts { margin-top: 0; max-width: none; }
+  #homeCharts { order: 1; }
+  .home-moon-slot { order: 2; }
+  #homeTr { order: 3; }
+  #homeFind { order: 4; }
+  /* la Luna como tarjeta, igual que en el celular */
+  .home-side .sky-moon {
+    margin: 0; max-width: none; width: 100%; padding: 12px 14px 10px 12px;
+    border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface);
+  }
+  .home-side .sky-moon-ic { width: 64px; }
+  .home-side .sky-moon-btn { gap: 14px; }
+  .home-side .sky-moon .mc-kicker { font-size: calc(11.5px * var(--fs)); }
+  .home-side .sky-moon-sign { font-size: calc(23px * var(--fs)); }
+  .home-side .sky-moon-sign .mc-deg { font-size: calc(13px * var(--fs)); }
+  .home-side .sky-moon-ph, .home-side .sky-moon-il { font-size: calc(13.5px * var(--fs)); }
+  .home-side .sky-moon-hint { display: block; font-size: calc(12.5px * var(--fs)); }
+  .home-side .sky-moon-cal { display: inline-block; margin-top: 4px; font-size: calc(12.5px * var(--fs)); }      /* el calendario lo lleva la tarjeta */
 }
+#home:has(#homeMoonSlot > .sky-moon) .sky-foot-cal { display: none; }
 
 .sky-wrap {
   --gap: 12px; container-type: inline-size; position: relative; width: min(100%, 760px, max(300px, calc(100dvh - 190px)));
@@ -979,7 +1019,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 
 /* la Luna: abajo a la izquierda del mapa; en pantallas angostas, debajo de él */
 .sky-moon {
-  grid-area: 1 / 1; align-self: end; justify-self: start; z-index: 2; margin: 0 0 9.5cqw 2.4cqw; max-width: 37cqw;
+  grid-area: 1 / 1; align-self: end; justify-self: start; z-index: 2; margin: 0 0 12.5cqw 2.4cqw; max-width: 37cqw;     /* arriba del rótulo de Escorpio */
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px 6px 8px;
   border-radius: 12px; background: color-mix(in srgb, var(--field) 86%, transparent);
 }
@@ -1154,6 +1194,28 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .home-chip { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--field); color: var(--ink); font-size: calc(14px * var(--fs)); }
 .home-chip:hover { background: var(--hover); border-color: var(--ink-2); }
 .home-empty { margin: 0 0 12px; color: var(--ink-2); font-size: calc(14.5px * var(--fs)); }
+
+/* buscar entre las cartas guardadas por la posición de un planeta */
+.home-find { margin-top: 24px; }
+.find-row { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.find-f { display: grid; gap: 4px; min-width: 10.5em; flex: 1 1 10.5em; max-width: 18em; font-size: calc(13px * var(--fs)); font-weight: 600; color: var(--ink-2); }
+.find-f select { width: 100%; font-weight: 400; }
+.find-out { margin-top: 14px; }
+.find-out:empty { display: none; }
+.find-sum { margin: 0; color: var(--ink-2); font-size: calc(14px * var(--fs)); }
+.find-sum strong { color: var(--ink); }
+.find-hint, .find-none, .find-err { margin: 0; color: var(--ink-2); font-size: calc(14px * var(--fs)); line-height: 1.45; }
+.find-err { color: var(--hard); }
+.find-hit { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; text-align: left; }
+.find-pos { font-weight: 400; font-size: .88em; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.find-pos .g, .find-pos .tag { font-family: var(--glyph); }
+.find-grp { margin-top: 12px; }
+.find-grp h4 { margin: 0; display: flex; align-items: center; gap: 6px; font: 600 calc(14px * var(--fs))/1.2 var(--sans); color: var(--ink); }
+.find-grp h4 .g { font-size: 1.15em; }
+.find-n { padding: 1px 7px; border-radius: 999px; background: var(--hover); color: var(--ink-2); font-size: .85em; font-weight: 600; }
+.find-grp .home-chips { margin-top: 6px; }
+.home-find .home-chip.find-hit { padding: 5px 12px; border-radius: 4px; font-weight: 600; }
+.home-find .find-pos .tag { font-family: var(--sans); font-size: .9em; }
 
 /* tránsitos destacados de hoy, con las cartas guardadas */
 .home-tr { margin-top: 24px; }

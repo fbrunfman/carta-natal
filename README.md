@@ -65,16 +65,19 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     la Luna y los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). La Luna se dibuja con su fase.
     Tocar un planeta dice en qué grado y signo está. Cuando dos están juntos se separan hacia adentro o hacia afuera sin
     cambiar el ángulo (y si en un grupo muy apretado no hay lugar, los círculos se achican un poco); el nombre va del lado
-    donde hay lugar. **La Luna** también está abajo a la izquierda en una tarjeta chica (en el celular, debajo del mapa)
-    con lo de ahora: signo y grado, fase y porcentaje iluminado; el enlace «Calendario lunar ›» (debajo del mapa, o en la
-    tarjeta en el celular) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
+    donde hay lugar. **La Luna** también está en una tarjeta con lo de ahora: signo y grado, fase y porcentaje
+    iluminado (en pantallas medianas, chica, abajo a la izquierda del mapa y arriba del rótulo de Escorpio; en el celular,
+    debajo del mapa; en el tablero de escritorio, en la columna de la derecha); el enlace «Calendario lunar ›» (debajo del
+    mapa, o en la tarjeta en el celular y en el tablero) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
     cuadro con **un poema para la Luna en ese signo**, con el nombre del autor y la obra, entero, más desde cuándo está en
     el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase. Sale uno al azar entre los de ese signo (cada vez que
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
     el color del elemento del signo; con las lecturas apagadas (hoy) el poema no se muestra. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
-    **En escritorio, con lugar de sobra (a partir de unos 1100 px de ancho de contenido), «Tránsitos destacados de hoy» y
-    «Tus cartas» van en una columna a la derecha del mapa**; en pantallas más angostas y en el celular van debajo, como antes.
+    **En escritorio (a partir de unos 860 px de ancho de contenido, o sea una notebook con el menú abierto) el inicio es un
+    tablero**: el mapa a la izquierda, tan alto como deja la ventana, y a la derecha una columna con «Tus cartas», la Luna
+    (`app.js::placeMoon` mueve la tarjeta del rincón del mapa a `#homeMoonSlot`), «Tránsitos destacados de hoy» y «Buscar
+    por posición». En pantallas más angostas y en el celular todo va en una columna, como antes.
     **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
     4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
     cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
@@ -84,14 +87,29 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
     que abre esa carta con los tránsitos de ahora. No se calcula nada hasta elegir cartas y apretar el botón. Abajo: «Tus cartas»:
     «Continuar con…» la carta que estabas viendo y atajos a las otras cartas guardadas (o «Crear mi primera carta»). No se
-    calcula ninguna carta hasta entrar a **Carta**.
+    abre ninguna carta hasta entrar a **Carta**.
+    Más abajo (solo si hay cartas guardadas), **«Buscar por posición»**: se elige un planeta (Sol a Plutón, el Ascendente o
+    el Medio Cielo, o «Cualquier planeta») y un signo (o «Todos los signos»), y salen las cartas guardadas que lo tienen,
+    con los grados dentro del signo (con un solo planeta y «Todos los signos» salen agrupadas por signo, en orden zodiacal;
+    con «Cualquier planeta» sale cada carta con los planetas que caen en ese signo). Tocar una carta la abre. Para buscar
+    hace falta la posición de cada carta: se calcula **una vez** con `/api/chart` (de a dos a la vez; en la versión
+    pública, esperando si el servidor lo pide) y se guarda en el navegador (`carta:pos`: por carta, sus 12 longitudes y la firma
+    de sus datos de nacimiento para saber si cambió; sin el nombre; si la carta se edita se vuelve a calcular, y las de una carta borrada se ignoran y se limpian en el próximo cálculo). **Servidor propio:** se calcula solo
+    al entrar. **Versión pública:** los datos de nacimiento viajan al servidor, así que no se manda nada hasta apretar
+    «Calcular posiciones» (se avisa ahí mismo); después solo se recalculan las cartas nuevas o editadas. Si una carta falla se
+    dice cuál y hay «Reintentar», y se busca igual en las demás. Test: `e2e_buscador`.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
     principales del mes (nueva, cuarto creciente, llena, cuarto menguante) con día, hora y signo. Flechas y «Hoy»
     para cambiar de mes (de 1800 a 2400; cambiar de mes no suma pasos al historial), hoy resaltado y un selector
     **Sur / Norte** (en el hemisferio sur la Luna creciente se ve iluminada a la izquierda; se recuerda). Las horas
     son las de la zona horaria del navegador.
-  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre.
+  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. **La rueda y su leyenda entran en la
+    pantalla**: el encabezado es compacto (la equivalencia de la hora va como una línea gris más, sin recuadro) y la rueda
+    se achica según el alto de la ventana y lo que tiene arriba (modos, fecha de los tránsitos, selector de viajes), sin
+    bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
+    pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
+    que corta se esfuma y la elegida queda a la vista.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
     se pintan con su color. Con uno o más pintados se habilita «Buscar» y sale uno al azar de lo que coincide: con
     **un** planeta, lo que es de ese planeta solo («Neptuno solo»); con dos o más, lo que tiene **todos** los
@@ -142,7 +160,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   calcula como siempre). En la sinastría mandan los de la carta A.
   Pasar el cursor por un planeta, o por una fila de la tabla, resalta sus aspectos, y **sobre cada
   línea resaltada aparece su orbe** (en una etiqueta del color del aspecto, sin pisarse con las otras; lo mismo con el
-  teclado al enfocar el planeta).
+  teclado al enfocar el planeta). **Con el dedo** (celular, iPad) lo que se toca —un planeta de la rueda, una fila de la
+  tabla o un aspecto— queda resaltado, y para volver a ver todos los aspectos se toca **afuera** o **de nuevo lo mismo**
+  (tocar otro pasa al otro; arrastrar para desplazarse no lo suelta). Con el mouse sigue como antes: se suelta al salir.
+  Test: `e2e_toque`.
 - **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
   (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
   panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,

@@ -509,13 +509,17 @@ export function renderWheel(svg, chart, hooks = {}) {
     }
   }
 
+  let cur = null;       // qué está resaltado: un planeta ("sun") o un aspecto ("sun|moon"); null si nada
+  let held = null;      // lo resaltado con el dedo: no se suelta al «salir» del elemento (con el dedo eso no existe), sino tocando afuera o de nuevo lo mismo
   function reset() {
+    cur = held = null;
     svg.classList.remove("has-focus");
     for (const e of svg.querySelectorAll(".on, .rel, .sel")) e.classList.remove("on", "rel", "sel");
     clearOrbs();
   }
   function focus(id) {
     reset();
+    cur = id;
     svg.classList.add("has-focus");
     const rel = new Set();
     for (const a of aspects) {
@@ -532,6 +536,7 @@ export function renderWheel(svg, chart, hooks = {}) {
   }
   function pair(a, b) {
     reset();
+    cur = `${a}|${b}`;
     svg.classList.add("has-focus");
     for (const l of [...lines, ...marks]) {
       if ((l.dataset.a === a && l.dataset.b === b) || (l.dataset.a === b && l.dataset.b === a)) l.classList.add("on");
@@ -540,6 +545,12 @@ export function renderWheel(svg, chart, hooks = {}) {
     showOrbs();
   }
 
+  // salir con el mouse o con el foco: suelta lo resaltado, salvo lo que se tocó con el dedo
+  const leave = () => {
+    if (cur !== null && held === cur) return false;
+    reset();
+    return true;
+  };
   const pickable = (el, id) => {
     el.addEventListener("click", () => hooks.onPick?.(id));
     el.addEventListener("keydown", (e) => {
@@ -563,8 +574,8 @@ export function renderWheel(svg, chart, hooks = {}) {
     if (g.dataset.tip) tipable(g, id); else pickable(g, id);
     g.addEventListener("mouseenter", () => { focus(id); hooks.onFocus?.(id); });
     g.addEventListener("focus", () => { focus(id); hooks.onFocus?.(id); });
-    g.addEventListener("mouseleave", () => { reset(); hooks.onClear?.(); });
-    g.addEventListener("blur", () => { reset(); hooks.onClear?.(); });
+    g.addEventListener("mouseleave", () => { if (leave()) hooks.onClear?.(); });
+    g.addEventListener("blur", () => { if (leave()) hooks.onClear?.(); });
   }
-  return { focus, pair, clear: reset };
+  return { focus, pair, clear: reset, leave, hold: () => { held = cur; }, current: () => cur };
 }

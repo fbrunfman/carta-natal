@@ -569,6 +569,30 @@ function drawWheel() {
   $("#reachKey").hidden = !(spillOn && !outer && reachData().length);
   $("#tripKey").hidden = !(trips && trips.length);
   if (outer) $("#outKeyText").textContent = mode === "transit" ? "Tránsitos" : outer.short;
+  fitWheel();
+}
+
+// La rueda y su leyenda entran en la pantalla: el lugar que queda debajo de lo que hay arriba de la rueda (encabezado,
+// modos, fecha de los tránsitos, el selector de viajes), sin bajar de 440 px. Se recalcula si algo de eso cambia de alto.
+function fitWheel() {
+  const svg = $("#wheel");
+  if ($("#stage").hidden || !svg.isConnected) return;
+  const legend = svg.parentElement.querySelector(".legend");
+  const top = svg.getBoundingClientRect().top + scrollY;
+  const room = Math.max(440, Math.floor(innerHeight - top - (legend ? legend.offsetHeight + 8 : 0) - 16));
+  if (room !== fitWheel.room) { fitWheel.room = room; document.documentElement.style.setProperty("--wheel-room", `${room}px`); }
+}
+{
+  let raf = 0;
+  const soon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fitWheel); };
+  addEventListener("resize", soon);
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(soon);
+    for (const sel of ["#chartPage > .head", "#timeNote", "#warnings", ".modebar", "#toolsTransit", "#toolsSyn", "#error", "#tripPick", ".wheel-fig .legend"]) {
+      const el = document.querySelector(sel);
+      if (el) ro.observe(el);
+    }
+  }
 }
 
 function render() {
@@ -1027,13 +1051,45 @@ const hoverFocus = (panel, skipAngles) => {
     if (skipAngles && (tr.dataset.id === "asc" || tr.dataset.id === "mc")) return;
     wheel.focus(tr.dataset.id);
   });
-  $(panel).addEventListener("mouseleave", () => wheel?.clear());
+  $(panel).addEventListener("mouseleave", () => wheel?.leave());
 };
 hoverFocus("#panel-pos", true);
 hoverFocus("#panel-elem", true);
 hoverFocus("#panel-viajes", false);
 hoverFocus("#panel-tpos", false);
 hoverFocus("#panel-over", false);
+
+// Con el dedo no hay «sacar el mouse»: lo que se toca queda resaltado en la rueda y no hay cómo soltarlo. Tocar afuera, o de nuevo
+// lo mismo, vuelve a mostrar todos los aspectos (con el mouse y el teclado todo sigue como antes).
+{
+  const PANELS = ["#panel-pos", "#panel-elem", "#panel-viajes", "#panel-tpos", "#panel-over"];
+  const noAngles = new Set(["#panel-pos", "#panel-elem"]);
+  const ASPECTS = ["#aspTable", "#stairTable", "#gridTable"].map((s) => `${s} [data-a][data-b]`).join(",");
+  // qué resalta tocar esto: { key, on } o null si no resalta nada
+  const target = (el) => {
+    if (!el.closest) return null;
+    const asp = el.closest(ASPECTS);
+    if (asp) return { key: `${asp.dataset.a}|${asp.dataset.b}`, on: () => wheel.pair(asp.dataset.a, asp.dataset.b) };
+    const pl = el.closest("[data-id]");
+    if (!pl) return null;
+    const id = pl.dataset.id;
+    if (pl.closest("#wheel")) return pl.classList.contains("pl") ? { key: id, on: () => { wheel.focus(id); highlightRows(id); } } : null;
+    for (const p of PANELS) if (pl.closest(p)) return noAngles.has(p) && (id === "asc" || id === "mc") ? null : { key: id, on: () => wheel.focus(id) };
+    return null;
+  };
+  const release = () => { wheel?.clear(); highlightRows(null); };
+  let tap = null;       // el apoyo en curso: con qué dedo y qué estaba resaltado
+  document.addEventListener("pointerdown", (e) => { tap = { type: e.pointerType, held: wheel?.current() ?? null }; }, true);
+  // se resuelve en el click (no al apoyar) para que arrastrar para desplazarse no suelte el resaltado
+  document.addEventListener("click", (e) => {
+    const t = tap; tap = null;
+    if (!wheel || !t || !t.type || t.type === "mouse") return;
+    const hit = target(e.target);
+    if (hit && t.held === hit.key) release();             // el mismo otra vez
+    else if (hit) { hit.on(); wheel.hold(); }             // otro, o el primero: queda resaltado hasta soltarlo (no hay un «mouseover» nuevo si el dedo ya estaba ahí)
+    else if (wheel.current()) release();                  // afuera
+  }, true);
+}
 
 // Tocar un planeta (en la rueda, en una tabla o en la cruz de elementos) abre su lectura.
 // lo que ven las ventanas de lectura: los datos de la vista sin los aspectos apagados en Configuración
@@ -1068,7 +1124,7 @@ for (const sel of ["#aspTable", "#stairTable", "#gridTable"]) {
   });
   // con el teclado, el aspecto enfocado también resalta su línea en la rueda
   $(sel).addEventListener("focusin", (e) => { const el = aspectCell(e); if (el && wheel) wheel.pair(el.dataset.a, el.dataset.b); });
-  $(sel).addEventListener("focusout", () => wheel?.clear());
+  $(sel).addEventListener("focusout", () => wheel?.leave());
 }
 for (const sel of ["#panel-pos", "#panel-tpos", "#panel-over", "#panel-elem"]) {
   $(sel).addEventListener("click", (e) => {
@@ -1087,7 +1143,7 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
     if (sel === "#stairTable" && info && !matchMedia("(hover: none)").matches) { if (el.dataset.info) info.textContent = el.dataset.info; else info.innerHTML = STAIR_HINT; }
   });
   $(sel).addEventListener("mouseleave", () => {
-    wheel?.clear();
+    wheel?.leave();
     const info = $("#stairInfo");
     if (info) info.innerHTML = STAIR_HINT;
   });
@@ -1109,7 +1165,25 @@ function selectTab(tab) {
   wheel?.clear();
   if (tab.id === "tab-cal") ensureCalendar();
   if (tab.id === "tab-sum") ensureSummary();
+  showTab(tab);
 }
+
+// las pestañas van en una fila; si no entran se deslizan: la elegida queda a la vista y el borde que corta se esfuma
+const tabRow = $(".tabs");
+function tabEdges() {
+  const max = tabRow.scrollWidth - tabRow.clientWidth;
+  tabRow.classList.toggle("fade-l", max > 1 && tabRow.scrollLeft > 1);
+  tabRow.classList.toggle("fade-r", max > 1 && tabRow.scrollLeft < max - 1);
+}
+function showTab(tab) {
+  if (!tabRow.clientWidth) return;
+  const r = tabRow.getBoundingClientRect(), b = tab.getBoundingClientRect(), pad = 28;
+  if (b.left < r.left + pad) tabRow.scrollLeft -= r.left + pad - b.left;
+  else if (b.right > r.right - pad) tabRow.scrollLeft += b.right - (r.right - pad);
+  tabEdges();
+}
+tabRow.addEventListener("scroll", tabEdges, { passive: true });
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(tabEdges).observe(tabRow);
 
 function applyTabs() {
   const vis = visibleTabs();
@@ -1496,6 +1570,7 @@ function renderHome() {
 /** Dibuja el mapa: los signos, la Tierra, los planetas en su lugar y la Luna en el rincón. */
 function paintSky() {
   const sky = $("#sky"), box = $("#skyMoon"), now = moon.now;
+  placeMoon();
   const W = Math.round(sky.clientWidth) || 640;
   skyState.w = W;
   sky.innerHTML = skyShellHTML(W);
@@ -1505,9 +1580,9 @@ function paintSky() {
   } else {
     box.innerHTML = `<span class="mc-wait">Calculando el cielo…</span>`;
   }
-  // en la pantalla grande la Luna está encima del mapa (en el celular, debajo): los planetas no la tapan
+  // en pantallas medianas la Luna está encima del mapa (en el celular, debajo; en el tablero, en la columna): los planetas no la tapan
   const obstacles = [], mr = box.getBoundingClientRect(), sr = sky.getBoundingClientRect();
-  if (now && mr.width && mr.top < sr.bottom - 1) {
+  if (now && mr.width && box.parentElement.id === "skyWrap" && mr.top < sr.bottom - 1 && mr.left < sr.right - 1) {
     obstacles.push({ x0: mr.left - sr.left - 4, y0: mr.top - sr.top - 4, x1: mr.right - sr.left + 4, y1: mr.bottom - sr.top + 4 });
   }
   // la Luna es un cuerpo más del cielo: se dibuja con su fase en su longitud (el servidor la manda aparte de los planetas)
@@ -1516,6 +1591,14 @@ function paintSky() {
   skyState.layout = layoutSky(bodies, W, obstacles);
   sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel, moonArt)).join(""));
   paintSkyInfo();
+}
+
+/** En el tablero de escritorio la Luna va en la columna de la derecha; si no, en el rincón del mapa (o debajo, en el celular). */
+function placeMoon() {
+  const box = $("#skyMoon"), slot = $("#homeMoonSlot"), wrap = $("#skyWrap");
+  const dash = getComputedStyle($("#home .home-grid")).display === "grid";
+  if (dash && box.parentElement !== slot) slot.append(box);
+  else if (!dash && box.parentElement !== wrap) wrap.insertBefore(box, wrap.querySelector(".sky-foot"));
 }
 
 function paintSkyInfo() {
@@ -1539,11 +1622,13 @@ function watchSky() {
   if (skyWatch || typeof ResizeObserver === "undefined") return;
   skyWatch = new ResizeObserver(() => {
     const w = Math.round($("#sky").clientWidth);
-    if (page !== "home" || !moon.now || !w || Math.abs(w - skyState.w) < 6) return;
+    const dash = getComputedStyle($("#home .home-grid")).display === "grid";        // pasar a tablero (o volver) mueve la Luna
+    if (page !== "home" || !moon.now || !w || (Math.abs(w - skyState.w) < 6 && dash === ($("#skyMoon").parentElement.id === "homeMoonSlot"))) return;
     cancelAnimationFrame(skyFrame);
     skyFrame = requestAnimationFrame(paintSky);
   });
   skyWatch.observe($("#skyWrap"));
+  skyWatch.observe($("#home"));
   document.fonts?.ready.then(() => { if (page === "home" && moon.now) paintSky(); });     // con la letra ya cargada cambia el tamaño del rincón de la Luna
 }
 
@@ -1634,6 +1719,7 @@ function renderHomeCharts() {
   }
   body.replaceChildren(...nodes);
   renderHomeTr();
+  renderHomeFind();
 }
 
 // -- inicio: tránsitos destacados de hoy con las cartas guardadas. Se piden al apretar el botón (cada carta es un
@@ -1730,6 +1816,157 @@ async function runHomeTr() {
   if (page === "home") renderHomeTr();
 }
 $("#homeTrGo").addEventListener("click", runHomeTr);
+
+// -- inicio: buscar entre las cartas guardadas las que tienen un planeta (o el Ascendente) en un signo.
+// Hace falta la posición de cada carta: se calcula una vez (en la versión pública, al apretar el botón, porque los datos de
+// nacimiento viajan al servidor) y queda en este navegador junto con lo que identifica los datos de la carta; si una carta
+// se edita, se vuelve a calcular solo esa.
+const FIND_KEY = "carta:pos";
+const FIND_BODIES = [...TRIP_PLANETS, "asc", "mc"];
+const find = { pos: new Map(), running: false, seq: 0, done: 0, total: 0, errs: new Map(), body: "moon", sign: "all" };
+const FIND_ART = { sun: "el Sol", moon: "la Luna", asc: "el Ascendente", mc: "el Medio Cielo" };
+const degTxt = (lon) => { const s = split(lon); return `${s.deg}°${String(s.min).padStart(2, "0")}′`; };
+try {
+  const raw = JSON.parse(localStorage.getItem(FIND_KEY));
+  if (raw?.v === 1 && raw.items && typeof raw.items === "object") {
+    for (const [id, r] of Object.entries(raw.items)) {
+      if (r && typeof r.sig === "string" && r.lon && FIND_BODIES.every((b) => Number.isFinite(r.lon[b]))) find.pos.set(id, { sig: r.sig, lon: Object.fromEntries(FIND_BODIES.map((b) => [b, r.lon[b]])) });
+    }
+  }
+} catch {}
+function findSave() {
+  try {
+    const items = {};
+    for (const it of saved.items) { const r = find.pos.get(it.id); if (r && r.sig === trSig(it)) items[it.id] = r; }
+    localStorage.setItem(FIND_KEY, JSON.stringify({ v: 1, items }));
+  } catch {}
+}
+const findReady = (it) => find.pos.get(it.id)?.sig === trSig(it);
+
+(() => {
+  const opt = (v, t) => Object.assign(document.createElement("option"), { value: v, textContent: t });
+  $("#findBody").replaceChildren(opt("any", "Cualquier planeta"), ...FIND_BODIES.map((b) => opt(b, BODY[b].name)));
+  $("#findBody").value = find.body;
+  $("#findSign").replaceChildren(opt("all", "Todos los signos"), ...SIGNS.map((s, i) => opt(String(i), s)));
+  $("#findSign").value = find.sign;
+  $("#findBody").addEventListener("change", (e) => { find.body = e.target.value; renderHomeFind(); });
+  $("#findSign").addEventListener("change", (e) => { find.sign = e.target.value; renderHomeFind(); });
+})();
+
+async function retryBusy(call, alive) {
+  for (let i = 0; ; i++) {
+    try {
+      return await call();
+    } catch (err) {
+      const busy = err.status === 429 || err.status === 503;
+      if (!busy || i >= 4 || !alive()) throw err;
+      await new Promise((ok) => setTimeout(ok, Math.min(15, Math.max(1, err.retryAfter || 2)) * 1000));
+    }
+  }
+}
+
+async function runFind() {
+  if (find.running) return;
+  const todo = saved.items.filter((it) => !findReady(it));
+  if (!todo.length) return;
+  const view = readForm(), queue = todo.slice(), my = ++find.seq;
+  Object.assign(find, { running: true, done: 0, total: todo.length, errs: new Map() });
+  renderHomeFind();
+  const worker = async () => {
+    while (queue.length && my === find.seq) {
+      const it = queue.shift(), sig = trSig(it);
+      try {
+        const c = await retryBusy(() => compute.chart(partnerBody(it, view)), () => my === find.seq);
+        const lon = Object.fromEntries([...c.bodies.filter((b) => TRIP_PLANETS.includes(b.id)).map((b) => [b.id, b.lon]), ["asc", c.angles.asc], ["mc", c.angles.mc]]);
+        if (!FIND_BODIES.every((b) => Number.isFinite(lon[b]))) throw new Error("Respuesta incompleta.");
+        find.pos.set(it.id, { sig, lon });
+      } catch (err) {
+        find.errs.set(it.id, err);
+      }
+      if (my !== find.seq) return;
+      find.done++;
+      if (page === "home") renderHomeFind();
+    }
+  };
+  await Promise.all([worker(), worker()]);
+  if (my !== find.seq) return;
+  find.running = false;
+  findSave();
+  if (page === "home") renderHomeFind();
+}
+$("#findGo").addEventListener("click", runFind);
+
+function renderHomeFind() {
+  const sec = $("#homeFind"), items = saved.items;
+  sec.hidden = !items.length;
+  if (!items.length) return;
+  const missing = items.filter((it) => !findReady(it));
+  const failed = missing.filter((it) => find.errs.has(it.id));
+  // en el servidor propio de la app se calcula solo; en la versión pública, al apretar el botón
+  if (missing.length && !find.running && !failed.length && !isPublic()) { runFind(); return; }
+  $("#homeFindNote").textContent = "Elegí un planeta (o el Ascendente o el Medio Cielo) y un signo, y salen las cartas guardadas que lo tienen." +
+    (isPublic() ? " Las posiciones se calculan una vez con los datos de nacimiento de tus cartas, que se envían al servidor solo para eso y no se guardan; quedan en este navegador." : "");
+  const go = $("#findGo");
+  go.hidden = find.running || !missing.length;
+  go.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
+  $("#findProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
+
+  const out = $("#findOut"), nodes = [];
+  const have = items.filter(findReady);
+  const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
+  const sign = find.sign === "all" ? -1 : +find.sign;
+  const bodies = find.body === "any" ? TRIP_PLANETS : [find.body];
+  const what = find.body === "any" ? "algún planeta" : FIND_ART[find.body] || BODY[find.body].name;
+  const title = find.body === "any" ? "Algún planeta" : BODY[find.body].name;
+  const hits = (it) => bodies.map((id) => ({ id, lon: find.pos.get(it.id).lon[id] })).filter((p) => sign < 0 || split(p.lon).sign === sign);
+  const chip = (it, ps, withGlyph) => {
+    const b = el("button", { type: "button", className: "home-chip find-hit", title: `Abrir la carta de ${it.name}` });
+    b.append(el("span", { className: "find-nm", textContent: it.name }));
+    for (const p of ps) {
+      const s = el("span", { className: "find-pos" });
+      if (withGlyph) s.innerHTML = mark(p.id) + " ";
+      s.append(document.createTextNode(degTxt(p.lon)));
+      b.append(s);
+    }
+    b.addEventListener("click", () => openSaved(it));
+    return b;
+  };
+  if (have.length) {
+    if (find.body === "any" && sign < 0) {
+      nodes.push(el("p", { className: "find-hint", textContent: "Elegí un signo para ver qué cartas tienen algún planeta ahí." }));
+    } else if (sign < 0) {                          // un planeta en todos los signos: las cartas agrupadas por signo
+      nodes.push(el("p", { className: "find-sum", textContent: `${title} de ${have.length} ${have.length === 1 ? "carta" : "cartas"}, por signo.` }));
+      for (let k = 0; k < 12; k++) {
+        const g = have.map((it) => [it, hits(it).filter((p) => split(p.lon).sign === k)]).filter(([, ps]) => ps.length);
+        if (!g.length) continue;
+        const grp = el("div", { className: "find-grp" });
+        const h = el("h4");
+        h.innerHTML = `<span class="g" aria-hidden="true">${signHTML(k)}</span> `;
+        h.append(document.createTextNode(`${SIGNS[k]} `), el("span", { className: "find-n", textContent: String(g.length) }));
+        grp.append(h, Object.assign(el("div", { className: "home-chips" }), {}));
+        grp.lastChild.append(...g.map(([it, ps]) => chip(it, ps, false)));
+        nodes.push(grp);
+      }
+    } else {
+      const g = have.map((it) => [it, hits(it)]).filter(([, ps]) => ps.length);
+      if (g.length) {
+        nodes.push(el("p", { className: "find-sum" }));
+        nodes[0].append(el("strong", { textContent: `${title} en ${SIGNS[sign]}` }), document.createTextNode(` · ${g.length} de ${have.length} ${have.length === 1 ? "carta" : "cartas"}`));
+        const row = el("div", { className: "home-chips" });
+        row.append(...g.map(([it, ps]) => chip(it, ps, find.body === "any")));
+        nodes.push(row);
+      } else {
+        nodes.push(el("p", { className: "find-none", textContent: have.length === 1 ? `Tu carta no tiene ${what} en ${SIGNS[sign]}.` : `Ninguna de tus ${have.length} cartas tiene ${what} en ${SIGNS[sign]}.` }));
+      }
+    }
+  }
+  if (failed.length && !find.running) {
+    nodes.push(el("p", { className: "find-err", textContent: `No se pudo calcular la posición de ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? ": no hay conexión con el servidor" : ""}.` }));
+  } else if (have.length && have.length < items.length && !find.running && missing.length) {
+    nodes.push(el("p", { className: "find-hint", textContent: `Faltan ${missing.length} ${missing.length === 1 ? "carta" : "cartas"} por calcular; se buscó en las otras.` }));
+  }
+  out.replaceChildren(...nodes);
+}
 
 /** «Abrir en Tránsitos»: la carta, en el modo de tránsitos y en este momento. */
 async function openSavedInTransit(item) {

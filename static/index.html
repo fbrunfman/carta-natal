@@ -287,6 +287,8 @@
           <div id="homeErr" class="error" role="alert" hidden></div>
         </div>
         <div class="home-side">
+          <!-- en el tablero de escritorio la Luna del rincón pasa a esta columna (app.js la mueve) -->
+          <div class="home-moon-slot" id="homeMoonSlot"></div>
           <section class="home-charts home-tr" id="homeTr" aria-labelledby="homeTrTitle" hidden>
             <h3 id="homeTrTitle">Tránsitos destacados de hoy</h3>
             <p class="home-tr-note" id="homeTrNote"></p>
@@ -300,6 +302,19 @@
           <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
             <h3 id="homeChartsTitle">Tus cartas</h3>
             <div id="homeChartBody"></div>
+          </section>
+          <section class="home-charts home-find" id="homeFind" aria-labelledby="homeFindTitle" hidden>
+            <h3 id="homeFindTitle">Buscar por posición</h3>
+            <p class="home-tr-note" id="homeFindNote"></p>
+            <div class="find-row">
+              <label class="find-f" for="findBody"><span>Planeta o punto</span><select id="findBody"></select></label>
+              <label class="find-f" for="findSign"><span>En el signo</span><select id="findSign"></select></label>
+            </div>
+            <div class="home-tr-act">
+              <button type="button" class="home-continue" id="findGo" hidden></button>
+              <span class="home-tr-prog" id="findProg" role="status" aria-live="polite"></span>
+            </div>
+            <div class="find-out" id="findOut" aria-live="polite"></div>
           </section>
         </div>
       </div>
