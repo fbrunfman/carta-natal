@@ -953,7 +953,13 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .pfi-none { margin: 10px 0 2px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
 
 /* ---------- celular: barra de abajo (Carta · Tablas · Tránsitos · Sinastría), encabezado compacto y pestañas pegadas ---------- */
-.mbar, .fab { display: none; }
+.mbar, .fab, .tpill { display: none; }
+.tsheet-head { display: none; }
+@media (max-width: 640px) {
+  :root[data-mbar] .tsheet-head { display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: calc(14px * var(--fs)); }
+  .tsheet-x { padding: 4px; }
+  .tsheet-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+}
 @media (max-width: 640px) {
   :root[data-mbar] .mbar {
     display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
@@ -971,7 +977,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .mbar button[aria-pressed="true"] svg { stroke-width: 2.1; }
   .mbar button[aria-pressed="true"] svg { color: var(--ink); }
   .mbar span { white-space: nowrap; }
-  :root[data-mbar] main { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  :root[data-mbar] main { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }      /* la barra y los flotantes no tapan el final */
   :root[data-mbar] .pfi { bottom: calc(74px + env(safe-area-inset-bottom)); }
 
   /* arriba: la barra reemplaza al selector de modos; los botones de la rueda, chicos y en una fila */
@@ -1008,8 +1014,36 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .fab-dot { position: absolute; top: 9px; right: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--trip); box-shadow: 0 0 0 2px var(--surface); display: none; }
   .fab.on .fab-dot { display: block; }
   .fab.on.reach .fab-dot { background: var(--reach); }
-  /* con la ficha o el filtro de viajes abiertos (hojas de abajo), el botón se corre */
-  :root:has(#pfi:not([hidden])) .fab, :root:has(#tripPick:not([hidden])) .fab { display: none; }
+  /* con la ficha, el filtro de viajes o la fecha del tránsito abiertos (hojas de abajo), los flotantes se corren */
+  :root:has(#pfi:not([hidden])) .fab, :root:has(#tripPick:not([hidden])) .fab, :root[data-tsheet] .fab,
+  :root:has(#pfi:not([hidden])) .tpill, :root:has(#tripPick:not([hidden])) .tpill, :root[data-tsheet] .tpill { display: none !important; }
+
+  /* Tránsitos: la fecha en una pastilla flotante abajo a la izquierda (al lado del botón flotante) y los controles en una hoja */
+  :root[data-mbar][data-mode="transit"] .tpill {
+    display: flex; position: fixed; z-index: 41; left: 16px; right: 82px; bottom: calc(80px + env(safe-area-inset-bottom)); height: 54px;
+    align-items: stretch; border: 1px solid var(--line-strong); border-radius: 27px; background: var(--surface); box-shadow: 0 8px 22px rgba(0, 0, 0, .3); overflow: hidden;
+  }
+  .tpill .tp-step { flex: none; width: 48px; border: 0; background: none; color: var(--ink); font-size: calc(26px * var(--fs)); line-height: 1; -webkit-tap-highlight-color: transparent; }
+  .tpill .tp-step:active { background: var(--hover); }
+  .tpill .tp-open {
+    flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    border: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: none; color: var(--ink); -webkit-tap-highlight-color: transparent;
+  }
+  .tpill .tp-when { font-size: calc(15px * var(--fs)); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .tpill .tp-by { font-size: calc(11.5px * var(--fs)); color: var(--ink-2); }
+  :root[data-mbar] #toolsTransit { display: none; }
+  :root[data-mbar][data-tsheet] #toolsTransit:not([hidden]) {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; position: fixed; z-index: 43; left: 8px; right: 8px; margin: 0;
+    bottom: calc(74px + env(safe-area-inset-bottom)); padding: 12px 14px 14px; border: 1px solid var(--line-strong); border-radius: 16px;
+    background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+  }
+  :root[data-mbar] #toolsTransit .tsheet-head { grid-column: 1 / -1; }
+  :root[data-mbar] #toolsTransit .tf input, :root[data-mbar] #toolsTransit .tf select { width: 100%; }
+  :root[data-mbar] #toolsTransit .tz { grid-column: 1 / -1; }
+  :root[data-mbar] #toolsTransit .tz input { width: 100%; }
+  :root[data-mbar] #toolsTransit .stepper { height: 44px; }
+  :root[data-mbar] #toolsTransit .stepper select { flex: 1 1 auto; }
+  :root[data-mbar] #toolsTransit #tNow { height: 44px; }
 
   /* el encabezado de la carta, más chico: la rueda entra en la primera pantalla */
   #chartPage > .head h2 { font-size: calc(30px * var(--fs)); }
@@ -1503,7 +1537,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  .mbar, .fab, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count,
+  .mbar, .fab, .tpill, .tsheet-head, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count,
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }

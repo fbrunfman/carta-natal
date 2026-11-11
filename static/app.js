@@ -489,8 +489,38 @@ function loadSoon() {
 
 $("#tPrev").addEventListener("click", () => stepTransit(-1));
 $("#tNext").addEventListener("click", () => stepTransit(1));
-$("#tNow").addEventListener("click", () => { setNow(); loadSoon(); });
-for (const el of [tDate, tTime, tTz]) el.addEventListener("change", loadSoon);
+$("#tNow").addEventListener("click", () => { setNow(); loadSoon(); paintPill(); });
+for (const el of [tDate, tTime, tTz]) el.addEventListener("change", () => { loadSoon(); paintPill(); });
+$("#tStep").addEventListener("change", paintPill);
+
+// -- celular, en Tránsitos: los controles de la fecha no ocupan lugar arriba de la rueda. Una pastilla flotante muestra
+// la fecha y la hora, con ‹ › para mover el paso elegido; al tocar la fecha sube una hoja con todos los controles.
+const PILL_MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+function paintPill() {
+  const d = tDate.value, t = tTime.value;
+  const [y, m, dd] = (d || "").split("-").map(Number);
+  $("#tpWhen").textContent = d && m ? `${dd} ${PILL_MES[m - 1]} ${y} · ${t || "--:--"}` : "Elegir fecha";
+  const st = $("#tStep");
+  $("#tpBy").textContent = `de a ${st.options[st.selectedIndex]?.text || ""}`;
+  $("#tpPrev").setAttribute("aria-label", `Retroceder ${st.options[st.selectedIndex]?.text || ""}`);
+  $("#tpNext").setAttribute("aria-label", `Avanzar ${st.options[st.selectedIndex]?.text || ""}`);
+}
+function setTsheet(open, focusBtn = false) {
+  document.documentElement.toggleAttribute("data-tsheet", open);
+  $("#tpOpen").setAttribute("aria-expanded", String(open));
+  if (open) { setFab(false); hideFicha(); $("#tsheetX").focus({ preventScroll: true }); }      // (no al campo de la fecha: en el celular abriría el teclado)
+  else if (focusBtn) $("#tpOpen").focus({ preventScroll: true });
+}
+$("#tpOpen").addEventListener("click", () => setTsheet(!document.documentElement.hasAttribute("data-tsheet")));
+$("#tsheetX").addEventListener("click", () => setTsheet(false, true));
+$("#tpPrev").addEventListener("click", () => { stepTransit(-1); paintPill(); });
+$("#tpNext").addEventListener("click", () => { stepTransit(1); paintPill(); });
+document.addEventListener("pointerdown", (e) => {
+  if (document.documentElement.hasAttribute("data-tsheet") && !$("#toolsTransit").contains(e.target) && !$("#tpill").contains(e.target)) setTsheet(false);
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.documentElement.hasAttribute("data-tsheet")) { e.preventDefault(); setTsheet(false, true); }
+});
 
 // ---------- cálculo -------------------------------------------------------
 let seq = 0;
@@ -1252,6 +1282,8 @@ function paintBar() {
   const root = document.documentElement;
   root.toggleAttribute("data-mbar", page === "chart" && !$("#stage").hidden);
   if (!root.hasAttribute("data-mbar")) setFab(false);
+  if (!root.hasAttribute("data-mbar") || mode !== "transit") setTsheet(false);
+  paintPill();
   fitTitle();
   root.dataset.mview = mview;
   const cur = mode === "natal" ? mview : mode;
