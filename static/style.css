@@ -900,6 +900,27 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .home-chip.home-new { display: inline-flex; align-items: center; gap: 6px; border-style: dashed; color: var(--ink-2); font-weight: 500; }
 .home-chip.home-new:hover { color: var(--ink); }
 
+/* el ícono de info (datos de nacimiento) solo existe en el celular; en pantallas grandes el subtítulo está a la vista */
+.title-acts { white-space: nowrap; }
+.title-info { display: none; }
+.cinfo {
+  position: absolute; z-index: 30; left: 0; right: 0; max-width: 460px; padding: 12px 14px;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+}
+.cinfo p { margin: 0; font-size: calc(14.5px * var(--fs)); line-height: 1.45; color: var(--ink); }
+.cinfo .cinfo-utc { margin-top: 6px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
+@media (max-width: 640px) {
+  /* el nombre y, al lado, la lupa y la info; si el nombre no entra con ellos, ellos pasan arriba (wrap-reverse) y el nombre
+     usa todo el ancho: se achica un poco (app.js::fitTitle) y si igual no entra, termina en «…» */
+  :root[data-mbar] #chartPage > .head h2 { display: flex; flex-wrap: wrap-reverse; align-items: center; column-gap: 12px; row-gap: 8px; }
+  :root[data-mbar] #title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: .06em; }
+  :root[data-mbar] .title-acts { flex: none; display: inline-flex; gap: 8px; }
+  :root[data-mbar] .title-pick { margin: 0; }
+  :root[data-mbar] .title-info { display: inline-flex; }
+  :root[data-mbar] .title-info[aria-expanded="true"] { color: var(--ink); background: var(--hover); border-color: var(--line-strong); }
+  :root[data-mbar] #chartPage > .head > #sub, :root[data-mbar] #chartPage > #timeNote { display: none; }
+}
+
 /* ---------- ficha del planeta tocado (con el dedo) ---------- */
 .pfi {
   position: fixed; z-index: 42; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -916,6 +937,10 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .pfi-pos .g { color: var(--ink); }
 .pfi-pos .rx { font-size: .85em; font-weight: 700; color: var(--hard); }
 .pfi-x { flex: none; align-self: flex-start; margin: -4px 0 0; }
+.pfi-note { margin: 10px 0 0; padding: 8px 10px; border-left: 3px solid var(--reach); border-radius: 0 8px 8px 0; background: var(--hover); font-size: calc(13.5px * var(--fs)); line-height: 1.4; }
+.pfi-note.trip { border-left-color: var(--trip); }
+.pfi-note p { margin: 0; }
+.pfi-note p + p { margin-top: 6px; }
 .pfi-list { list-style: none; margin: 10px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line); }
 .pfi-list li { display: flex; align-items: center; gap: 9px; padding: 6px 2px; font-size: calc(14px * var(--fs)); line-height: 1.3; }
 .pfi-list li + li { border-top: 1px solid var(--line); }
@@ -1450,7 +1475,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  .mbar, .pfi, .title-pick, .cpick,
+  .mbar, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count,
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }
@@ -1535,8 +1560,37 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .k-trip-dot.dot { stroke-width: 2.4; stroke-dasharray: .1 3.4; stroke-linecap: round; }
 #tripBtn[aria-pressed="true"] { background: var(--trip); border-color: var(--trip); color: var(--bg); }
 
+/* «Viajes» con su flechita: abre el filtro flotando (no ocupa lugar arriba de la rueda); con un filtro puesto, el botón
+   dice cuántos se dibujan */
+.modebar { position: relative; }
+#tripBtn:has(+ #tripMore:not([hidden])) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+#tripMore { margin-left: -8px; padding: 0 8px; border-top-left-radius: 0; border-bottom-left-radius: 0; background: var(--trip); border-color: var(--trip); color: var(--bg); box-shadow: inset 1px 0 0 color-mix(in srgb, var(--bg) 40%, var(--trip)); }
+#tripMore svg { width: 17px; height: 17px; display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+#tripMore[aria-expanded="true"] svg { transform: rotate(180deg); }
+#tripMore:hover { opacity: .9; }
+.tp-count { margin-left: 7px; padding: 0 7px; border-radius: 99px; background: color-mix(in srgb, var(--bg) 24%, transparent); font-size: .86em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tpop {
+  position: absolute; z-index: 31; width: min(392px, calc(100vw - 32px)); margin: 0; padding: 10px 12px 12px; gap: 10px;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+}
+.tpop .tp-row { justify-content: flex-start; }
+.tpop .tp-chips { justify-content: flex-start; }
+.tpop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink); font-size: calc(14px * var(--fs)); }
+.tpop-x { padding: 4px; }
+.tpop-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+@media (max-width: 640px) {
+  .tpop { position: fixed; z-index: 43; left: 8px; right: 8px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom)); max-height: 62vh; overflow-y: auto; overscroll-behavior: contain; border-radius: 16px; }
+  :root[data-mbar] .tpop { bottom: calc(74px + env(safe-area-inset-bottom)); }
+  :root[data-mbar][data-mode="natal"][data-mview="tablas"] #tripMore { display: none; }
+}
+@media (max-width: 360px) {
+  /* pantallas muy angostas: «Entre casas» queda como ícono (como Imprimir) para que la fila entre */
+  :root[data-mbar] #spillBtn { font-size: 0; gap: 0; padding: 0 10px; }
+  :root[data-mbar] #spillBtn svg { width: 17px; height: 17px; }
+}
+
 /* sección «Viajes»: la notación del pizarrón, y al tocar una fila, la explicación en palabras */
-.trip-pick { display: flex; flex-direction: column; gap: 8px; margin: 0 0 8px; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
+.trip-pick { display: flex; flex-direction: column; gap: 8px; margin: 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
 .tp-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; }
 .trip-pick[hidden] { display: none; }
 .tp-lab { font-weight: 600; }

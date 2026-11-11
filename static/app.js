@@ -259,6 +259,36 @@ cpick.addEventListener("keydown", (e) => {
 });
 document.addEventListener("pointerdown", (e) => { if (!cpick.hidden && !cpick.contains(e.target) && !cpickBtn.contains(e.target)) closeCpick(false); }, true);
 
+// -- celular: el nombre en su renglón. Si no entra, primero se achica un poco y después se corta con «…»; la lupa y el
+// ícono de info van al lado o, si el nombre ocupa todo el ancho, arriba (style.css). Los datos de nacimiento, detrás de la info.
+const phoneBar = () => document.documentElement.hasAttribute("data-mbar") && matchMedia("(max-width: 640px)").matches;
+function fitTitle() {
+  const t = $("#title");
+  t.style.fontSize = "";
+  if (!phoneBar()) return;
+  const avail = t.parentElement.clientWidth;
+  for (const px of [26, 23, 20]) { if (t.scrollWidth <= avail) break; t.style.fontSize = `${px}px`; }
+}
+addEventListener("resize", () => { fitTitle(); if (!$("#cinfo").hidden) closeCinfo(false); });
+function openCinfo() {
+  const box = $("#cinfo"), btn = $("#titleInfo");
+  const parts = [["cinfo-sub", $("#sub").textContent], ["cinfo-utc", $("#timeNote").hidden ? "" : $("#timeNote").textContent]];
+  box.replaceChildren(...parts.filter(([, t]) => t).map(([cls, t]) => Object.assign(document.createElement("p"), { className: cls, textContent: t })));
+  box.hidden = false;
+  box.style.top = `${btn.closest("h2").offsetTop + btn.closest("h2").offsetHeight + 8}px`;
+  btn.setAttribute("aria-expanded", "true");
+}
+function closeCinfo(focusBtn = true) {
+  const box = $("#cinfo");
+  if (box.hidden) return;
+  box.hidden = true;
+  $("#titleInfo").setAttribute("aria-expanded", "false");
+  if (focusBtn) $("#titleInfo").focus({ preventScroll: true });
+}
+$("#titleInfo").addEventListener("click", () => ($("#cinfo").hidden ? openCinfo() : closeCinfo()));
+document.addEventListener("pointerdown", (e) => { if (!$("#cinfo").hidden && !$("#cinfo").contains(e.target) && !$("#titleInfo").contains(e.target)) closeCinfo(false); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#cinfo").hidden) { e.preventDefault(); closeCinfo(); } });
+
 /** Lo que hace el botón: guarda la carta (la valida el servidor: fecha, hora, lugar…), la calcula y la muestra.
  *  asNew: con una carta guardada abierta, la guarda como otra en vez de pisarla. */
 async function persist(asNew) {
@@ -578,8 +608,18 @@ $("#tripHouses").innerHTML = HOUSES.map((h) =>
   `<button type="button" class="trip-chip hs" data-h="${h}" aria-pressed="true"><span class="hn">${roman(h)}</span><span class="tp-n"></span></button>`).join("");
 $("#tripChips").innerHTML = TRIP_PLANETS.map((id) =>
   `<button type="button" class="trip-chip" data-id="${id}" aria-pressed="true"><span class="g" aria-hidden="true">${glyphHTML(id)}</span><span class="tp-n"></span></button>`).join("");
+let tripPop = false;          // el filtro abierto (se abre con la flechita de «Viajes»)
 function syncTripPick(all) {
-  $("#tripPick").hidden = !all;
+  $("#tripMore").hidden = !all;
+  if (!all) tripPop = false;
+  $("#tripPick").hidden = !all || !tripPop;
+  $("#tripMore").setAttribute("aria-expanded", String(!!all && tripPop));
+  // en el botón, cuántos se dibujan si no son todos («Viajes 7/10»)
+  const on = tripBy === "planet" ? TRIP_PLANETS.filter((id) => tripSel.has(id)).length : tripHSel.size;
+  const tot = tripBy === "planet" ? TRIP_PLANETS.length : HOUSES.length;
+  $("#tripCount").hidden = !all || on === tot;
+  $("#tripCount").textContent = `${on}/${tot}`;
+  $("#tripMore").setAttribute("aria-label", all && on !== tot ? `Filtrar los viajes (se dibujan ${on} de ${tot} ${tripBy === "planet" ? "planetas" : "casas"})` : "Filtrar los viajes");
   if (!all) return;
   for (const b of $("#tripBy").children) b.setAttribute("aria-pressed", b.dataset.by === tripBy);
   $("#tripPlanetRow").hidden = tripBy !== "planet";
@@ -605,6 +645,34 @@ function syncTripPick(all) {
   $("#tripHAll").disabled = HOUSES.every((h) => tripHSel.has(h));
   $("#tripHNone").disabled = tripHSel.size === 0;
 }
+/** Abre o cierra el filtro: en escritorio, flotando debajo de la flechita; en el celular, una hoja desde abajo (style.css). */
+function setTripPop(on, focusBtn = false) {
+  tripPop = on && !$("#tripMore").hidden;
+  const pop = $("#tripPick"), btn = $("#tripMore");
+  pop.hidden = !tripPop;
+  btn.setAttribute("aria-expanded", String(tripPop));
+  if (tripPop) {
+    hideFicha();
+    placeTripPop();
+    (pop.querySelector("#tripBy [aria-pressed=true]") || pop.querySelector("button"))?.focus({ preventScroll: true });
+  } else if (focusBtn) btn.focus({ preventScroll: true });
+}
+function placeTripPop() {
+  const pop = $("#tripPick"), btn = $("#tripMore");
+  pop.style.left = pop.style.top = "";
+  if (matchMedia("(max-width: 640px)").matches) return;           // en el celular, la hoja de abajo la ubica la CSS
+  const max = pop.offsetParent ? pop.offsetParent.clientWidth - pop.offsetWidth : 0;
+  pop.style.left = `${Math.max(0, Math.min(btn.offsetLeft + btn.offsetWidth - pop.offsetWidth, max))}px`;
+  pop.style.top = `${btn.offsetTop + btn.offsetHeight + 6}px`;
+}
+$("#tripMore").addEventListener("click", () => setTripPop(!tripPop));
+$("#tripPopX").addEventListener("click", () => setTripPop(false, true));
+document.addEventListener("pointerdown", (e) => {
+  if (tripPop && !$("#tripPick").contains(e.target) && !$("#tripMore").contains(e.target)) setTripPop(false);
+}, true);
+document.addEventListener("keydown", (e) => { if (tripPop && e.key === "Escape") { e.preventDefault(); setTripPop(false, true); } });
+addEventListener("resize", () => { if (tripPop) placeTripPop(); });
+
 const flip = (set, x) => { const s = new Set(set); s.has(x) ? s.delete(x) : s.add(x); return s; };
 $("#tripPick").addEventListener("click", (e) => {
   const t = e.target.closest("button");
@@ -689,6 +757,7 @@ function render() {
   header(c);
   paintBar();
   paintTitlePick();
+  closeCinfo(false);
 
   const t = c.time;
   const timeNote = $("#timeNote");
@@ -1150,7 +1219,7 @@ function hideFicha() {
   const el = $("#pfi");
   if (!el.hidden) { el.hidden = true; el.replaceChildren(); }
 }
-function showFicha(id) {
+function showFicha(id, note = "", trip = false) {
   const ring = outerRing(), out = id.startsWith("o:"), bid = out ? id.slice(2) : id;
   const body = (out ? ring?.bodies : chart?.bodies)?.find((b) => b.id === bid);
   if (!body || !wheel) { hideFicha(); return; }
@@ -1172,6 +1241,7 @@ function showFicha(id) {
     `<h3 id="pfiTitle">${me.html}</h3><p class="pfi-pos"><span class="g" aria-hidden="true">${signHTML(s.sign)}</span> ${SIGNS[s.sign]} ` +
     `${s.deg}°${String(s.min).padStart(2, "0")}′${body.retro ? ' <span class="rx">R</span>' : ""}${house ? ` · ${house}` : ""}</p></div>` +
     `<button type="button" class="iconbtn pfi-x" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>` +
+    (note ? `<div class="pfi-note${trip ? " trip" : ""}">${String(note).split("\n").map((l) => `<p>${esc(l)}</p>`).join("")}</div>` : "") +
     (rows ? `<ul class="pfi-list" aria-label="Aspectos">${rows}</ul>` : `<p class="pfi-none">Sin aspectos en la rueda.</p>`);
   el.hidden = false;
 }
@@ -1181,6 +1251,7 @@ function showFicha(id) {
 function paintBar() {
   const root = document.documentElement;
   root.toggleAttribute("data-mbar", page === "chart" && !$("#stage").hidden);
+  fitTitle();
   root.dataset.mview = mview;
   const cur = mode === "natal" ? mview : mode;
   $("#mbar").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === cur)));
@@ -1212,8 +1283,8 @@ $("#mbar").addEventListener("click", async (e) => {
     const pl = el.closest("[data-id]");
     if (!pl) return null;
     const id = pl.dataset.id;
-    // (los viajeros y los que pasan a otra casa ya muestran su cartelito: no llevan ficha)
-    if (pl.closest("#wheel")) return pl.classList.contains("pl") ? { key: id, inWheel: !pl.dataset.tip, on: () => { wheel.focus(id); highlightRows(id); } } : null;
+    // (los viajeros y los que pasan a otra casa llevan su explicación: con el dedo va dentro de la ficha)
+    if (pl.closest("#wheel")) return pl.classList.contains("pl") ? { key: id, inWheel: true, tip: pl.dataset.tip || "", trip: pl.classList.contains("trip"), on: () => { wheel.focus(id); highlightRows(id); } } : null;
     for (const p of PANELS) if (pl.closest(p)) return noAngles.has(p) && (id === "asc" || id === "mc") ? null : { key: id, on: () => wheel.focus(id) };
     return null;
   };
@@ -1226,10 +1297,12 @@ $("#mbar").addEventListener("click", async (e) => {
     const t = tap; tap = null;
     if (!wheel || !t || !t.type || t.type === "mouse" || e.target.closest?.("#pfi")) return;      // (dentro de la ficha se lee, no se suelta)
     const hit = target(e.target);
+    // sin lecturas, la explicación de «Entre casas» o del viaje va en la ficha, junto con los aspectos: no se abre además el cartelito
+    if (hit?.inWheel && hit.tip && !interpOn) e.stopPropagation();
     if (hit && t.held === hit.key) release();             // el mismo otra vez
     else if (hit) {                                       // otro, o el primero: queda resaltado hasta soltarlo (no hay un «mouseover» nuevo si el dedo ya estaba ahí)
       hit.on(); wheel.hold();
-      if (hit.inWheel && !interpOn) showFicha(hit.key); else hideFicha();      // con lecturas se abre la ventana del planeta
+      if (hit.inWheel && !interpOn) showFicha(hit.key, hit.tip, hit.trip); else hideFicha();      // con lecturas se abre la ventana del planeta
     }
     else if (wheel.current()) release();                  // afuera
   }, true);

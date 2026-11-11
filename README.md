@@ -130,7 +130,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     **En el celular (hasta 640 px de ancho)**, con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
     Tránsitos · Sinastría** que reemplaza al selector Natal / Tránsitos / Sinastría de arriba. «Carta» es la rueda natal
     sola (con el encabezado más chico entra entera en la primera pantalla); «Tablas», las tablas de la carta natal solas;
-    «Tránsitos» y «Sinastría», sus vistas de siempre (rueda doble y tablas). Entre casas, Viajes e Imprimir (solo el
+    «Tránsitos» y «Sinastría», sus vistas de siempre (rueda doble y tablas). Arriba, el nombre con la lupa y un **ícono de info** al lado: los
+    datos de nacimiento (o la fecha del tránsito) y la hora UTC ya no ocupan lugar, se ven al tocar la info (se cierra
+    tocándola otra vez o afuera). Si el nombre no entra con los íconos, los íconos pasan arriba del nombre; si el nombre
+    solo no entra, se achica (hasta 20 px) y si igual no entra termina en «…» (`app.js::fitTitle`). Test: `e2e_info`. Entre casas, Viajes e Imprimir (solo el
     ícono) van chicos en una fila. Al bajar, **las pestañas de las tablas quedan pegadas arriba** (dejando lugar al botón
     del menú). La barra no está en el Inicio, la Luna ni Combinar, ni en la tableta o el escritorio. Test: `e2e_celu`.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
@@ -190,7 +193,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   tarjeta con su signo, grados (y «R»), su casa y sus aspectos —los mismos que resalta la rueda—, del más cerrado al más
   abierto, con el orbe y «A» (aplicativo) o «S» (separativo). En tránsitos y sinastría dice de qué carta es cada planeta
   («tránsito», «natal» o el nombre). Se cierra con la ×, tocando afuera, tocando de nuevo el planeta o cambiando de
-  vista; leerla (tocar dentro) no la cierra. Con lecturas se abre la ventana del planeta, como siempre.
+  vista; leerla (tocar dentro) no la cierra. Con lecturas se abre la ventana del planeta, como siempre. Si el planeta pasa
+  a otra casa («Entre casas») o es un viajero («Viajes»), la ficha trae arriba de los aspectos la misma explicación del
+  cartelito (con el borde del color de cada cosa) y el cartelito aparte no se abre; con el mouse, el cartelito de siempre.
+  Test: `e2e_fichatip`.
 - **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
   (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
   panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,
@@ -258,7 +264,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     tipo más fuerte. Al enfocar al planeta o a uno de sus viajeros sale una **flecha** desde su lugar hasta cada casa a la que
     viaja. Al **tocar** un viajero (o Enter) sale el cartelito con la explicación en palabras, un párrafo por camino; se cierra
     al tocar afuera, con Esc o al desplazar. Funciona junto con «Entre casas». Se recuerda (`tripsOn` en `carta:cfg`).
-    Al prenderlo aparece sobre la rueda el **selector de viajes**: se elige ver los viajes **«por Planeta»** (de fábrica) o **«por
+    Al prenderlo, el botón suma una **flechita ▾** que abre el **filtro de viajes** flotando debajo (en el celular, una hoja
+    que sube desde abajo, arriba de la barra): no ocupa lugar arriba de la rueda, que no se mueve. Se cierra con la ×, Esc o
+    tocando afuera (tocar las fichas no lo cierra). Con un filtro puesto, el botón dice cuántos se dibujan («Viajes 7/10»,
+    o «11/12» por casa). Test: `e2e_tpop`. En el filtro se elige ver los viajes **«por Planeta»** (de fábrica) o **«por
     Casa»**, y nunca las dos cosas a la vez; se despliega solo la lista elegida. Por Planeta: una ficha por planeta con a cuántas
     casas viaja. Por Casa: una ficha por casa, I a XII, con cuántos viajeros llegan a ella (la casa de llegada, que es donde se
     dibuja). Vienen todas marcadas y se desmarcan de a una, con **Marcar todos / Desmarcar todos** (planetas) o **Marcar todas /

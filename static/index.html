@@ -361,13 +361,15 @@
 
     <div id="chartPage">
     <header class="head">
-      <h2><span id="title">Carta natal</span><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button></h2>
+      <h2><span id="title">Carta natal</span><span class="title-acts"><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button><button type="button" id="titleInfo" class="iconbtn title-pick title-info" aria-label="Datos de nacimiento" title="Datos de nacimiento" aria-haspopup="dialog" aria-expanded="false" aria-controls="cinfo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg></button></span></h2>
       <!-- cambiar de carta sin abrir el menú: la lista de las guardadas, con buscador -->
       <div class="cpick" id="cpick" role="dialog" aria-label="Cambiar de carta" hidden>
         <input type="search" id="cpickQ" placeholder="Buscar carta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta">
         <ul class="cpick-list" id="cpickList" aria-label="Cartas guardadas"></ul>
         <button type="button" class="cpick-new" id="cpickNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
       </div>
+      <!-- celular: los datos de nacimiento (el subtítulo y la hora UTC) van acá, detrás del ícono de info -->
+      <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden></div>
       <p id="sub"></p>
     </header>
 
@@ -385,11 +387,38 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18" stroke-dasharray="2.6 2.6"/><circle cx="7" cy="12" r="3.2"/><circle cx="17" cy="12" r="3.2" stroke-dasharray="2 2"/></svg>Entre casas
         </button>
         <button type="button" id="tripBtn" class="secondary compact with-ic" aria-pressed="false" hidden title="Dibujar en la rueda los viajes de los planetas por las casas (los aspectos, orbes y regentes se cambian en Configuración)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="7" r="3" stroke-dasharray="2 2"/><path d="M8.2 14.8 15.6 9.2M12.6 8.6l3.4.6-.6 3.4"/></svg>Viajes
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="7" r="3" stroke-dasharray="2 2"/><path d="M8.2 14.8 15.6 9.2M12.6 8.6l3.4.6-.6 3.4"/></svg>Viajes<span class="tp-count" id="tripCount" hidden></span>
+        </button><button type="button" id="tripMore" class="secondary compact trip-more" aria-haspopup="dialog" aria-expanded="false" aria-controls="tripPick" aria-label="Filtrar los viajes" title="Filtrar los viajes por planeta o por casa" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
         </button>
         <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
         </button>
+      </div>
+      <!-- el filtro de los viajes: no ocupa lugar arriba de la rueda; se abre con la flechita de «Viajes» (en el celular, desde abajo) -->
+      <div class="trip-pick tpop" id="tripPick" role="dialog" aria-label="Filtrar los viajes" hidden>
+        <div class="tpop-head"><strong>Filtrar viajes</strong><button type="button" class="iconbtn tpop-x" id="tripPopX" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+          <div class="tp-row">
+            <span class="tp-lab">Ver los viajes por</span>
+            <span class="seg tp-by" id="tripBy" role="group" aria-label="Elegir los viajes por planeta o por casa">
+              <button type="button" data-by="planet" aria-pressed="true">Planeta</button>
+              <button type="button" data-by="house" aria-pressed="false">Casa</button>
+            </span>
+          </div>
+          <div class="tp-row" id="tripPlanetRow">
+            <span class="tp-chips" id="tripChips"></span>
+            <span class="tp-acts">
+              <button type="button" class="secondary compact" id="tripAll">Marcar todos</button>
+              <button type="button" class="secondary compact" id="tripNone">Desmarcar todos</button>
+            </span>
+          </div>
+          <div class="tp-row" id="tripHouseRow" hidden>
+            <span class="tp-chips" id="tripHouses"></span>
+            <span class="tp-acts">
+              <button type="button" class="secondary compact" id="tripHAll">Marcar todas</button>
+              <button type="button" class="secondary compact" id="tripHNone">Desmarcar todas</button>
+            </span>
+          </div>
       </div>
     </div>
 
@@ -431,29 +460,6 @@
 
     <div class="stage" id="stage" hidden>
       <figure class="wheel-fig">
-        <div class="trip-pick" id="tripPick" role="group" aria-label="Qué viajes se dibujan en la rueda" hidden>
-          <div class="tp-row">
-            <span class="tp-lab">Ver los viajes por</span>
-            <span class="seg tp-by" id="tripBy" role="group" aria-label="Elegir los viajes por planeta o por casa">
-              <button type="button" data-by="planet" aria-pressed="true">Planeta</button>
-              <button type="button" data-by="house" aria-pressed="false">Casa</button>
-            </span>
-          </div>
-          <div class="tp-row" id="tripPlanetRow">
-            <span class="tp-chips" id="tripChips"></span>
-            <span class="tp-acts">
-              <button type="button" class="secondary compact" id="tripAll">Marcar todos</button>
-              <button type="button" class="secondary compact" id="tripNone">Desmarcar todos</button>
-            </span>
-          </div>
-          <div class="tp-row" id="tripHouseRow" hidden>
-            <span class="tp-chips" id="tripHouses"></span>
-            <span class="tp-acts">
-              <button type="button" class="secondary compact" id="tripHAll">Marcar todas</button>
-              <button type="button" class="secondary compact" id="tripHNone">Desmarcar todas</button>
-            </span>
-          </div>
-        </div>
         <svg id="wheel" class="wheel" viewBox="-345 -345 690 690" role="img"></svg>
         <figcaption class="legend">
           <span class="key"><svg width="26" height="8" aria-hidden="true"><line x1="1" y1="4" x2="25" y2="4" class="k-soft"/></svg>Trígono y sextil</span>
