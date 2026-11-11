@@ -8,7 +8,7 @@ const norm360 = (x) => ((x % 360) + 360) % 360;
 
 export const MARGIN = 3.0;        // grados que un glifo se mantiene lejos de la cúspide
 export const MARGIN_TIGHT = 1.6;  // margen reducido cuando la casa está muy poblada
-export const SEP = 6.2;           // separación preferida entre glifos vecinos (grados)
+export const SEP = 7.0;           // separación preferida entre glifos vecinos (grados; los círculos miden 27,5 de 251 de radio)
 
 /** Mínimos cuadrados con y no decreciente (pool adjacent violators). */
 function isotonic(q) {

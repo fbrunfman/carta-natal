@@ -87,7 +87,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     esperar se espera y se sigue. Cada carta tiene su tarjeta con los tránsitos (el planeta y el punto natal, si está en su
     punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
     que abre esa carta con los tránsitos de ahora. No se calcula nada hasta elegir cartas y apretar el botón. Abajo: «Tus cartas»:
-    «Continuar con…» la carta que estabas viendo y atajos a las otras cartas guardadas (o «Crear mi primera carta»). No se
+    «Continuar con…» la carta que estabas viendo, atajos a las otras cartas guardadas y, al final, **«+ Nueva carta»** (abre el
+    formulario vacío; sin cartas, «Crear mi primera carta»). No se
     abre ninguna carta hasta entrar a **Carta**.
     Más abajo (solo si hay cartas guardadas), **«Buscar por posición»**: se elige un planeta (Sol a Plutón, el Ascendente o
     el Medio Cielo, o «Cualquier planeta») y un signo (o «Todos los signos»), y salen las cartas guardadas que lo tienen,
@@ -105,17 +106,27 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     para cambiar de mes (de 1800 a 2400; cambiar de mes no suma pasos al historial), hoy resaltado y un selector
     **Sur / Norte** (en el hemisferio sur la Luna creciente se ve iluminada a la izquierda; se recuerda). Las horas
     son las de la zona horaria del navegador.
-  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. **La rueda y su leyenda entran en la
+  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. **Cambiar de carta sin abrir el menú**: la lupa
+    al lado del nombre abre la lista de las cartas guardadas (con su fecha y la abierta marcada) y un buscador (sin
+    importar mayúsculas ni tildes; Enter abre la primera, flechas para moverse, Esc cierra), más «Nueva carta». En
+    tránsitos o sinastría se queda en esa vista con la carta elegida. La lupa no agranda el renglón del título: la rueda
+    mide lo mismo. Test: `e2e_cambiar`. **La rueda y su leyenda entran en la
     pantalla**: el encabezado es compacto (la equivalencia de la hora va como una línea gris más, sin recuadro) y la rueda
     se achica según el alto de la ventana y lo que tiene arriba (modos, fecha de los tránsitos, selector de viajes), sin
     bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
     pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
     que corta se esfuma y la elegida queda a la vista. **En escritorio ancho (unos 1080 px de contenido, p. ej. con el
     menú oculto) la rueda crece**: el encabezado va en una fila (nombre y datos a la izquierda; Natal / Tránsitos /
-    Sinastría, Entre casas, Viajes e Imprimir a la derecha, a la misma altura) y, si al costado de la rueda sobran unos
-    170 px por lado, la leyenda pasa a una columna en el rincón de abajo a la izquierda y la rueda usa también ese alto
-    (en una pantalla de 1904 × 1015 pasa de unos 670 a 825 px). El panel de la derecha queda del mismo ancho.
-    `fitWheel` pone `data-headrow` y `data-legend-side` en `<html>`. Test: `e2e_escritorio`.
+    Sinastría, Entre casas, Viajes e Imprimir a la derecha, a la misma altura) y, si la leyenda entra en una columna en
+    el rincón de abajo a la izquierda sin tocar la rueda (la rueda es redonda: su esquina queda vacía; se mide con la
+    rueda del tamaño que tendría), pasa ahí y la rueda usa también ese alto
+    (en una pantalla de 1904 × 1015 pasa de unos 670 a 880 px). Con el menú oculto, el nombre va a la altura del
+    botón del menú, a su derecha, en vez de dejarle una franja vacía arriba. El tope de la rueda es 1100 px (antes 920).
+    El panel de la derecha queda del mismo ancho. `fitWheel` pone `data-headrow` y `data-legend-side` en `<html>`.
+    Test: `e2e_escritorio`.
+    **Los símbolos de la rueda son ≈ 15 % más grandes** (los círculos de los planetas 27,5 en vez de 24, los signos de la
+    pila y del anillo, y los grados, minutos, «R», números de casa y Asc/MC); la pila se reacomodó entre el zodíaco y el
+    círculo de las casas y los planetas juntos se separan 7° en vez de 6,2° (`layout.js::SEP`).
     **En el celular (hasta 640 px de ancho)**, con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
     Tránsitos · Sinastría** que reemplaza al selector Natal / Tránsitos / Sinastría de arriba. «Carta» es la rueda natal
     sola (con el encabezado más chico entra entera en la primera pantalla); «Tablas», las tablas de la carta natal solas;
@@ -393,7 +404,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Las fechas de «hasta» usan esos orbes de 3° y 2°, así que pueden diferir de las de otras apps que usan otros orbes.
 - **Tránsitos**: pestaña «Tránsitos». La rueda pasa a ser doble: adentro la carta natal, afuera los
   planetas de la fecha que elijas (arranca en «ahora»). La pestaña «Tránsitos» es la tabla de posiciones. Fecha, hora y zona horaria se editan, y ‹ › mueven
-  el momento de a 1 hora, día, semana, mes o año. Tres tablas: dónde está cada planeta y qué casa natal
+  el momento de a 15 minutos, 1 hora, día, semana, mes o año. Tres tablas: dónde está cada planeta y qué casa natal
   recorre; aspectos del tránsito a la carta natal con orbe y fase (aplicativo / separativo); y un
   **calendario** de aspectos exactos con fecha y hora, para 3, 6, 12 o 24 meses desde la fecha que quieras
   (Júpiter–Plutón, más Marte, o del Sol a Plutón), con los mismos ocho aspectos de arriba y sin el Ascendente ni el Medio Cielo. El calendario marca los retrógrados y numera las

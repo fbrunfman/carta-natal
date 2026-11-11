@@ -8,9 +8,9 @@ import { roman } from "./trips.js";
 // círculo con el símbolo, grados, signo y minutos (y "R" debajo si es retrógrado).
 const R = {
   out: 310, signIn: 270, houseOut: 172, houseNum: 161, asp: 150, label: 320,
-  glyph: 247, deg: 226, sign: 210.5, min: 196, retro: 184,
+  glyph: 251, deg: 227.5, sign: 210, min: 193.5, retro: 180.5,
 };
-const SIZE = { disc: 24, sign: 14.5, band: 30 };       // diámetro del círculo, signo de la pila, signo del anillo
+const SIZE = { disc: 27.5, sign: 16.5, band: 34 };     // diámetro del círculo, signo de la pila, signo del anillo (≈ 15 % más grandes que antes)
 
 // Rueda doble: un anillo más allá del zodíaco para tránsitos o la otra carta.
 // La pila va igual que la interior (símbolo hacia afuera, minutos hacia adentro) pero más compacta.
@@ -368,7 +368,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     const [rx, ry] = at(R.retro);
     const [tx, ty] = pt(R.signIn - 10, phi(b.lon));      // posición real sobre la graduación
     const [lx, ly] = pt(R.glyph + SIZE.disc / 2 + 1, disp);
-    const [h1x, h1y] = at(R.glyph + 14), [h2x, h2y] = at(b.retro ? R.retro - 7 : R.min - 7);
+    const [h1x, h1y] = at(R.glyph + 15), [h2x, h2y] = at(b.retro ? R.retro - 7 : R.min - 7);
     const moved = Math.abs(((disp - phi(b.lon) + 540) % 360) - 180) > 0.6;
     const tip = r ? reachText(r) : "";
     const cls = r ? ` reach reach-${r.kind}${ghost ? " ghost" : ""}` : "";
@@ -378,7 +378,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       (r ? `<title>${esc(tip)}</title>` : "") +
       (moved ? `<line class="link" x1="${tx}" y1="${ty}" x2="${lx}" y2="${ly}"/>` : "") +
       `<line class="hit" x1="${h1x}" y1="${h1y}" x2="${h2x}" y2="${h2y}"/>` +
-      (r ? `<circle class="reach-ring" cx="${gx}" cy="${gy}" r="${look.classic ? 15.5 : SIZE.disc / 2 + 1.7}"/>` : "") +
+      (r ? `<circle class="reach-ring" cx="${gx}" cy="${gy}" r="${look.classic ? 16.5 : SIZE.disc / 2 + 1.7}"/>` : "") +
       planetMark(b.id, gx, gy, SIZE.disc) +
       `<text class="degtxt" x="${dx}" y="${dy}" dy=".35em">${sp.deg}°</text>` +
       stackSign(sp.sign, sx, sy, SIZE.sign) +
@@ -395,8 +395,8 @@ export function renderWheel(svg, chart, hooks = {}) {
   // el viajero: solo el círculo del planeta, con borde macizo (por aspecto), doble (por eje) o punteado (por implicancia)
   const tripStack = (g) => {
     const disp = placed[tripKey(g)];
-    const ringR = look.classic ? 15.5 : SIZE.disc / 2 + 1.7;
-    const [gx, gy] = pt(R.glyph, disp), [h1x, h1y] = pt(R.glyph + 15, disp), [h2x, h2y] = pt(R.glyph - 15, disp);
+    const ringR = look.classic ? 16.5 : SIZE.disc / 2 + 1.7;
+    const [gx, gy] = pt(R.glyph, disp), [h1x, h1y] = pt(R.glyph + 16, disp), [h2x, h2y] = pt(R.glyph - 16, disp);
     const words = esc(g.words);
     return `<g class="pl trip trip-${g.kind}" data-id="${g.id}" data-house="${g.to}" data-from="${g.from}" data-disp="${n2(disp)}" data-tip="${words}" tabindex="0"${act} ` +
       `aria-label="${BODY[g.id].name} viaja a la casa ${roman(g.to)}. ${words.replace(/\n/g, " ")}">` +

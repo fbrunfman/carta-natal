@@ -312,7 +312,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- rueda ---------- */
 .wheel-fig { margin: 0; }
-.wheel { display: block; width: calc(100% * min(var(--wheel), 1)); max-width: 920px; height: auto; margin: 0 auto; }
+.wheel { display: block; width: calc(100% * min(var(--wheel), 1)); max-width: 1100px; height: auto; margin: 0 auto; }
 .wheel text { font-family: var(--glyph); fill: var(--ink); }
 .wheel .ring { fill: none; stroke: var(--ring-bg); stroke-width: 1.1; }
 .wheel .ring.thin { stroke: var(--line-strong); stroke-width: .9; }
@@ -323,8 +323,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .cusp { stroke: var(--line-strong); stroke-width: .8; opacity: .55; }
 .wheel .cusp-in { stroke: var(--ink-2); stroke-width: .9; }
 .wheel .cusp-in.axis { stroke: var(--ink); stroke-width: 1.7; }
-.wheel .hnum { font: calc(11px * var(--fw)) var(--sans); fill: var(--ink-2); text-anchor: middle; font-variant-numeric: tabular-nums; }
-.wheel .axis-label { font: 600 calc(11.5px * var(--fw)) var(--sans); }
+.wheel .hnum { font: calc(12.5px * var(--fw)) var(--sans); fill: var(--ink-2); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.wheel .axis-label { font: 600 calc(13px * var(--fw)) var(--sans); }
 .wheel .cusplbl { font: 500 calc(9.5px * var(--fw)) var(--sans); fill: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 /* anillo exterior de las cúspides: el borde de cada casa salta el anillo de signos y sigue por la banda (con un hueco donde
@@ -369,10 +369,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .pl { cursor: pointer; transition: opacity .12s; outline: none; }
 /* círculo de color de cada planeta (el dibujo es el mismo de las tablas: ver .pd-* más abajo) */
 .wheel .pdi { transition: transform .12s; }
-.wheel .degtxt { font: calc(10.5px * var(--fw)) var(--sans); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.wheel .degtxt { font: calc(12px * var(--fw)) var(--sans); text-anchor: middle; font-variant-numeric: tabular-nums; }
 .wheel .sgd { fill: none; stroke: var(--ink-2); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.wheel .mnt { font: calc(10px * var(--fw)) var(--sans); text-anchor: middle; font-variant-numeric: tabular-nums; fill: var(--ink-2); }
-.wheel .rx { font: 700 calc(9px * var(--fw)) var(--sans); text-anchor: middle; fill: var(--hard); }
+.wheel .mnt { font: calc(11.5px * var(--fw)) var(--sans); text-anchor: middle; font-variant-numeric: tabular-nums; fill: var(--ink-2); }
+.wheel .rx { font: 700 calc(10.5px * var(--fw)) var(--sans); text-anchor: middle; fill: var(--hard); }
 .wheel .pl:focus-visible .hit { stroke: var(--focus); stroke-opacity: .35; }
 
 /* planetas entre casas: arco sobre el anillo de las casas hasta la cúspide + circulito con el planeta del otro lado */
@@ -429,8 +429,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wheel .pl.out .hit { stroke-width: 20; }
 .wheel .pl.out .link { stroke: var(--out); }
 /* la rueda doble se dibuja en un lienzo más grande: se compensa el texto del interior */
-.wheel.bi .pl:not(.out) .degtxt { font-size: calc(12.5px * var(--fw)); }
-.wheel.bi .pl:not(.out) .mnt { font-size: calc(11.5px * var(--fw)); }
+.wheel.bi .pl:not(.out) .degtxt { font-size: calc(13.5px * var(--fw)); }
+.wheel.bi .pl:not(.out) .mnt { font-size: calc(12.5px * var(--fw)); }
 .wheel.bi .pl:not(.out) .rx { font-size: calc(10px * var(--fw)); }
 .wheel.bi .hnum { font-size: calc(13px * var(--fw)); }
 .wheel.bi .axis-label { font-size: calc(14px * var(--fw)); }
@@ -450,10 +450,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 :root[data-tint="on"] .wheel.classic .sg-water { fill: var(--water); }
 .wheel.classic .ring:not(.thin) { stroke: var(--ink); }
 .wheel.classic .sgline { stroke: var(--ink); stroke-width: .8; }
-.wheel .sgt { font-size: 18px; text-anchor: middle; }
-.wheel .pg { font-size: 20px; text-anchor: middle; }
+.wheel .sgt { font-size: 20px; text-anchor: middle; }
+.wheel .pg { font-size: 22.5px; text-anchor: middle; }
 .wheel .pluto { fill: none; stroke: var(--ink); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.wheel .sgdt { font-size: 12px; text-anchor: middle; fill: var(--ink-2); }
+.wheel .sgdt { font-size: 13.5px; text-anchor: middle; fill: var(--ink-2); }
 .wheel.has-focus .pl.sel .pg:not(.pluto) { font-weight: 700; }
 .wheel.has-focus .pl.sel .pluto { stroke-width: 2.4; }
 .wheel .pl.out .pg { font-size: 20px; fill: var(--out); }
@@ -705,7 +705,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 /* la rueda (y su leyenda) entran en la pantalla: --wheel-room lo calcula app.js con el alto de la ventana y lo que hay
    arriba de la rueda; nunca baja de 440 px. Con el mandala agrandado en Configuración manda ese tamaño. */
 @media screen {
-  :root:not([data-big]) .wheel { max-width: min(920px, var(--wheel-room, 920px)); }
+  :root:not([data-big]) .wheel { max-width: min(1100px, var(--wheel-room, 1100px)); }
 }
 /* escritorio ancho (app.js::fitWheel pone los atributos): el encabezado en una fila —nombre y datos a la izquierda, modos y
    botones a la derecha— y, si al costado de la rueda sobra lugar, la leyenda en una columna en su rincón de abajo a la
@@ -716,7 +716,12 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   :root[data-headrow] #chartPage > .head { grid-column: 1; grid-row: 1; }
   :root[data-headrow] #chartPage > #timeNote { grid-column: 1; grid-row: 2; }
   :root[data-headrow] #chartPage > .modebar { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; flex-wrap: nowrap; }
-  :root[data-headrow] #chartPage > .head h2 { font-size: calc(36px * var(--fs)); }
+  :root[data-headrow] #chartPage > .head h2 { font-size: calc(32px * var(--fs)); }
+  :root[data-headrow] #chartPage > .head p { margin-top: 4px; }
+  /* con el menú oculto, el nombre va a la altura del botón del menú (a su derecha) en vez de dejarle una franja vacía arriba */
+  :root[data-side="hidden"][data-headrow] main:has(> #chartPage:not([hidden])) { padding-top: 16px; }
+  :root[data-side="hidden"][data-headrow] #chartPage > .head,
+  :root[data-side="hidden"][data-headrow] #chartPage > #timeNote { padding-left: 46px; }
   :root[data-headrow] .stage { margin-top: 18px; }
   :root[data-legend-side] .wheel-fig { position: relative; }
   :root[data-legend-side] .wheel-fig .legend {
@@ -863,6 +868,38 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   .stage, :root[data-side="hidden"] .stage { grid-template-columns: minmax(0, 1fr); }
   .data { max-width: 560px; width: 100%; margin: 0 auto; }
 }
+/* ---------- la lupa al lado del nombre: cambiar de carta ---------- */
+#chartPage > .head { position: relative; }
+.title-pick { margin: -8px 0 -8px 12px; padding: 6px; vertical-align: middle; border-color: var(--line); }      /* (los márgenes negativos: no agranda el renglón del título) */
+.title-pick svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.title-pick[aria-expanded="true"] { color: var(--ink); background: var(--hover); border-color: var(--line-strong); }
+.cpick {
+  position: absolute; z-index: 30; width: min(340px, calc(100vw - 32px)); max-height: min(60vh, 460px);
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+}
+.cpick input[type="search"] { flex: none; }
+.cpick-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
+.cpick-it {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px;
+  border: 0; border-radius: 7px; background: none; color: var(--ink); text-align: left; font-size: calc(14.5px * var(--fs));
+}
+.cpick-it:hover, .cpick-it:focus-visible { background: var(--hover); outline-offset: -2px; }
+.cpick-it[aria-current="true"] { font-weight: 600; }
+.cpick-it[aria-current="true"]::before { content: "✓"; margin-right: -4px; color: var(--ink-2); }
+.cpick-nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpick-d { flex: none; font-size: calc(12.5px * var(--fs)); font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 400; }
+.cpick-none { padding: 8px 10px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
+.cpick-new {
+  flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-top: 1px solid var(--line);
+  border-radius: 0 0 7px 7px; background: none; color: var(--ink); font-size: calc(14px * var(--fs)); font-weight: 500; text-align: left;
+}
+.cpick-new:hover { background: var(--hover); }
+.cpick-new svg, .home-new svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+/* Inicio: «Nueva carta» al final de las cartas */
+.home-chip.home-new { display: inline-flex; align-items: center; gap: 6px; border-style: dashed; color: var(--ink-2); font-weight: 500; }
+.home-chip.home-new:hover { color: var(--ink); }
+
 /* ---------- ficha del planeta tocado (con el dedo) ---------- */
 .pfi {
   position: fixed; z-index: 42; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -1413,7 +1450,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  .mbar, .pfi,
+  .mbar, .pfi, .title-pick, .cpick,
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }

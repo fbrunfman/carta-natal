@@ -361,7 +361,13 @@
 
     <div id="chartPage">
     <header class="head">
-      <h2 id="title">Carta natal</h2>
+      <h2><span id="title">Carta natal</span><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button></h2>
+      <!-- cambiar de carta sin abrir el menú: la lista de las guardadas, con buscador -->
+      <div class="cpick" id="cpick" role="dialog" aria-label="Cambiar de carta" hidden>
+        <input type="search" id="cpickQ" placeholder="Buscar carta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta">
+        <ul class="cpick-list" id="cpickList" aria-label="Cartas guardadas"></ul>
+        <button type="button" class="cpick-new" id="cpickNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
+      </div>
       <p id="sub"></p>
     </header>
 
@@ -394,6 +400,7 @@
       <div class="stepper" role="group" aria-label="Mover la fecha">
         <button type="button" id="tPrev" aria-label="Retroceder" title="Retroceder">‹</button>
         <select id="tStep" aria-label="Tamaño del paso">
+          <option value="q">15 minutos</option>
           <option value="h">1 hora</option>
           <option value="d" selected>1 día</option>
           <option value="w">1 semana</option>

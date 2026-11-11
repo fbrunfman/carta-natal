@@ -162,7 +162,7 @@ const saved = createSaved({
   list: $("#savedList"), where: $("#savedWhere"),
   picker: { root: $("#picker"), btn: $("#pickBtn"), pop: $("#pickPop"), q: $("#pickQ"), none: $("#pickNone"), count: $("#savedCount") },
   onOpen: openSaved,
-  onChange: () => { syncPartners(); syncActions(); if (page === "home") renderHomeCharts(); },
+  onChange: () => { syncPartners(); syncActions(); paintTitlePick(); if (page === "home") renderHomeCharts(); },
 });
 
 let noteTimer = 0;
@@ -200,6 +200,64 @@ async function openSaved(item) {
   closeDrawer();
   await calculate();
 }
+
+// -- cambiar de carta desde la carta: la lupa al lado del nombre abre la lista de las guardadas, con buscador
+const cpick = $("#cpick"), cpickBtn = $("#titlePick"), cpickQ = $("#cpickQ"), cpickList = $("#cpickList");
+const dmy = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d.split("-").reverse().join("/") : "");
+function paintTitlePick() {                                  // (se llama también desde onChange de las guardadas: sin las constantes de acá)
+  const b = $("#titlePick");
+  b.hidden = !saved.items.length;
+  if (b.hidden) { $("#cpick").hidden = true; b.setAttribute("aria-expanded", "false"); }
+}
+function fillCpick() {
+  const q = cpickQ.value.trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const items = saved.items.filter((it) => !q || it.name.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
+  cpickList.replaceChildren(...items.map((it) => {
+    const li = document.createElement("li"), b = document.createElement("button");
+    b.type = "button"; b.className = "cpick-it"; b.dataset.id = it.id;
+    if (it.id === saved.activeId) b.setAttribute("aria-current", "true");
+    b.append(Object.assign(document.createElement("span"), { className: "cpick-nm", textContent: it.name }),
+      Object.assign(document.createElement("span"), { className: "cpick-d", textContent: dmy(it.date) }));
+    li.append(b);
+    return li;
+  }));
+  if (!items.length) cpickList.append(Object.assign(document.createElement("li"), { className: "cpick-none", textContent: "Ninguna carta con ese nombre." }));
+}
+function openCpick() {
+  cpickQ.value = "";
+  fillCpick();
+  cpick.hidden = false;
+  const room = cpick.offsetParent ? cpick.offsetParent.clientWidth - cpick.offsetWidth : 0;      // que no se salga por la derecha
+  cpick.style.left = `${Math.max(0, Math.min(cpickBtn.offsetLeft - 6, room))}px`;
+  cpick.style.top = `${cpickBtn.offsetTop + cpickBtn.offsetHeight + 6}px`;
+  cpickBtn.setAttribute("aria-expanded", "true");
+  (matchMedia("(pointer: coarse)").matches ? cpickList.querySelector("[aria-current]") || cpickList.querySelector("button") : cpickQ)?.focus({ preventScroll: true });
+}
+function closeCpick(focusBtn = true) {
+  if (cpick.hidden) return;
+  cpick.hidden = true;
+  cpickBtn.setAttribute("aria-expanded", "false");
+  if (focusBtn) cpickBtn.focus({ preventScroll: true });
+}
+cpickBtn.addEventListener("click", () => (cpick.hidden ? openCpick() : closeCpick()));
+cpickQ.addEventListener("input", fillCpick);
+cpickList.addEventListener("click", (e) => {
+  const b = e.target.closest(".cpick-it");
+  if (!b) return;
+  const it = saved.find(b.dataset.id);
+  closeCpick(false);
+  if (it && it.id !== saved.activeId) openSaved(it);
+});
+$("#cpickNew").addEventListener("click", () => { closeCpick(false); openForm("new"); });
+cpick.addEventListener("keydown", (e) => {
+  const opts = [...cpickList.querySelectorAll(".cpick-it")];
+  const i = opts.indexOf(document.activeElement);
+  if (e.key === "Escape") { e.preventDefault(); closeCpick(); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); (opts[i + 1] || opts[0])?.focus(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); (i > 0 ? opts[i - 1] : cpickQ).focus(); }
+  else if (e.key === "Enter" && e.target === cpickQ && opts[0]) { e.preventDefault(); opts[0].click(); }
+});
+document.addEventListener("pointerdown", (e) => { if (!cpick.hidden && !cpick.contains(e.target) && !cpickBtn.contains(e.target)) closeCpick(false); }, true);
 
 /** Lo que hace el botón: guarda la carta (la valida el servidor: fecha, hora, lugar…), la calcula y la muestra.
  *  asNew: con una carta guardada abierta, la guarda como otra en vez de pisarla. */
@@ -376,7 +434,8 @@ function stepTransit(dir) {
   const [hh, mm] = tTime.value.split(":").map(Number);
   let t = Date.UTC(y, m - 1, d, hh, mm);
   const unit = $("#tStep").value;
-  if (unit === "h") t += dir * 3600e3;
+  if (unit === "q") t += dir * 15 * 60e3;
+  else if (unit === "h") t += dir * 3600e3;
   else if (unit === "d") t += dir * 86400e3;
   else if (unit === "w") t += dir * 7 * 86400e3;
   else {
@@ -589,7 +648,19 @@ function fitWheel() {
   root.toggleAttribute("data-headrow", deskWide.matches && $("#chartPage").clientWidth >= 1080);
   const top = svg.getBoundingClientRect().top + scrollY;
   const free = innerHeight - top - 16, colW = fig.clientWidth;
-  const side = deskWide.matches && !root.hasAttribute("data-big") && colW - Math.min(920, colW, Math.max(440, free)) >= 340;
+  // ¿la leyenda entra en el rincón de abajo a la izquierda sin tocar la rueda? La rueda es redonda: su esquina queda vacía.
+  // Se mide con la leyenda ya en columna y la rueda del tamaño que tendría (sin la leyenda abajo), centrada en su lugar.
+  let side = false;
+  if (legend && deskWide.matches && !root.hasAttribute("data-big")) {
+    root.setAttribute("data-legend-side", "");
+    const scale = Math.min(1, parseFloat(getComputedStyle(root).getPropertyValue("--wheel")) || 1);
+    const D = Math.min(colW * scale, 1100, Math.max(440, free)), r = D / 2 + 6;
+    const sTop = svg.getBoundingClientRect().top - fig.getBoundingClientRect().top;
+    const cx = colW / 2, cy = sTop + D / 2;
+    const x1 = legend.offsetWidth, y1 = sTop + D, y0 = y1 - legend.offsetHeight;
+    const nx = Math.min(Math.max(cx, 0), x1), ny = Math.min(Math.max(cy, y0), y1);
+    side = Math.hypot(nx - cx, ny - cy) >= r && y0 > sTop;
+  }
   root.toggleAttribute("data-legend-side", side);
   const room = Math.max(440, Math.floor(side || !legend ? free : free - legend.offsetHeight - 8));
   if (room !== fitWheel.room) { fitWheel.room = room; root.style.setProperty("--wheel-room", `${room}px`); }
@@ -617,6 +688,7 @@ function render() {
   $("#tripBtn").hidden = mode !== "natal";
   header(c);
   paintBar();
+  paintTitlePick();
 
   const t = c.time;
   const timeNote = $("#timeNote");
@@ -1793,9 +1865,13 @@ function renderHomeCharts() {
     nodes.push(make("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
   }
   const others = items.filter((it) => !act || it.id !== act.id);
-  if (others.length) {
-    nodes.push(make("div", { className: "home-chips" }));
-    nodes[nodes.length - 1].append(...others.map((it) => make("button", { type: "button", className: "home-chip", textContent: it.name, title: `Abrir la carta de ${it.name}` }, () => openSaved(it))));
+  if (items.length) {                                  // las otras cartas y, al final, «Nueva carta»
+    const row = make("div", { className: "home-chips" });
+    row.append(...others.map((it) => make("button", { type: "button", className: "home-chip", textContent: it.name, title: `Abrir la carta de ${it.name}` }, () => openSaved(it))));
+    const add = make("button", { type: "button", className: "home-chip home-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
+    add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
+    row.append(add);
+    nodes.push(row);
   }
   body.replaceChildren(...nodes);
   renderHomeTr();
