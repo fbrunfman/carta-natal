@@ -133,8 +133,12 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     «Tránsitos» y «Sinastría», sus vistas de siempre (rueda doble y tablas). Arriba, el nombre con la lupa y un **ícono de info** al lado: los
     datos de nacimiento (o la fecha del tránsito) y la hora UTC ya no ocupan lugar, se ven al tocar la info (se cierra
     tocándola otra vez o afuera). Si el nombre no entra con los íconos, los íconos pasan arriba del nombre; si el nombre
-    solo no entra, se achica (hasta 20 px) y si igual no entra termina en «…» (`app.js::fitTitle`). Test: `e2e_info`. Entre casas, Viajes e Imprimir (solo el
-    ícono) van chicos en una fila. Al bajar, **las pestañas de las tablas quedan pegadas arriba** (dejando lugar al botón
+    solo no entra, se achica (hasta 20 px) y si igual no entra termina en «…» (`app.js::fitTitle`). Test: `e2e_info`.
+    **Entre casas, Viajes e Imprimir viven en un botón flotante** abajo a la derecha (arriba de la barra): al tocarlo se
+    despliegan hacia arriba, con su nombre (Viajes con la flechita del filtro al lado). Prender o apagar no lo pliega (se
+    ve cómo quedó); Imprimir, el filtro de viajes, cambiar de vista, tocar afuera, Esc o el mismo botón sí. Un puntito en
+    el botón avisa si «Entre casas» o «Viajes» están prendidos. Con la ficha de un planeta o el filtro de viajes abiertos
+    (hojas de abajo) el botón se corre. En «Tablas», Tránsitos y Sinastría solo trae Imprimir. Test: `e2e_fab`. Al bajar, **las pestañas de las tablas quedan pegadas arriba** (dejando lugar al botón
     del menú). La barra no está en el Inicio, la Luna ni Combinar, ni en la tableta o el escritorio. Test: `e2e_celu`.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
     se pintan con su color. Con uno o más pintados se habilita «Buscar» y sale uno al azar de lo que coincide: con

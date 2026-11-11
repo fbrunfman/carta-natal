@@ -953,7 +953,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .pfi-none { margin: 10px 0 2px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
 
 /* ---------- celular: barra de abajo (Carta · Tablas · Tránsitos · Sinastría), encabezado compacto y pestañas pegadas ---------- */
-.mbar { display: none; }
+.mbar, .fab { display: none; }
 @media (max-width: 640px) {
   :root[data-mbar] .mbar {
     display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
@@ -976,12 +976,40 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 
   /* arriba: la barra reemplaza al selector de modos; los botones de la rueda, chicos y en una fila */
   :root[data-mbar] #modes { display: none; }
-  :root[data-mbar] .modebar { margin-top: 14px; }
-  :root[data-mbar] .modeacts { margin-left: 0; flex-wrap: nowrap; }
-  :root[data-mbar] .modeacts .secondary.compact { height: 34px; padding: 0 12px; font-size: calc(13px * var(--fs)); gap: 6px; }
-  :root[data-mbar] .modeacts .with-ic svg { width: 15px; height: 15px; }
-  :root[data-mbar] #printBtn { font-size: 0; gap: 0; padding: 0 10px; }       /* solo el ícono (el nombre sigue para el lector de pantalla) */
-  :root[data-mbar] #printBtn svg { width: 17px; height: 17px; }
+  /* Entre casas, Viajes e Imprimir no ocupan su fila: viven en el botón flotante (.fab), que los despliega hacia arriba */
+  :root[data-mbar] .modebar { margin: 0; gap: 0; }
+  :root[data-mbar] .modeacts {
+    position: fixed; z-index: 41; right: 16px; bottom: calc(146px + env(safe-area-inset-bottom)); margin: 0;
+    display: grid; grid-template-columns: auto auto; justify-content: end; justify-items: end; gap: 10px 0;
+  }
+  :root[data-mbar]:not([data-fab]) .modeacts { display: none; }
+  :root[data-mbar] .modeacts > button { grid-column: 1 / -1; }
+  :root[data-mbar] .modeacts > #tripBtn:has(+ #tripMore:not([hidden])) { grid-column: 1; }
+  :root[data-mbar] .modeacts > #tripMore { grid-column: 2; margin-left: 0; height: 44px; padding: 0 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, .25), inset 1px 0 0 color-mix(in srgb, var(--bg) 40%, var(--trip)); }
+  :root[data-mbar] .modeacts .secondary.compact {
+    height: 44px; padding: 0 18px; gap: 8px; border-radius: 22px; font-size: calc(15px * var(--fs)); font-weight: 600;
+    background: var(--surface); box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+  }
+  :root[data-mbar] .modeacts #spillBtn[aria-pressed="true"] { background: var(--reach); }
+  :root[data-mbar] .modeacts #tripBtn[aria-pressed="true"] { background: var(--trip); }
+  :root[data-mbar] .modeacts > #tripBtn:has(+ #tripMore:not([hidden])) { border-radius: 22px 0 0 22px; }
+  :root[data-mbar] .modeacts > #tripMore { border-radius: 0 22px 22px 0; }
+  :root[data-mbar] .modeacts .with-ic svg { width: 17px; height: 17px; }
+  .fab {
+    position: fixed; z-index: 41; right: 16px; bottom: calc(80px + env(safe-area-inset-bottom));
+    width: 54px; height: 54px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%;
+    background: var(--surface); color: var(--ink); box-shadow: 0 8px 22px rgba(0, 0, 0, .3);
+    align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent;
+  }
+  :root[data-mbar] .fab { display: inline-flex; }
+  :root[data-mbar] .fab:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .fab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; transition: transform .15s; }
+  :root[data-fab] .fab { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .fab-dot { position: absolute; top: 9px; right: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--trip); box-shadow: 0 0 0 2px var(--surface); display: none; }
+  .fab.on .fab-dot { display: block; }
+  .fab.on.reach .fab-dot { background: var(--reach); }
+  /* con la ficha o el filtro de viajes abiertos (hojas de abajo), el botón se corre */
+  :root:has(#pfi:not([hidden])) .fab, :root:has(#tripPick:not([hidden])) .fab { display: none; }
 
   /* el encabezado de la carta, más chico: la rueda entra en la primera pantalla */
   #chartPage > .head h2 { font-size: calc(30px * var(--fs)); }
@@ -1475,7 +1503,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   html, body { background: #fff !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  .mbar, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count,
+  .mbar, .fab, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count,
   .side, .scrim, #sideShow, #sideEdge, .modebar, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }
@@ -1583,11 +1611,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
   :root[data-mbar] .tpop { bottom: calc(74px + env(safe-area-inset-bottom)); }
   :root[data-mbar][data-mode="natal"][data-mview="tablas"] #tripMore { display: none; }
 }
-@media (max-width: 360px) {
-  /* pantallas muy angostas: «Entre casas» queda como ícono (como Imprimir) para que la fila entre */
-  :root[data-mbar] #spillBtn { font-size: 0; gap: 0; padding: 0 10px; }
-  :root[data-mbar] #spillBtn svg { width: 17px; height: 17px; }
-}
+
 
 /* sección «Viajes»: la notación del pizarrón, y al tocar una fila, la explicación en palabras */
 .trip-pick { display: flex; flex-direction: column; gap: 8px; margin: 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }

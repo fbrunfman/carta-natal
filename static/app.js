@@ -1251,15 +1251,45 @@ function showFicha(id, note = "", trip = false) {
 function paintBar() {
   const root = document.documentElement;
   root.toggleAttribute("data-mbar", page === "chart" && !$("#stage").hidden);
+  if (!root.hasAttribute("data-mbar")) setFab(false);
   fitTitle();
   root.dataset.mview = mview;
   const cur = mode === "natal" ? mview : mode;
   $("#mbar").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === cur)));
 }
+// -- celular: el botón flotante despliega Entre casas, Viajes e Imprimir (la CSS los ubica arriba de él). Prender o apagar
+// no lo cierra (se ve cómo quedó); Imprimir y el filtro de viajes sí. Un puntito avisa si hay algo prendido.
+function setFab(open) {
+  const root = document.documentElement;
+  root.toggleAttribute("data-fab", open);
+  $("#fab").setAttribute("aria-expanded", String(open));
+}
+$("#fab").addEventListener("click", () => {
+  const open = !document.documentElement.hasAttribute("data-fab");
+  setFab(open);
+  if (open) $(".modeacts > button:not([hidden])")?.focus({ preventScroll: true });
+});
+function paintFab() {
+  const spill = $("#spillBtn").getAttribute("aria-pressed") === "true" && !$("#spillBtn").hidden;
+  const trip = $("#tripBtn").getAttribute("aria-pressed") === "true" && !$("#tripBtn").hidden;
+  $("#fab").classList.toggle("on", spill || trip);
+  $("#fab").classList.toggle("reach", spill && !trip);
+}
+new MutationObserver(paintFab).observe($(".modeacts"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed", "hidden"] });
+$("#printBtn").addEventListener("click", () => setFab(false));
+$("#tripMore").addEventListener("click", () => setFab(false));
+document.addEventListener("pointerdown", (e) => {
+  if (document.documentElement.hasAttribute("data-fab") && !$(".modeacts").contains(e.target) && !$("#fab").contains(e.target)) setFab(false);
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.documentElement.hasAttribute("data-fab")) { e.preventDefault(); setFab(false); $("#fab").focus({ preventScroll: true }); }
+});
+
 $("#mbar").addEventListener("click", async (e) => {
   const b = e.target.closest("button[data-v]");
   if (!b) return;
   const v = b.dataset.v, cur = mode === "natal" ? mview : mode;
+  setFab(false);
   if (v === cur) { scrollTo({ top: 0, behavior: "smooth" }); return; }
   wheel?.clear(); highlightRows(null);
   if (v === "carta" || v === "tablas") mview = v;
