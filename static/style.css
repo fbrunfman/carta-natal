@@ -707,6 +707,26 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 @media screen {
   :root:not([data-big]) .wheel { max-width: min(920px, var(--wheel-room, 920px)); }
 }
+/* escritorio ancho (app.js::fitWheel pone los atributos): el encabezado en una fila —nombre y datos a la izquierda, modos y
+   botones a la derecha— y, si al costado de la rueda sobra lugar, la leyenda en una columna en su rincón de abajo a la
+   izquierda. Así la rueda crece; el panel de la derecha queda igual. */
+@media screen {
+  :root[data-headrow] #chartPage { display: grid; grid-template-columns: minmax(300px, 1fr) auto; column-gap: 32px; align-items: end; }
+  :root[data-headrow] #chartPage > * { grid-column: 1 / -1; }
+  :root[data-headrow] #chartPage > .head { grid-column: 1; grid-row: 1; }
+  :root[data-headrow] #chartPage > #timeNote { grid-column: 1; grid-row: 2; }
+  :root[data-headrow] #chartPage > .modebar { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; flex-wrap: nowrap; }
+  :root[data-headrow] #chartPage > .head h2 { font-size: calc(36px * var(--fs)); }
+  :root[data-headrow] .stage { margin-top: 18px; }
+  :root[data-legend-side] .wheel-fig { position: relative; }
+  :root[data-legend-side] .wheel-fig .legend {
+    position: absolute; left: 0; bottom: 0; margin: 0; max-width: 200px;
+    flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 8px; font-size: calc(12.5px * var(--fs));
+  }
+  :root[data-legend-side] .wheel-fig .legend .key { align-items: flex-start; }
+  :root[data-legend-side] .wheel-fig .legend .key svg { margin-top: .35em; }
+  :root[data-legend-side] .wheel-fig .legend .hint { text-align: left; }
+}
 
 /* mandala de más de 100 %: crece y las tablas pasan debajo */
 :root[data-big] .stage { grid-template-columns: minmax(0, 1fr); }

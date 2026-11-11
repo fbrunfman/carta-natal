@@ -579,13 +579,20 @@ function drawWheel() {
 
 // La rueda y su leyenda entran en la pantalla: el lugar que queda debajo de lo que hay arriba de la rueda (encabezado,
 // modos, fecha de los tránsitos, el selector de viajes), sin bajar de 440 px. Se recalcula si algo de eso cambia de alto.
+// En escritorio ancho, para que la rueda sea más grande: el encabezado va en una fila (los modos y botones a la derecha
+// del nombre) y, si al costado de la rueda sobra lugar, la leyenda pasa a una columna en su rincón de abajo a la izquierda.
+const deskWide = matchMedia("screen and (min-width: 821px)");
 function fitWheel() {
-  const svg = $("#wheel");
+  const svg = $("#wheel"), root = document.documentElement;
   if ($("#stage").hidden || !svg.isConnected) return;
-  const legend = svg.parentElement.querySelector(".legend");
+  const fig = svg.parentElement, legend = fig.querySelector(".legend");
+  root.toggleAttribute("data-headrow", deskWide.matches && $("#chartPage").clientWidth >= 1080);
   const top = svg.getBoundingClientRect().top + scrollY;
-  const room = Math.max(440, Math.floor(innerHeight - top - (legend ? legend.offsetHeight + 8 : 0) - 16));
-  if (room !== fitWheel.room) { fitWheel.room = room; document.documentElement.style.setProperty("--wheel-room", `${room}px`); }
+  const free = innerHeight - top - 16, colW = fig.clientWidth;
+  const side = deskWide.matches && !root.hasAttribute("data-big") && colW - Math.min(920, colW, Math.max(440, free)) >= 340;
+  root.toggleAttribute("data-legend-side", side);
+  const room = Math.max(440, Math.floor(side || !legend ? free : free - legend.offsetHeight - 8));
+  if (room !== fitWheel.room) { fitWheel.room = room; root.style.setProperty("--wheel-room", `${room}px`); }
 }
 {
   let raf = 0;
@@ -593,7 +600,7 @@ function fitWheel() {
   addEventListener("resize", soon);
   if (typeof ResizeObserver !== "undefined") {
     const ro = new ResizeObserver(soon);
-    for (const sel of ["#chartPage > .head", "#timeNote", "#warnings", ".modebar", "#toolsTransit", "#toolsSyn", "#error", "#tripPick", ".wheel-fig .legend"]) {
+    for (const sel of ["#chartPage > .head", "#timeNote", "#warnings", ".modebar", "#toolsTransit", "#toolsSyn", "#error", "#tripPick", ".wheel-fig .legend", ".wheel-fig"]) {
       const el = document.querySelector(sel);
       if (el) ro.observe(el);
     }

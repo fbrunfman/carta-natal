@@ -110,7 +110,12 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     se achica según el alto de la ventana y lo que tiene arriba (modos, fecha de los tránsitos, selector de viajes), sin
     bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
     pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
-    que corta se esfuma y la elegida queda a la vista. Test: `e2e_escritorio`.
+    que corta se esfuma y la elegida queda a la vista. **En escritorio ancho (unos 1080 px de contenido, p. ej. con el
+    menú oculto) la rueda crece**: el encabezado va en una fila (nombre y datos a la izquierda; Natal / Tránsitos /
+    Sinastría, Entre casas, Viajes e Imprimir a la derecha, a la misma altura) y, si al costado de la rueda sobran unos
+    170 px por lado, la leyenda pasa a una columna en el rincón de abajo a la izquierda y la rueda usa también ese alto
+    (en una pantalla de 1904 × 1015 pasa de unos 670 a 825 px). El panel de la derecha queda del mismo ancho.
+    `fitWheel` pone `data-headrow` y `data-legend-side` en `<html>`. Test: `e2e_escritorio`.
     **En el celular (hasta 640 px de ancho)**, con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
     Tránsitos · Sinastría** que reemplaza al selector Natal / Tránsitos / Sinastría de arriba. «Carta» es la rueda natal
     sola (con el encabezado más chico entra entera en la primera pantalla); «Tablas», las tablas de la carta natal solas;
