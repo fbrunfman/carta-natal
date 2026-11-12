@@ -1,4 +1,4 @@
-import { cleanNotes } from "./notes.js";
+import { cleanNotes, NOTE_MAX, newId as newNoteId } from "./notes.js";
 
 // Cartas guardadas en el navegador (versión pública): cada persona guarda las suyas acá y no pasan por el
 // servidor. Misma forma que las del servidor local, para que el resto de la app no note la diferencia.
@@ -54,8 +54,29 @@ async function validate(body) {
   return data;
 }
 
-const same = (a, b) => ["name", "date", "time", "lat", "lon", "tz"].every((k) => String(a[k]) === String(b[k])) &&
-  (a.manual ? a.offset : null) === (b.manual ? b.offset : null);
+// Al importar, ¿es la misma carta? Misma fecha, misma hora y misma ciudad (el lugar con el mismo nombre, o casi las
+// mismas coordenadas). El nombre no cuenta: la misma persona puede venir con otro nombre.
+const fold = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ").trim();
+export const sameBirth = (a, b) => {
+  if (String(a.date) !== String(b.date) || String(a.time) !== String(b.time)) return false;
+  const pa = fold(a.place), pb = fold(b.place);
+  if (pa && pb && pa === pb) return true;
+  return Math.abs(+a.lat - +b.lat) < 0.02 && Math.abs(+a.lon - +b.lon) < 0.02;
+};
+/** Suma a las notas de una carta las de otra copia de ella (las que no tiene ya, con el mismo texto). */
+export function mergeNotes(old, incoming) {
+  const have = cleanNotes(old), add = cleanNotes(incoming);
+  const texts = new Set(have.map((n) => n.text.trim())), ids = new Set(have.map((n) => n.id));
+  let added = 0;
+  for (const n of add) {
+    if (have.length >= NOTE_MAX) break;
+    if (texts.has(n.text.trim())) continue;
+    const note = ids.has(n.id) ? { ...n, id: newNoteId() } : n;
+    have.push(note); texts.add(note.text.trim()); ids.add(note.id);
+    added++;
+  }
+  return { notes: have, added };
+}
 
 export const localCharts = {
   async list() {
@@ -104,26 +125,34 @@ export const localCharts = {
     return { app: "carta-natal", version: 1, exported: now(), charts: read() };
   },
 
-  /** Suma las cartas de un archivo exportado. Las que ya están (mismos datos) se saltean. */
+  /**
+   * Suma las cartas de un archivo exportado. Si una ya está (misma fecha, hora y ciudad, aunque tenga otro nombre), no
+   * se duplica: se le suman las notas que trae y no tiene.
+   */
   async importData(obj) {
     const incoming = Array.isArray(obj) ? obj : obj?.charts;
     if (!Array.isArray(incoming)) throw new Error("Ese archivo no parece una exportación de cartas.");
     const list = read();
-    let added = 0, skipped = 0, failed = 0;
+    let added = 0, updated = 0, skipped = 0, failed = 0, notesAdded = 0;
     for (let i = 0; i < incoming.length; i += 50) {
       const chunk = incoming.slice(i, i + 50);
       // las notas no viajan al servidor: se validan los datos de nacimiento y las notas se suman acá
       const res = await validate({ items: chunk.map((c) => (c && typeof c === "object" ? { ...c, notes: undefined } : c)) });
       res.items.forEach((r, j) => {
         if (!r.chart) { failed++; return; }
-        if (list.some((c) => same(c, r.chart))) { skipped++; return; }
+        const twin = list.find((c) => sameBirth(c, r.chart));
+        if (twin) {
+          const m = mergeNotes(twin.notes, chunk[j]?.notes);
+          if (m.added) { twin.notes = m.notes; twin.updated = now(); updated++; notesAdded += m.added; } else skipped++;
+          return;
+        }
         if (list.length >= MAX_CHARTS) { failed++; return; }
         const notes = cleanNotes(chunk[j]?.notes);
         list.push({ ...r.chart, ...(Object.keys(notes).length ? { notes } : {}), id: newId(), created: now(), updated: now() });
         added++;
       });
     }
-    if (added) write(list);
-    return { added, skipped, failed };
+    if (added || updated) write(list);
+    return { added, updated, skipped, failed, notes: notesAdded };
   },
 };

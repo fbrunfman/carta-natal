@@ -2518,10 +2518,13 @@ function setupBackup() {
       const r = await charts.importData(JSON.parse(await file.text()));
       await saved.refresh();
       syncSaveButtons();
-      const parts = [`Se importó ${plural(r.added, "carta", "cartas")}`];
-      if (r.skipped) parts.push(`${plural(r.skipped, "ya estaba", "ya estaban")}`);
+      if (page === "chart" && chart && mode === "natal") { renderNotes(); paintNoteMarks(); renderPositions(chart); renderHouses(chart); renderAspects(); }
+      // (una carta con la misma fecha, hora y ciudad ya está, aunque tenga otro nombre: no se duplica, se le suman sus notas)
+      const parts = r.added || (!r.updated && !r.skipped) ? [`Se ${r.added === 1 ? "importó" : "importaron"} ${plural(r.added, "carta nueva", "cartas nuevas")}`] : [];
+      if (r.updated) parts.push(`${plural(r.updated, "ya estaba", "ya estaban")}: se ${r.notes === 1 ? "sumó" : "sumaron"} ${plural(r.notes, "nota", "notas")}`);
+      if (r.skipped) parts.push(`${plural(r.skipped, "ya estaba", "ya estaban")} sin nada nuevo`);
       if (r.failed) parts.push(`${plural(r.failed, "no se pudo leer", "no se pudieron leer")}`);
-      say(parts.join(" · ") + ".", !r.added && !r.skipped);
+      say(parts.join(" · ") + ".", !r.added && !r.skipped && !r.updated);
     } catch (err) {
       say(err instanceof SyntaxError ? "Ese archivo no es un JSON válido." : err.message, true);
     }

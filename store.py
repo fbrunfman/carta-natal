@@ -13,6 +13,7 @@ import secrets
 import sys
 import threading
 import time
+import unicodedata
 import uuid
 from datetime import date as _date
 from datetime import datetime, timezone
@@ -213,14 +214,47 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _key(c) -> tuple | None:
-    """Lo que hace igual a dos cartas: mismos datos de nacimiento (el id y las fechas de guardado no cuentan)."""
+def _fold(t) -> str:
+    t = unicodedata.normalize("NFD", str(t or "")).lower()
+    return " ".join("".join(ch for ch in t if not unicodedata.combining(ch)).replace(",", " ").split())
+
+
+def same_birth(a, b) -> bool:
+    """Al importar, ¿es la misma carta? Misma fecha, misma hora y misma ciudad (el lugar con el mismo nombre, o casi las
+    mismas coordenadas). El nombre no cuenta: la misma persona puede venir con otro nombre."""
     try:
-        manual = bool(c.get("manual"))
-        return (str(c.get("name")), str(c.get("date")), str(c.get("time")), float(c.get("lat")), float(c.get("lon")),
-                str(c.get("tz") or ""), manual, float(c.get("offset")) if manual else None)
+        if str(a.get("date")) != str(b.get("date")) or str(a.get("time")) != str(b.get("time")):
+            return False
+        pa, pb = _fold(a.get("place")), _fold(b.get("place"))
+        if pa and pb and pa == pb:
+            return True
+        return abs(float(a.get("lat")) - float(b.get("lat"))) < 0.02 and abs(float(a.get("lon")) - float(b.get("lon"))) < 0.02
     except (AttributeError, TypeError, ValueError):
-        return None
+        return False
+
+
+def merge_notes(old, new) -> tuple[list, int]:
+    """Suma a las notas de una carta las de otra copia de ella (las que no tiene ya, con el mismo texto)."""
+    have = clean_notes(old) if old else []
+    try:
+        add = clean_notes(new) if new else []
+    except StoreError:
+        add = []
+    texts = {n["text"].strip() for n in have}
+    ids = {n["id"] for n in have}
+    added = 0
+    for n in add:
+        if len(have) >= NOTE_MAX:
+            break
+        if n["text"].strip() in texts:
+            continue
+        if n["id"] in ids:
+            n = {**n, "id": secrets.token_hex(5)}
+        have.append(n)
+        texts.add(n["text"].strip())
+        ids.add(n["id"])
+        added += 1
+    return have, added
 
 
 class ChartStore:
@@ -274,38 +308,48 @@ class ChartStore:
         return rec
 
     def import_many(self, items) -> dict:
-        """Suma las cartas de un archivo exportado (de esta versión o de la pública). Las que ya están, con los
-        mismos datos de nacimiento, se saltean; las que no pasan la validación se cuentan aparte."""
+        """Suma las cartas de un archivo exportado (de esta versión o de la pública). Si una ya está (misma fecha, hora y
+        ciudad, aunque tenga otro nombre), no se duplica: se le suman las notas que trae y no tiene. Las que no pasan la
+        validación se cuentan aparte."""
         if not isinstance(items, list) or len(items) > 100:
             raise StoreError("Demasiadas cartas de una vez.")
-        added = skipped = failed = 0
+        added = updated = skipped = failed = notes_added = 0
         with self._lock:
             charts = self._read()
-            known = {_key(c) for c in charts}
+            changed = False
             for it in items:
                 try:
                     rec = clean(it)
                 except StoreError:
                     failed += 1
                     continue
-                k = _key(rec)
-                if k in known:
-                    skipped += 1
+                incoming = it.get("notes") if isinstance(it, dict) else None
+                twin = next((c for c in charts if same_birth(c, rec)), None)
+                if twin is not None:
+                    merged, n = merge_notes(twin.get("notes"), incoming)
+                    if n:
+                        twin["notes"] = merged
+                        twin["updated"] = _now()
+                        updated += 1
+                        notes_added += n
+                        changed = True
+                    else:
+                        skipped += 1
                     continue
-                known.add(k)
                 try:
-                    notes = clean_notes(it.get("notes")) if isinstance(it, dict) else {}
+                    notes = clean_notes(incoming)
                 except StoreError:
-                    notes = {}                      # notas dañadas: entra la carta sin ellas
+                    notes = []                      # notas dañadas: entra la carta sin ellas
                 if notes:
                     rec["notes"] = notes
                 rec["id"] = uuid.uuid4().hex[:12]
                 rec["created"] = rec["updated"] = _now()
                 charts.append(rec)
                 added += 1
-            if added:
+                changed = True
+            if changed:
                 self._write(charts)
-        return {"added": added, "skipped": skipped, "failed": failed}
+        return {"added": added, "updated": updated, "skipped": skipped, "failed": failed, "notes": notes_added}
 
     def update(self, chart_id: str, data) -> dict:
         rec = clean(data)

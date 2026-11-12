@@ -536,8 +536,11 @@ no borra nada**:
 La ruta exacta aparece al pie de la barra lateral y en la terminal al iniciar. Para usar otra carpeta:
 variable de entorno `CARTA_NATAL_DATA`. Para hacer copia de seguridad alcanza con copiar ese archivo, o usar
 **Exportar cartas** / **Importar cartas…** al pie del menú: bajan y suben un archivo JSON con todas las cartas
-(`cartas-natales-AAAA-MM-DD.json`). Al importar se suman a las que ya tenés: las que tienen los mismos datos de
-nacimiento se saltean (no se duplica nada) y las que no se pueden leer se cuentan aparte. Es el mismo archivo de la
+(`cartas-natales-AAAA-MM-DD.json`). Al importar se suman a las que ya tenés. Una carta con la **misma fecha, hora y
+ciudad** que una que ya está (el lugar con el mismo nombre, sin importar mayúsculas ni tildes, o casi las mismas
+coordenadas) es la misma aunque traiga **otro nombre**: no se duplica, y se le **suman las notas** que trae y no tiene
+(las de igual texto no se repiten); queda con su nombre de siempre. Las que no se pueden leer se cuentan aparte, y el
+aviso dice cuántas cartas nuevas entraron, cuántas ya estaban y a cuántas se les sumaron notas. Es el mismo archivo de la
 versión pública, así que sirve para pasar cartas de una a la otra.
 Si el archivo se corrompe, la app lo aparta con otro nombre y empieza uno vacío en vez de pisarlo.
 (En la versión pública es distinto: ver «Alojarla en internet».)
