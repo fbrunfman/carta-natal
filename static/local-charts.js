@@ -1,3 +1,5 @@
+import { cleanNotes } from "./notes.js";
+
 // Cartas guardadas en el navegador (versión pública): cada persona guarda las suyas acá y no pasan por el
 // servidor. Misma forma que las del servidor local, para que el resto de la app no note la diferencia.
 const KEY = "carta:charts";
@@ -73,6 +75,19 @@ export const localCharts = {
     const old = list.find((c) => c.id === id);
     if (!old) throw new Error("Esa carta ya no existe.");
     const rec = { ...(await validate(body)), id, created: old.created || now(), updated: now() };
+    if (old.notes && Object.keys(old.notes).length) rec.notes = old.notes;      // cambiar los datos no borra las notas
+    write(list.map((c) => (c.id === id ? rec : c)));
+    return rec;
+  },
+
+  /** Reemplaza las notas de una carta (no pasan por el servidor). */
+  async setNotes(id, notes) {
+    const list = read();
+    const old = list.find((c) => c.id === id);
+    if (!old) throw new Error("Esa carta ya no existe.");
+    const clean = cleanNotes(notes);
+    const rec = { ...old };
+    if (Object.keys(clean).length) rec.notes = clean; else delete rec.notes;
     write(list.map((c) => (c.id === id ? rec : c)));
     return rec;
   },
@@ -97,14 +112,16 @@ export const localCharts = {
     let added = 0, skipped = 0, failed = 0;
     for (let i = 0; i < incoming.length; i += 50) {
       const chunk = incoming.slice(i, i + 50);
-      const res = await validate({ items: chunk });
-      for (const r of res.items) {
-        if (!r.chart) { failed++; continue; }
-        if (list.some((c) => same(c, r.chart))) { skipped++; continue; }
-        if (list.length >= MAX_CHARTS) { failed++; continue; }
-        list.push({ ...r.chart, id: newId(), created: now(), updated: now() });
+      // las notas no viajan al servidor: se validan los datos de nacimiento y las notas se suman acá
+      const res = await validate({ items: chunk.map((c) => (c && typeof c === "object" ? { ...c, notes: undefined } : c)) });
+      res.items.forEach((r, j) => {
+        if (!r.chart) { failed++; return; }
+        if (list.some((c) => same(c, r.chart))) { skipped++; return; }
+        if (list.length >= MAX_CHARTS) { failed++; return; }
+        const notes = cleanNotes(chunk[j]?.notes);
+        list.push({ ...r.chart, ...(Object.keys(notes).length ? { notes } : {}), id: newId(), created: now(), updated: now() });
         added++;
-      }
+      });
     }
     if (added) write(list);
     return { added, skipped, failed };

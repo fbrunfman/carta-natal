@@ -485,6 +485,7 @@
           <button role="tab" id="tab-tpos" data-modes="transit" aria-controls="panel-tpos" aria-selected="false" tabindex="-1" hidden>Tránsitos</button>
           <button role="tab" id="tab-asp" data-modes="natal transit syn" aria-controls="panel-asp" aria-selected="false" tabindex="-1">Aspectos</button>
           <button role="tab" id="tab-elem" data-modes="natal" aria-controls="panel-elem" aria-selected="false" tabindex="-1">Elementos</button>
+          <button role="tab" id="tab-notas" data-modes="natal" aria-controls="panel-notas" aria-selected="false" tabindex="-1">Notas</button>
           <button role="tab" id="tab-cal" data-modes="transit" aria-controls="panel-cal" aria-selected="false" tabindex="-1" hidden>Calendario</button>
           <button role="tab" id="tab-grid" data-modes="transit syn" aria-controls="panel-grid" aria-selected="false" tabindex="-1" hidden title="Cuadro de aspectos">Cuadro</button>
           <button role="tab" id="tab-over" data-modes="syn" aria-controls="panel-over" aria-selected="false" tabindex="-1" hidden>Superposición</button>
@@ -550,9 +551,59 @@
           <div id="gridTable"></div>
         </div>
         <div id="panel-over" role="tabpanel" aria-labelledby="tab-over" hidden></div>
+        <!-- notas de la carta natal: todas, la más nueva arriba; un filtro por elemento y «+ Nota» -->
+        <div id="panel-notas" role="tabpanel" aria-labelledby="tab-notas" hidden>
+          <div class="nbar">
+            <span class="ncount" id="noteCount"></span>
+            <select id="noteFilter" class="nfilter" aria-label="Filtrar las notas" hidden></select>
+            <button type="button" class="nadd" id="noteAdd">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nota
+            </button>
+          </div>
+          <label class="check nmarks" id="noteMarksRow" hidden><input type="checkbox" id="noteMarks"><span>Marcar en el mandala lo que tiene notas</span></label>
+          <div class="nlist" id="noteList"></div>
+        </div>
       </section>
     </div>
     </div>
+
+    <!-- el editor de una nota (en el celular, una hoja desde abajo): el texto, sus vínculos y los que sugiere el texto -->
+    <div class="noted" id="noteEd" role="dialog" aria-labelledby="noteEdTitle" hidden>
+      <div class="noted-head">
+        <div class="noted-title" id="noteEdTitle"></div>
+        <button type="button" class="iconbtn noted-x" id="noteEdX" aria-label="Cerrar la nota"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <textarea id="noteEdText" rows="5" maxlength="5000" placeholder="Escribí tu nota… (por ejemplo: «Sol en I en Aries en cuadratura con la Luna»)" aria-label="Texto de la nota"></textarea>
+      <div class="ntools">
+        <button type="button" class="nlink-btn" id="notePalBtn" aria-expanded="false" aria-controls="notePal">Insertar símbolo</button>
+        <button type="button" class="nlink-btn" id="noteSym" title="Sol → ☉, Aries → ♈, cuadratura → □, casa 12 → casa XII">Pasar a símbolos <span aria-hidden="true">☉︎ ♈︎ □</span></button>
+      </div>
+      <div class="npal" id="notePal" role="group" aria-label="Insertar un símbolo en el texto" hidden></div>
+      <p class="noted-warn" id="noteEdWarn" hidden></p>
+      <div class="nrefs">
+        <p class="nref-lab">Vinculado</p>
+        <div class="nchips" id="noteRefs"></div>
+        <div id="noteSugRow" hidden>
+          <p class="nref-lab">Sugeridos por el texto <button type="button" class="nlink-btn" id="noteSugAll">Sumar todos</button></p>
+          <div class="nchips" id="noteSugs"></div>
+        </div>
+        <div class="nlink">
+          <button type="button" class="nlink-add" id="noteLink" aria-haspopup="menu" aria-expanded="false" aria-controls="noteLinkMenu">+ Vincular</button>
+          <div class="nmenu" id="noteLinkMenu" role="menu" hidden></div>
+        </div>
+      </div>
+      <div class="noted-foot"><span id="noteEdStatus" role="status" aria-live="polite"></span><button type="button" id="noteEdDel">Borrar nota</button></div>
+    </div>
+    <!-- el atajo de las tablas: las notas que nombran a ese elemento y empezar una nueva -->
+    <div class="npop" id="notePop" role="dialog" aria-label="Notas" hidden></div>
+    <!-- celular: la nota iluminada en la rueda -->
+    <div class="nlit" id="noteLit" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg>
+      <span class="nlit-t" id="noteLitText"></span>
+      <button type="button" class="nlink-btn" id="noteLitEdit">Editar</button>
+      <button type="button" class="iconbtn" id="noteLitX" aria-label="Dejar de iluminar la nota"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+
 
     <!-- celular: la ficha del planeta que se tocó en la rueda y la barra de abajo (Carta · Tablas · Tránsitos · Sinastría) -->
     <div class="pfi" id="pfi" role="dialog" aria-modal="false" aria-labelledby="pfiTitle" hidden></div>
@@ -584,6 +635,21 @@
   </main>
 
 </div>
+<!-- una nota, para leerla: grande y sin editar; «Editar» abre el editor -->
+<dialog id="noteView" class="pdlg nview" aria-labelledby="noteViewTitle">
+  <div class="pdl-head">
+    <div class="pdl-titles"><p class="pdl-ctx" id="noteViewCtx">Nota</p><h2 id="noteViewTitle"></h2></div>
+    <button type="button" class="pdl-icon" id="noteViewX" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="nview-body">
+    <div class="nview-text" id="noteViewText"></div>
+    <p class="noted-warn" id="noteViewWarn" hidden></p>
+  </div>
+  <div class="nview-foot">
+    <div class="nchips" id="noteViewRefs"></div>
+    <button type="button" class="nadd" id="noteViewEdit">Editar</button>
+  </div>
+</dialog>
 <dialog id="poemDlg" class="pdlg poemdlg" aria-labelledby="poemTitle">
   <div class="pdl-head">
     <span class="poem-ic" id="poemIc"></span>

@@ -206,6 +206,49 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   a otra casa («Entre casas») o es un viajero («Viajes»), la ficha trae arriba de los aspectos la misma explicación del
   cartelito (con el borde del color de cada cosa) y el cartelito aparte no se abre; con el mouse, el cartelito de siempre.
   Test: `e2e_fichatip`.
+- **Notas de la carta natal**: cada carta guardada puede llevar **muchas notas** (de esa persona). Una nota es un texto
+  libre con sus **vínculos**: planetas (en su casa y su signo), casas, el Ascendente, el Medio Cielo y aspectos que tiene
+  la carta. Sin vínculos, la nota es sobre la carta en general. Solo se vincula lo que la carta tiene de verdad.
+  - **El editor** (un cuadro flotante; en el celular, una hoja desde abajo) tiene el texto, lo **vinculado** (chips con
+    × para quitar), los **sugeridos por el texto** y **«+ Vincular»** (un planeta, una casa, el Asc, el MC o un aspecto de
+    la carta). Se guarda sola mientras se escribe, con «Borrar nota».
+  - **Sugeridos**: la app lee el texto en castellano y propone vínculos que se confirman tocándolos (o «Sumar todos»).
+    «Un Sol en I en Aries, haciendo cuadratura con la Luna y con Marte en IV, … el ascendente en Piscis» propone ☉ en I,
+    la casa I, ☉□☽, ☉□♂, ☽ en IV, ♂ en IV, la casa IV y el Asc. Entiende planetas, signos, casas («en IV», «casa 4»,
+    «cuarta casa», «5ta casa», «casas II y VII»), Asc y MC, y aspectos con la palabra («cuadratura con…», «la oposición
+    entre…», «Sol y Luna en trígono», «Sol-Luna»). Si el texto dice otra cosa que la carta («Marte en III» y está en la IV,
+    o «trígono» y es cuadratura), lo propone igual con un aviso (!). Un número suelto después de «en» o «la» también es
+    una casa («Marte en 4»), salvo que siga una unidad («en 3 días»). El texto con símbolos se entiende igual.
+  - **«Pasar a símbolos»** (en el editor) cambia los nombres por sus símbolos (Sol → ☉, Aries → ♈, cuadratura → □,
+    Ascendente → Asc, Medio Cielo → MC) y las casas a romanos («casa 12» → «casa XII», «cuarta casa» → «casa IV»,
+    «Marte en 4» → «Marte en IV»). «Leo» y «Libra» solo después de «en» o «de» (para no tocar «leo mucho»). Se deshace
+    con el mismo botón o con Cmd/Ctrl+Z.
+  - **«Insertar símbolo»** (en el editor) abre una paleta con los planetas, los signos, los aspectos, Asc y MC: tocar uno
+    lo escribe donde está el cursor (se deshace con Cmd/Ctrl+Z). Sirve cuando «Pasar a símbolos» no reconoce una palabra.
+  - **En la rueda:** con una nota abierta se iluminan sus planetas, sus aspectos, sus casas (sombreadas) y el Asc o el MC;
+    lo demás queda tenue. Lo que tiene notas lleva un **puntito dorado** (planetas, número de casa, Asc/MC; el símbolo del
+    aspecto, con borde dorado); esas marcas están **apagadas por defecto** y se prenden con «Marcar en el mandala lo que
+    tiene notas» en la pestaña Notas (se recuerda en ese navegador). Con el mouse, pasar por una tarjeta de «Notas» la ilumina.
+  - **Leer una nota:** tocar una tarjeta (o una nota de las listas) la abre en el centro, grande y sin editar, con sus
+    vínculos iluminados en la rueda y «Editar».
+  - **Tocar la rueda:** un planeta, el número o la zona de una casa, el Asc o el MC o el símbolo de un aspecto que tienen
+    notas muestran esas notas (y «+ Nota nueva sobre…»). Con el dedo, el planeta abre su ficha, que ya las trae; con
+    lecturas, el planeta y los ángulos abren su ventana como siempre.
+  - **La pestaña «Notas»**: todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
+    (un planeta encuentra también las notas de sus aspectos; una casa, las de los planetas que están en ella); tocar un
+    chip filtra por eso. En el celular, «Ver en la carta» va a la rueda con la nota iluminada y un cartelito (Editar, ×).
+  - **Atajos:** en Posiciones, Casas y Aspectos cada fila tiene un botón de nota (marcado si hay notas que lo nombran): sin
+    notas empieza una nueva ya vinculada; con notas, muestra las que lo nombran y «+ Nota nueva sobre…». En el celular, la
+    ficha del planeta lista sus notas y «+ Nota sobre…».
+  - Cada vínculo guarda **qué había cuando se vinculó** (signo y casa, el tipo de aspecto): si después se corrigen los
+    datos de nacimiento y eso cambió, la nota no se pierde y avisa.
+  - Se guardan con la carta (`notes`: una lista de `{id, text, at, refs, snap}`): en la versión pública, en el navegador
+    (no pasan por el servidor, tampoco al importar); en el servidor propio, en el archivo de cartas
+    (`PUT /api/charts/<id>/notes`). Si el servidor de la Mac es de una versión anterior (quedó abierto al actualizar),
+    lo dice y las notas quedan de respaldo en el navegador hasta poder guardarlas (al volver a abrir la carta). Cambiar los datos de la carta no las borra, y viajan al exportar e importar. Las de la
+    versión anterior (una por cosa) pasan solas a la lista; una figura de tres queda como nota con sus tres aspectos. Hasta
+    150 notas por carta, 24 vínculos por nota y 5000 caracteres. Solo carta natal y solo cartas guardadas. Lógica en
+    `static/notes.js` (sin DOM). Tests: `test_notes.mjs`, `test_store_notes.py`, `e2e_notas`.
 - **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
   (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
   panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,
@@ -574,6 +617,7 @@ static/           interfaz
   interp-signs.js, interp-houses.js, interp-aspects.js   los textos de interpretación (editables)
   glyphs.js                         símbolos de planetas y signos dibujados como vectores
   saved.js, api.js                  selector de cartas guardadas (desplegable con buscador) y cliente de la API
+  notes.js                          notas de la carta: vínculos, leer el texto, qué cambió (sin DOM: se prueba con node)
   local-charts.js                   cartas guardadas en el navegador (versión pública), exportar e importar
                                     (en la versión local lo hace el servidor: POST /api/charts/import)
   defaults-local.js                 tu carta de arranque en la versión local (si lo borrás, el formulario arranca vacío)

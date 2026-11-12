@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import secrets
 import sys
 import threading
 import time
@@ -99,6 +100,114 @@ def clean(data) -> dict:
     }
 
 
+# -- notas de una carta --------------------------------------------------------
+# Cada carta lleva una lista de notas: un texto libre con sus vínculos (a qué de la carta se refiere: planetas en su casa y
+# su signo, casas, el Ascendente, el Medio Cielo, aspectos). Viajan con la carta (se exportan e importan con ella). Las de
+# antes (una sola por cosa, en un objeto) pasan a la lista.
+NOTE_REF = re.compile(r"^(asc|mc|house:(?:[1-9]|1[0-2])|pl:[a-z]{2,10}|asp:[a-z]{2,10}\|[a-z]{2,10})$")
+OLD_KEY = re.compile(r"^(general|asc|mc|pl:[a-z]{2,10}|asp:[a-z]{2,10}\|[a-z]{2,10}|fig:[a-z]{2,10}\|[a-z]{2,10}\|[a-z]{2,10})$")
+NOTE_ID = re.compile(r"^[a-z0-9]{2,16}$")
+NOTE_MAX = 150            # notas por carta
+NOTE_TEXT = 5000          # caracteres por nota
+REF_MAX = 24              # vínculos por nota
+SNAP_STR = re.compile(r"^[a-z]{2,16}$")
+ISO = re.compile(r"\d{4}-\d{2}-\d{2}T[\d:.]+Z?")
+
+
+def _snap(v) -> dict:
+    """Lo que había en la carta cuando se vinculó (signo, casa, aspecto): para avisar si cambió."""
+    out = {}
+    if not isinstance(v, dict):
+        return out
+    x = v.get("sign")
+    if isinstance(x, int) and not isinstance(x, bool) and 0 <= x <= 11:
+        out["sign"] = x
+    x = v.get("house")
+    if isinstance(x, int) and not isinstance(x, bool) and 1 <= x <= 12:
+        out["house"] = x
+    t = v.get("type")
+    if isinstance(t, str) and SNAP_STR.match(t):
+        out["type"] = t
+    return out
+
+
+def _asp(a: str, b: str) -> str:
+    return "asp:" + "|".join(sorted((a, b)))
+
+
+def _from_legacy(data: dict) -> list:
+    """Las notas de antes ({cosa: {text, at, snap}}) como lista: cada una con ese vínculo (una figura, con sus tres aspectos)."""
+    out = []
+    for i, (k, v) in enumerate(data.items()):
+        if not isinstance(k, str) or not OLD_KEY.match(k) or not isinstance(v, dict):
+            raise StoreError("Notas inválidas.")
+        snap = v.get("snap") if isinstance(v.get("snap"), dict) else {}
+        note = {"id": f"m{i}", "text": v.get("text"), "at": v.get("at"), "refs": [], "snap": {}}
+        if k.startswith("fig:"):
+            a, b, c = k[4:].split("|")
+            types = snap.get("types") if isinstance(snap.get("types"), list) else []
+            for j, (x, y) in enumerate(((a, b), (a, c), (b, c))):
+                key = _asp(x, y)
+                note["refs"].append(key)
+                if j < len(types):
+                    note["snap"][key] = {"type": types[j]}
+        elif k != "general":
+            key = _asp(*k[4:].split("|")) if k.startswith("asp:") else k
+            note["refs"].append(key)
+            note["snap"][key] = snap
+        out.append(note)
+    return out
+
+
+def clean_notes(data) -> list:
+    """Valida las notas de una carta (una lista). Las vacías se descartan."""
+    if data is None:
+        return []
+    if isinstance(data, dict):
+        data = _from_legacy(data)
+    if not isinstance(data, list):
+        raise StoreError("Notas inválidas.")
+    if len(data) > NOTE_MAX:
+        raise StoreError(f"Una carta puede tener hasta {NOTE_MAX} notas.")
+    out, seen = [], set()
+    for v in data:
+        if not isinstance(v, dict):
+            raise StoreError("Notas inválidas.")
+        text = v.get("text")
+        if not isinstance(text, str):
+            raise StoreError("Notas inválidas.")
+        if not text.strip():
+            continue
+        if len(text) > NOTE_TEXT:
+            raise StoreError(f"Una nota puede tener hasta {NOTE_TEXT} caracteres.")
+        nid = v.get("id")
+        if not isinstance(nid, str) or not NOTE_ID.match(nid) or nid in seen:
+            nid = secrets.token_hex(5)
+        seen.add(nid)
+        at = v.get("at")
+        at = at if isinstance(at, str) and ISO.fullmatch(at) else _now()
+        refs_in = v.get("refs", [])
+        if not isinstance(refs_in, list) or len(refs_in) > REF_MAX:
+            raise StoreError(f"Una nota puede tener hasta {REF_MAX} vínculos.")
+        snaps = v.get("snap") if isinstance(v.get("snap"), dict) else {}
+        refs, snap = [], {}
+        for r in refs_in:
+            if not isinstance(r, str) or not NOTE_REF.match(r):
+                raise StoreError("Notas inválidas.")
+            if r.startswith("asp:"):
+                a, b = r[4:].split("|")
+                if a >= b:
+                    raise StoreError("Notas inválidas.")
+            if r in refs:
+                continue
+            refs.append(r)
+            s = _snap(snaps.get(r))
+            if s:
+                snap[r] = s
+        out.append({"id": nid, "text": text, "at": at, "refs": refs, "snap": snap})
+    return out
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -183,6 +292,12 @@ class ChartStore:
                     skipped += 1
                     continue
                 known.add(k)
+                try:
+                    notes = clean_notes(it.get("notes")) if isinstance(it, dict) else {}
+                except StoreError:
+                    notes = {}                      # notas dañadas: entra la carta sin ellas
+                if notes:
+                    rec["notes"] = notes
                 rec["id"] = uuid.uuid4().hex[:12]
                 rec["created"] = rec["updated"] = _now()
                 charts.append(rec)
@@ -200,6 +315,25 @@ class ChartStore:
                     rec["id"] = chart_id
                     rec["created"] = old.get("created", _now())
                     rec["updated"] = _now()
+                    if old.get("notes"):            # cambiar los datos de nacimiento no borra las notas
+                        rec["notes"] = old["notes"]
+                    charts[i] = rec
+                    self._write(charts)
+                    return rec
+        raise NotFound("Esa carta ya no existe.")
+
+    def set_notes(self, chart_id: str, notes) -> dict:
+        """Reemplaza las notas de una carta (sin tocar sus datos de nacimiento)."""
+        clean_ = clean_notes(notes)
+        with self._lock:
+            charts = self._read()
+            for i, old in enumerate(charts):
+                if old.get("id") == chart_id:
+                    rec = dict(old)
+                    if clean_:
+                        rec["notes"] = clean_
+                    else:
+                        rec.pop("notes", None)
                     charts[i] = rec
                     self._write(charts)
                     return rec

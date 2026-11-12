@@ -150,6 +150,11 @@ export function renderWheel(svg, chart, hooks = {}) {
     const a1 = phi(i * 30);
     s += `<path class="sg sg-${ELEMENT[i % 4]}" d="${wedge(R.out, R.signIn, a1, a1 + 30)}"/>`;
   }
+  // las casas, para iluminarlas (una nota que las vincula): cuñas sin relleno entre el círculo de aspectos y el zodíaco
+  for (let i = 0; i < 12; i++) {
+    const a1 = phi(cusps[i]), span = norm360(phi(cusps[(i + 1) % 12]) - a1) || 360;
+    s += `<path class="hwedge" data-h="${i + 1}" d="${wedge(R.signIn, R.asp, a1, a1 + span)}"/>`;
+  }
   s += `<circle class="ring" r="${R.out}"/><circle class="ring" r="${R.signIn}"/>`;
   s += `<circle class="ring thin" r="${R.houseOut}"/><circle class="ring thin" r="${R.asp}"/>`;
   for (let i = 0; i < 12; i++) {
@@ -177,7 +182,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     const axis = i % 3 === 0;
     const [ix, iy] = pt(R.asp, a), [mx, my] = pt(R.houseOut, a), [ox, oy] = pt(R.signIn, a);
     s += `<line class="cusp" x1="${mx}" y1="${my}" x2="${ox}" y2="${oy}"/>`;
-    s += `<line class="cusp-in${axis ? " axis" : ""}" x1="${ix}" y1="${iy}" x2="${axis ? ox : mx}" y2="${axis ? oy : my}"/>`;
+    s += `<line class="cusp-in${axis ? " axis" : ""}" data-cusp="${i + 1}" x1="${ix}" y1="${iy}" x2="${axis ? ox : mx}" y2="${axis ? oy : my}"/>`;
     if (ring) {
       // el borde de la casa salta el anillo de signos (no lo pisa) y sigue por afuera: en la rueda doble, por el anillo de
       // tránsitos (más tenue), y por la banda de las cúspides, donde cuspRingSvg() lo dibuja con un hueco para el signo
@@ -188,7 +193,7 @@ export function renderWheel(svg, chart, hooks = {}) {
     const next = phi(cusps[(i + 1) % 12]);
     const mid = a + (norm360(next - a) || 360) / 2;
     const [hx, hy] = pt(R.houseNum, mid);
-    s += `<text class="hnum" x="${hx}" y="${hy}" dy=".35em">${i + 1}</text>`;
+    s += `<text class="hnum" data-h="${i + 1}" x="${hx}" y="${hy}" dy=".35em">${i + 1}</text>`;
   }
 
   // Anillo de las cúspides: cada una lleva grados · signo (del color de su elemento) · minutos, apilados a lo largo del arco, con el
@@ -241,7 +246,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       const [nx, ny] = pt(band.out + CUSP_RING.name, ang);
       // Asc y MC se pueden tocar para ver su lectura; Dsc e IC son solo rótulos
       const pick = (name === "Asc" || name === "MC") && !!hooks.onPick;
-      out += `<text class="axis-label${pick ? " pick" : ""}" text-anchor="middle" x="${nx}" y="${ny}" dy=".35em"` +
+      out += `<text class="axis-label${pick ? " pick" : ""}" data-ax="${name.toLowerCase()}" text-anchor="middle" x="${nx}" y="${ny}" dy=".35em"` +
         `${pick ? ` data-pick="${name.toLowerCase()}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${name === "Asc" ? "Ascendente" : "Medio Cielo"}"` : ""}>${name}</text>`;
     }
     return out;
@@ -277,7 +282,7 @@ export function renderWheel(svg, chart, hooks = {}) {
       const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
       // Asc y MC se pueden tocar para ver su lectura; Dsc e IC son solo rótulos
       const pick = (text === "Asc" || text === "MC") && !!hooks.onPick;
-      const attrs = `class="axis-label${pick ? " pick" : ""}" text-anchor="${anchor}"` +
+      const attrs = `class="axis-label${pick ? " pick" : ""}" data-ax="${text.toLowerCase()}" text-anchor="${anchor}"` +
         `${pick ? ` data-pick="${text.toLowerCase()}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="${text === "Asc" ? "Ascendente" : "Medio Cielo"}"` : ""}`;
       if (!(k in axisDeg)) {
         s += `<text ${attrs} x="${lx}" y="${ly}" dy=".35em">${text}</text>`;
@@ -511,11 +516,34 @@ export function renderWheel(svg, chart, hooks = {}) {
 
   let cur = null;       // qué está resaltado: un planeta ("sun") o un aspecto ("sun|moon"); null si nada
   let held = null;      // lo resaltado con el dedo: no se suelta al «salir» del elemento (con el dedo eso no existe), sino tocando afuera o de nuevo lo mismo
+  let base = null;      // lo que vincula la nota abierta: queda iluminado debajo de lo que se resalte y vuelve al soltarlo
   function reset() {
     cur = held = null;
-    svg.classList.remove("has-focus");
-    for (const e of svg.querySelectorAll(".on, .rel, .sel")) e.classList.remove("on", "rel", "sel");
+    svg.classList.remove("has-focus", "note-lit");
+    for (const e of svg.querySelectorAll(".on, .rel, .sel, .lit")) e.classList.remove("on", "rel", "sel", "lit");
     clearOrbs();
+  }
+  const samePair = (el, [a, b]) => (el.dataset.a === a && el.dataset.b === b) || (el.dataset.a === b && el.dataset.b === a);
+  function applyBase() {
+    if (!base) return;
+    svg.classList.add("has-focus", "note-lit");
+    const ids = new Set(base.bodies);
+    for (const [a, b] of base.pairs) { ids.add(a); ids.add(b); }
+    for (const l of [...lines, ...marks]) if (base.pairs.some((p) => samePair(l, p))) l.classList.add("on");
+    for (const g of pls) if (!g.classList.contains("out") && !g.classList.contains("trip") && ids.has(g.dataset.id)) g.classList.add("sel");
+    for (const h of base.houses) for (const e of svg.querySelectorAll(`.hwedge[data-h="${h}"], .hnum[data-h="${h}"]`)) e.classList.add("lit");
+    for (const ax of base.angles) {
+      for (const e of svg.querySelectorAll(`.axis-label[data-ax="${ax}"], .cusp-in[data-cusp="${ax === "asc" ? 1 : 10}"]`)) e.classList.add("lit");
+    }
+    showOrbs();
+  }
+  /** Ilumina lo que vincula una nota ({ bodies, pairs, houses, angles }), o nada (null). */
+  function note(sel) {
+    const empty = !sel || !(sel.bodies.length || sel.pairs.length || sel.houses.length || sel.angles.length);
+    base = empty ? null : sel;
+    if (held !== null && cur !== null && cur !== "note") return;      // con el dedo hay algo resaltado: se ve al soltarlo
+    reset();
+    applyBase();
   }
   function focus(id) {
     reset();
@@ -549,6 +577,7 @@ export function renderWheel(svg, chart, hooks = {}) {
   const leave = () => {
     if (cur !== null && held === cur) return false;
     reset();
+    applyBase();
     return true;
   };
   const pickable = (el, id) => {
@@ -577,5 +606,5 @@ export function renderWheel(svg, chart, hooks = {}) {
     g.addEventListener("mouseleave", () => { if (leave()) hooks.onClear?.(); });
     g.addEventListener("blur", () => { if (leave()) hooks.onClear?.(); });
   }
-  return { focus, pair, clear: reset, leave, hold: () => { held = cur; }, current: () => cur, aspectsOf: (id) => aspects.filter((x) => x.a === id || x.b === id) };
+  return { focus, pair, clear: () => { reset(); applyBase(); }, leave, note, hold: () => { held = cur; }, current: () => cur, aspectsOf: (id) => aspects.filter((x) => x.a === id || x.b === id) };
 }

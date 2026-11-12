@@ -214,5 +214,11 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
       items = items.map((x) => (x.id === id ? rec : x));
       return rec;
     },
+    /** Las notas de una carta: se guardan sin tocar sus datos (ni la lista de arriba). */
+    async setNotes(id, notes) {
+      const rec = await charts.setNotes(id, notes);
+      items = items.map((x) => (x.id === id ? rec : x));
+      return rec;
+    },
   };
 }

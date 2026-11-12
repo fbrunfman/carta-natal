@@ -23,9 +23,10 @@ from store import ChartStore, NotFound, StoreError, clean as clean_chart
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 STORE = ChartStore()
-CHARTS_ROUTE = re.compile(r"^/api/charts(?:/([0-9a-f]{12}))?$")
+CHARTS_ROUTE = re.compile(r"^/api/charts(?:/([0-9a-f]{12}))?(/notes)?$")
 WINDOW_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 MAX_BODY = 64 * 1024
+MAX_BODY_NOTES = 2 * 1024 * 1024     # las notas de una carta, o un archivo importado con notas
 
 # Ventanas abiertas. Solo decide algo con --idle-exit (lo usa «Carta natal.app»); sin esa opción
 # el servidor corre hasta que lo cierres vos.
@@ -109,12 +110,12 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _read_json(self):
+    def _read_json(self, limit=MAX_BODY):
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             length = 0
-        if length > MAX_BODY:
+        if length > limit:
             raise StoreError("Datos demasiado grandes.")
         try:
             data = json.loads(self.rfile.read(length) or b"{}")
@@ -259,9 +260,15 @@ class Handler(SimpleHTTPRequestHandler):
             self._json({"error": "No encontrado."}, 404)
             return
         chart_id = m.group(1) if m else None
+        notes = bool(m and m.group(2))
         try:
-            if action == "import":
-                self._json(STORE.import_many(self._read_json().get("items")))
+            if notes:
+                if action != "update" or not chart_id:
+                    self._json({"error": "Método no permitido."}, 405)
+                else:
+                    self._json(STORE.set_notes(chart_id, self._read_json(MAX_BODY_NOTES).get("notes")))
+            elif action == "import":
+                self._json(STORE.import_many(self._read_json(MAX_BODY_NOTES).get("items")))
             elif action == "create" and not chart_id:
                 self._json(STORE.create(self._read_json()), 201)
             elif action == "update" and chart_id:

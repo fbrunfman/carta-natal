@@ -13,6 +13,7 @@ import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, mont
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
+import { keyPl, keyAsp, keyHouse, parseKey, snapOf, changeOf, aspectBetween, noteCount, cleanNotes, touches, refExists, detectRefs, newId, REF_MAX, toSymbols } from "./notes.js";
 import { computeTrips, groupTrips, groupWords, tripNotation, tripWords, tripPlain, TRIP_TYPES, TRIP_TITLES, TRIP_PLANETS, roman } from "./trips.js";
 
 const $ = (s) => document.querySelector(s);
@@ -191,6 +192,9 @@ function syncSaveButtons() {
 }
 
 async function openSaved(item) {
+  flushNotes();
+  closeNote(false);
+  lightNote(null);
   showChart();
   closeForm(false);
   saved.setActive(item.id);
@@ -731,6 +735,7 @@ function drawWheel() {
   $("#reachKey").hidden = !(spillOn && !outer && reachData().length);
   $("#tripKey").hidden = !(trips && trips.length);
   if (outer) $("#outKeyText").textContent = mode === "transit" ? "Tránsitos" : outer.short;
+  if (typeof paintNoteMarks === "function") { paintNoteMarks(); paintLit(); }
   fitWheel();
 }
 
@@ -809,6 +814,8 @@ function render() {
     return p;
   }));
 
+  if (!notesOn()) closeNote(false);
+  else restoreNotes();
   drawWheel();
   renderPositions(c);
   renderHouses(c);
@@ -819,20 +826,23 @@ function render() {
   renderGrid();
   renderElements();
   renderOverlay();
+  renderNotes();
   applyTabs();
+  paintNoteMarks();
 }
 
 function renderPositions(c) {
   const reach = spillOn && mode === "natal" ? new Map(reachData().map((r) => [r.id, r])) : new Map();
+  const notes = notesOn();
   const row = (id, lon, house, retro) => {
     const s = split(lon);
     return `<tr data-id="${id}">
       <td>${mark(id)}${BODY[id].name}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
       <td class="num">${fmtPos(lon)}${retro ? '<span class="rx-t" title="Retrógrado">R</span>' : ""}</td>
-      <td class="num">${house}${reachChip(reach.get(id))}</td></tr>`;
+      <td class="num">${house}${reachChip(reach.get(id))}</td>${notes ? `<td class="ncell">${noteBtn(id === "asc" || id === "mc" ? id : keyPl(id), BODY[id].name)}</td>` : ""}</tr>`;
   };
-  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num">Casa</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num">Casa</th>${notes ? '<th class="ncell"><span class="sr">Nota</span></th>' : ""}</tr></thead><tbody>`;
   html += row("asc", c.angles.asc, "—") + row("mc", c.angles.mc, "—");
   c.bodies.forEach((b, i) => {
     html += row(b.id, b.lon, b.house, b.retro).replace("<tr ", i === 0 ? '<tr class="sep" ' : "<tr ");
@@ -858,7 +868,8 @@ const fmtGrad = (n) => `${String(n).replace(".", ",")}°`;
 function renderHouses(c) {
   const reach = spillOn && mode === "natal" ? reachData() : [];
   const passed = new Set(reach.filter((r) => r.kind === "pass").map((r) => r.id));       // cuentan en la casa que sigue, no en la suya
-  let html = `<table><thead><tr><th>Casa</th><th>Cúspide</th><th class="num">Posición</th><th>Contiene</th></tr></thead><tbody>`;
+  const notes = mode === "natal" && notesOn();
+  let html = `<table><thead><tr><th>Casa</th><th>Cúspide</th><th class="num">Posición</th><th>Contiene</th>${notes ? '<th class="ncell"><span class="sr">Nota</span></th>' : ""}</tr></thead><tbody>`;
   c.houses.cusps.forEach((lon, i) => {
     const s = split(lon);
     const inside = c.bodies.filter((b) => b.house === i + 1 && !passed.has(b.id))
@@ -868,7 +879,7 @@ function renderHouses(c) {
         .map((r) => `<span class="g also ${r.kind}" title="${reachTip(r)}">${glyphHTML(r.id)}</span>`).join("");
     html += `<tr><td class="num" style="text-align:left">${i + 1}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
-      <td class="num">${fmtPos(lon)}</td><td class="contains">${inside}</td></tr>`;
+      <td class="num">${fmtPos(lon)}</td><td class="contains">${inside}</td>${notes ? `<td class="ncell">${noteBtn(keyHouse(i + 1), `casa ${i + 1}`)}</td>` : ""}</tr>`;
   });
   $("#panel-casas").innerHTML = html + "</tbody></table>" +
     (reach.length ? `<p class="fine tight reach-note">Con borde: planetas de la casa anterior que cuentan acá, macizo si cuentan solo en esta y punteado si cuentan en las dos (ver los orbes en Configuración).</p>` : "");
@@ -943,7 +954,8 @@ function renderAspects() {
   const isTransit = mode === "transit";
   const heads = isTransit ? "Tránsito · Natal" : mode === "syn" ? `${esc(syn.a.input.name || "A")} · ${esc(syn.b.input.name || "B")}` : "Aspecto";
   const phaseCol = mode !== "syn";
-  let html = `<table><thead><tr><th>${heads}</th><th></th><th class="num">Orbe</th>${phaseCol ? "<th>Fase</th>" : ""}</tr></thead><tbody>`;
+  const notes = !cross && notesOn();
+  let html = `<table><thead><tr><th>${heads}</th><th></th><th class="num">Orbe</th>${phaseCol ? "<th>Fase</th>" : ""}${notes ? '<th class="ncell"><span class="sr">Nota</span></th>' : ""}</tr></thead><tbody>`;
   for (const a of list) {
     const A = ASPECT[a.type];
     const phase = a.applying === null ? "" : a.applying ? "aplicativo" : "separativo";
@@ -955,7 +967,7 @@ function renderAspects() {
       <td class="pair">${pair}</td>
       <td class="small">${A.name}</td>
       <td class="num">${fmtOrb(a.orb)}</td>
-      ${phaseCol ? `<td class="small muted">${phase}</td>` : ""}</tr>`;
+      ${phaseCol ? `<td class="small muted">${phase}</td>` : ""}${notes ? `<td class="ncell">${noteBtn(keyAsp(a.a, a.b), `${bodyName(a.a)} ${A.name.toLowerCase()} ${bodyName(a.b)}`)}</td>` : ""}</tr>`;
   }
   $("#aspTable").innerHTML = html + "</tbody></table>";
   armAspects();
@@ -1243,8 +1255,704 @@ hoverFocus("#panel-viajes", false);
 hoverFocus("#panel-tpos", false);
 hoverFocus("#panel-over", false);
 
+
+// ---------- notas de la carta natal ------------------------------------------
+// Cada carta guardada tiene una lista de notas. Una nota es un texto libre con sus vínculos: planetas (en su casa y su
+// signo), casas, el Ascendente, el Medio Cielo y aspectos que tiene la carta. Mientras se escribe, la app lee el texto y
+// propone vínculos («Sol en I en Aries» → el Sol; «cuadratura con la Luna» → Sol □ Luna); también se vinculan a mano.
+// Al abrir una nota, la rueda ilumina lo que vincula; lo que tiene notas lleva un puntito. La pestaña «Notas» las junta
+// (con un filtro por planeta, casa, ángulo o aspecto) y el botón de nota de las tablas y la ficha del planeta muestran las
+// que nombran a ese elemento o empiezan una nueva ya vinculada. Viven con la carta guardada y se guardan solas.
+const NOTE_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg>`;
+const X_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
+const notesOn = () => mode === "natal" && !!chart && !!saved.activeId && !!saved.find(saved.activeId);
+let notesPending = null, notesTimer = 0;
+const normCache = new WeakMap();
+/** Las notas de la carta abierta, como lista (con lo que se está escribiendo y todavía no se guardó). */
+function notesNow() {
+  const id = saved.activeId;
+  if (!id) return [];
+  if (notesPending?.id === id) return notesPending.notes;
+  const raw = saved.find(id)?.notes;
+  if (!raw || typeof raw !== "object") return [];
+  if (!normCache.has(raw)) normCache.set(raw, cleanNotes(raw));      // (las de antes, una por cosa, pasan a la lista)
+  return normCache.get(raw);
+}
+const noteById = (nid) => notesNow().find((n) => n.id === nid) || null;
+const touching = (key) => notesNow().filter((n) => touches(n, key, chart));
+const isoNow = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
+const visAsp = () => vis(chart.aspects);
+/** Guarda (en un rato) la lista de notas con esta nota como está ahora: sin texto, no queda. */
+function putNote(note) {
+  const id = saved.activeId;
+  if (!id || !chart) return;
+  const list = notesNow().filter((n) => n.id !== note.id);
+  if (note.text.trim()) {
+    const i = notesNow().findIndex((n) => n.id === note.id);
+    const copy = { ...note, refs: [...note.refs], snap: { ...note.snap } };
+    if (i < 0) list.push(copy); else list.splice(i, 0, copy);
+  }
+  notesPending = { id, notes: list };
+  noteStatus("Guardando…");
+  clearTimeout(notesTimer);
+  notesTimer = setTimeout(flushNotes, 600);
+  paintNoteMarks();
+}
+// Si no se pudo guardar (por ejemplo, el servidor de la Mac es de una versión anterior), las notas quedan de respaldo en
+// este navegador y se vuelven a guardar al abrir la carta: cerrar la ventana no las pierde.
+const NOTES_BAK = "carta:notes-pending";
+const bakGet = () => { try { return JSON.parse(localStorage.getItem(NOTES_BAK) || "null"); } catch { return null; } };
+const bakSet = (v) => { try { if (v) localStorage.setItem(NOTES_BAK, JSON.stringify(v)); else localStorage.removeItem(NOTES_BAK); } catch { /* sin almacenamiento */ } };
+/** Al abrir una carta: si quedaron notas sin guardar de esa carta, se retoman y se guardan. */
+function restoreNotes() {
+  const b = bakGet(), id = saved.activeId;
+  if (!b || !id || b.id !== id || notesPending || !saved.find(id)) return;
+  notesPending = { id, notes: cleanNotes(b.notes) };
+  flushNotes();
+}
+async function flushNotes() {
+  clearTimeout(notesTimer);
+  const p = notesPending;
+  if (!p) return;
+  try {
+    await saved.setNotes(p.id, p.notes);
+    if (notesPending === p) notesPending = null;
+    if (bakGet()?.id === p.id) bakSet(null);
+    noteStatus(`Guardado · ${new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`);
+  } catch (err) {
+    bakSet({ id: p.id, notes: p.notes });
+    noteStatus(`No se pudo guardar: ${err.message}${/[.!?]$/.test(err.message) ? "" : "."}`, true);
+  }
+  if (page === "chart" && mode === "natal" && !$("#panel-notas").hidden) renderNotes();
+}
+addEventListener("pagehide", flushNotes);
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushNotes(); });
+function noteStatus(text, err = false) {
+  const el = $("#noteEdStatus");
+  el.textContent = text;
+  el.classList.toggle("err", err);
+}
+
+const bodyName = (id) => BODY[id]?.name || id;
+const gl = (id) => `<span class="g" aria-hidden="true">${glyphHTML(id) || BODY[id]?.tag || ""}</span>`;
+const sgl = (i) => `<span class="g" aria-hidden="true">${signHTML(i)}</span>`;
+const signOfLon = (lon) => split(lon).sign;
+const ASP_WORD = Object.fromEntries(Object.entries(ASPECT).map(([k, v]) => [k, v.name.toLowerCase()]));
+/** Un vínculo en palabras (para las listas, el filtro y los lectores de pantalla). */
+function refText(key) {
+  const k = parseKey(key);
+  if (!k || !chart) return key;
+  if (k.kind === "angle") return `${bodyName(key)} en ${SIGNS[signOfLon(chart.angles[key])]}`;
+  if (k.kind === "house") return `Casa ${roman(k.n)} (cúspide en ${SIGNS[signOfLon(chart.houses.cusps[k.n - 1])]})`;
+  if (k.kind === "pl") {
+    const b = chart.bodies.find((x) => x.id === k.ids[0]);
+    return b ? `${bodyName(b.id)} en casa ${roman(b.house)}, ${SIGNS[signOfLon(b.lon)]}` : bodyName(k.ids[0]);
+  }
+  const x = aspectBetween(visAsp(), ...k.ids);
+  return x ? `${bodyName(x.a)} ${ASP_WORD[x.type]} ${bodyName(x.b)}` : `${bodyName(k.ids[0])} y ${bodyName(k.ids[1])}`;
+}
+/** De qué es una nota nueva: «el Sol», «la casa IV», «el Ascendente», «Sol cuadratura Luna». */
+function refAbout(key) {
+  const k = parseKey(key);
+  if (!k) return key;
+  if (k.kind === "angle") return key === "asc" ? "el Ascendente" : "el Medio Cielo";
+  if (k.kind === "house") return `la casa ${roman(k.n)}`;
+  if (k.kind === "pl") return bodyName(k.ids[0]);
+  return refText(key);
+}
+/** Un vínculo, corto, en HTML (con los símbolos): lo que va en cada chip. */
+function refHTML(key) {
+  const k = parseKey(key);
+  if (!k || !chart) return esc(key);
+  if (k.kind === "angle") return `${BODY[key].tag} ${sgl(signOfLon(chart.angles[key]))}`;
+  if (k.kind === "house") return `Casa ${roman(k.n)}`;
+  if (k.kind === "pl") {
+    const b = chart.bodies.find((x) => x.id === k.ids[0]);
+    return b ? `${gl(b.id)} en ${roman(b.house)} · ${sgl(signOfLon(b.lon))}` : gl(k.ids[0]);
+  }
+  const x = aspectBetween(visAsp(), ...k.ids);
+  if (!x) return `${gl(k.ids[0])} ${gl(k.ids[1])}`;
+  const A = ASPECT[x.type];
+  return `${gl(x.a)}<span class="a-ic ${A.cls}" aria-hidden="true">${A.icon}</span>${gl(x.b)}`;
+}
+/** Qué tiene de distinto la carta desde que se vinculó (o "" si nada). */
+function refChange(key, snap) {
+  const c = changeOf(key, snap, chart, visAsp());
+  if (!c) return "";
+  const k = parseKey(key), w = c.was;
+  if (k.kind === "asp") return c.now.type ? `Se vinculó cuando era ${ASP_WORD[w.type] || "otro aspecto"}.` : "Se vinculó cuando formaban aspecto; con los datos de ahora, no.";
+  const parts = [];
+  if ("sign" in w && w.sign !== c.now.sign) parts.push(`en ${SIGNS[w.sign]}`);
+  if ("house" in w && w.house !== c.now.house) parts.push(`en la casa ${roman(w.house)}`);
+  return `Se vinculó cuando estaba ${parts.join(" y ")} (después cambiaron los datos de la carta).`;
+}
+const noteWhen = (at) => {
+  const d = new Date(at);
+  if (Number.isNaN(+d)) return "";
+  const today = new Date();
+  return d.toDateString() === today.toDateString() ? "hoy" : d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" }).replace(".", "");
+};
+const REF_ORDER = ["asc", "mc", "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "node"];
+function refSort(a, b) {
+  const rank = (key) => {
+    const k = parseKey(key);
+    if (!k) return [9, 0, 0];
+    if (k.kind === "angle") return [0, REF_ORDER.indexOf(key), 0];
+    if (k.kind === "pl") return [1, REF_ORDER.indexOf(k.ids[0]), 0];
+    if (k.kind === "house") return [2, k.n, 0];
+    return [3, Math.min(...k.ids.map((i) => REF_ORDER.indexOf(i))), Math.max(...k.ids.map((i) => REF_ORDER.indexOf(i)))];
+  };
+  const x = rank(a), y = rank(b);
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+}
+const DETECT_NAMES = { signs: SIGNS, aspects: ASP_WORD };
+
+// -- iluminar en la rueda lo que vincula una nota
+let litId = null;          // la nota iluminada (abierta en el editor, o «Ver en la carta» en el celular)
+function litSel(note) {
+  const sel = { bodies: [], pairs: [], houses: [], angles: [] };
+  for (const r of note?.refs || []) {
+    const k = parseKey(r);
+    if (!k || !refExists(r, chart, visAsp())) continue;
+    if (k.kind === "pl") sel.bodies.push(k.ids[0]);
+    else if (k.kind === "asp") sel.pairs.push(k.ids);
+    else if (k.kind === "house") sel.houses.push(k.n);
+    else sel.angles.push(r);
+  }
+  return sel;
+}
+function paintLit() {
+  if (!wheel?.note) return;
+  const n = litId && notesOn() ? (edNote?.id === litId ? edNote : noteById(litId)) : null;
+  wheel.note(n && n.refs.length ? litSel(n) : null);
+  for (const c of document.querySelectorAll("#noteList .ncard")) c.classList.toggle("lit", c.dataset.nid === n?.id);
+  const bar = $("#noteLit");
+  const show = !!n && !!litBar;
+  bar.hidden = !show;
+  if (show) $("#noteLitText").textContent = n.text.trim().replace(/\s+/g, " ");
+}
+let litBar = false;        // celular: el cartelito de arriba de la barra (la nota iluminada, con «Editar» y la ×)
+function lightNote(nid, bar = false) {
+  litId = nid; litBar = !!nid && bar;
+  paintLit();
+}
+
+// -- el editor: flota junto a lo que se tocó (en el celular, una hoja desde abajo)
+let edNote = null, edAnchor = null, edSugTimer = 0;
+function openNote(nid, anchor, preRefs = []) {
+  if (!notesOn()) return;
+  closePop();
+  closeLinkMenu();
+  setFab?.(false);
+  hideFicha();
+  wheel?.clear();                                    // (suelta lo tocado con el dedo: la rueda pasa a mostrar la nota)
+  const n = nid ? noteById(nid) : null;
+  edNote = n ? { ...n, refs: [...n.refs], snap: { ...n.snap } } : { id: newId(), text: "", at: isoNow(), refs: [], snap: {} };
+  for (const r of preRefs) addRef(r, false);
+  edAnchor = anchor || null;
+  $("#noteEdTitle").textContent = n ? `Nota · ${noteWhen(n.at)}` : "Nota nueva";
+  $("#noteEdText").value = edNote.text;
+  symUndo = null; paintSym();
+  setPal(false);
+  $("#noteEdDel").hidden = !n;
+  noteStatus(n ? "Se guarda sola mientras escribís." : "Escribí y vinculá: se guarda sola.");
+  paintEditor();
+  $("#noteEd").hidden = false;
+  placeNoteEd();
+  lightNote(edNote.id, litBar && litId === edNote.id);
+  $("#noteEdText").focus({ preventScroll: true });
+}
+function placeNoteEd() {
+  const ed = $("#noteEd");
+  ed.style.left = ed.style.top = "";
+  if (ed.hidden || matchMedia("(max-width: 640px)").matches) return;     // celular: la CSS la pone abajo
+  if (!edAnchor?.isConnected) {                      // sin nada al lado (desde la nota abierta para leer): en el centro
+    ed.style.left = `${Math.round((innerWidth - ed.offsetWidth) / 2 + scrollX)}px`;
+    ed.style.top = `${Math.round(Math.max(8, (innerHeight - ed.offsetHeight) / 2) + scrollY)}px`;
+    return;
+  }
+  const r = edAnchor.getBoundingClientRect(), w = ed.offsetWidth, h = ed.offsetHeight;
+  const left = Math.max(8, Math.min(r.right - w, innerWidth - w - 16));
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;      // si no entra abajo, arriba
+  if (top + h > innerHeight - 8) top = Math.max(8, innerHeight - h - 8);
+  ed.style.left = `${Math.round(left + scrollX)}px`;
+  ed.style.top = `${Math.round(top + scrollY)}px`;
+}
+function closeNote(focusBack = true) {
+  const ed = $("#noteEd");
+  if (ed.hidden) return;
+  ed.hidden = true;
+  closeLinkMenu();
+  clearTimeout(edSugTimer);
+  flushNotes();
+  const a = edAnchor, wasLit = litBar;
+  edNote = edAnchor = null;
+  if (!wasLit) lightNote(null); else paintLit();
+  if (focusBack && a?.isConnected) a.focus({ preventScroll: true });
+}
+function addRef(key, save = true) {
+  if (!edNote || edNote.refs.includes(key) || edNote.refs.length >= REF_MAX || !refExists(key, chart, visAsp())) return;
+  edNote.refs.push(key);
+  const s = snapOf(key, chart, visAsp());
+  if (Object.keys(s).length) edNote.snap[key] = s;
+  if (save) { putNote(edNote); paintEditor(); paintLit(); }
+}
+function dropRef(key) {
+  if (!edNote) return;
+  edNote.refs = edNote.refs.filter((r) => r !== key);
+  delete edNote.snap[key];
+  putNote(edNote); paintEditor(); paintLit();
+}
+const chipHTML = (key, cls, extra = "") => `<span class="nchip ${cls}" data-ref="${esc(key)}"${extra}>${refHTML(key)}</span>`;
+/** Los vínculos de la nota abierta, los sugeridos por el texto y el aviso si algo cambió. */
+function paintEditor() {
+  if (!edNote) return;
+  const refs = [...edNote.refs];
+  $("#noteRefs").innerHTML = refs.length
+    ? refs.map((r) => {
+      const w = refChange(r, edNote.snap[r]);
+      return `<span class="nchip on${w ? " warn" : ""}" data-ref="${esc(r)}"${w ? ` title="${esc(w)}"` : ""}>${refHTML(r)}` +
+        `<button type="button" class="nchip-x" data-drop="${esc(r)}" aria-label="Quitar el vínculo: ${esc(refText(r))}">${X_IC}</button></span>`;
+    }).join("")
+    : `<span class="nrefs-none">Sin vínculos: es sobre la carta en general.</span>`;
+  const warns = refs.map((r) => refChange(r, edNote.snap[r])).filter(Boolean);
+  $("#noteEdWarn").hidden = !warns.length;
+  $("#noteEdWarn").textContent = warns.length ? `Algo cambió desde que se vinculó: ${warns.join(" ")}` : "";
+  const sugs = detectRefs(edNote.text, chart, visAsp(), DETECT_NAMES).filter((s) => !refs.includes(s.key));
+  $("#noteSugRow").hidden = !sugs.length;
+  $("#noteSugAll").hidden = sugs.length < 2;
+  $("#noteSugs").innerHTML = sugs.map((s) => `<button type="button" class="nchip sug${s.warn ? " warn" : ""}" data-add="${esc(s.key)}" ` +
+    `aria-label="Vincular: ${esc(refText(s.key))}${s.warn ? `. Ojo: ${esc(s.warn)}` : ""}"${s.warn ? ` title="Ojo: ${esc(s.warn)}"` : ""}>` +
+    `<span class="nchip-plus" aria-hidden="true">+</span>${refHTML(s.key)}</button>`).join("");
+  $("#noteLink").disabled = refs.length >= REF_MAX;
+  placeNoteEd();
+}
+// «Pasar a símbolos»: los nombres por sus símbolos y las casas en romanos (se puede deshacer, también con Cmd/Ctrl+Z)
+let symUndo = null, symBusy = false;
+function setNoteText(text) {
+  const ta = $("#noteEdText");
+  symBusy = true;
+  ta.focus({ preventScroll: true });
+  ta.select();
+  // como si se escribiera: así el deshacer del navegador lo deshace
+  if (!document.execCommand?.("insertText", false, text) || ta.value !== text) {
+    ta.value = text;
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  ta.setSelectionRange(text.length, text.length);
+  symBusy = false;
+}
+function paintSym() {
+  const b = $("#noteSym");
+  b.innerHTML = symUndo !== null ? "Deshacer los símbolos" : 'Pasar a símbolos <span aria-hidden="true">☉︎ ♈︎ □</span>';
+}
+// «Insertar símbolo»: una paleta de planetas, signos, aspectos y ángulos que escribe el símbolo donde está el cursor
+// (por si «Pasar a símbolos» no reconoce una palabra, o para escribir directamente con símbolos)
+const PAL_PLANETS = [["sun", "☉"], ["moon", "☽"], ["mercury", "☿"], ["venus", "♀"], ["mars", "♂"], ["jupiter", "♃"], ["saturn", "♄"], ["uranus", "♅"], ["neptune", "♆"], ["pluto", "♇"], ["node", "☊"]];
+const PAL_SIGNS = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
+const PAL_ASPECTS = [["conjunction", "☌"], ["opposition", "☍"], ["square", "□"], ["trine", "△"], ["sextile", "⚹"], ["quincunx", "⚻"], ["semisquare", "∠"], ["sesquiquadrate", "⚼"]];
+const VS15 = "\uFE0E";
+let palSel = null;          // dónde estaba el cursor al abrir la paleta (en el celular, tocarla saca el foco del texto)
+function palHTML() {
+  const b = (ch, label, inner) => `<button type="button" data-ins="${ch}" title="${esc(label)}" aria-label="${esc(label)}">${inner}</button>`;
+  return `<div class="npal-row"><span>Planetas</span>${PAL_PLANETS.map(([id, ch]) => b(ch + VS15, bodyName(id), gl(id))).join("")}</div>` +
+    `<div class="npal-row"><span>Signos</span>${PAL_SIGNS.map((ch, i) => b(ch + VS15, SIGNS[i], sgl(i))).join("")}</div>` +
+    `<div class="npal-row"><span>Aspectos</span>${PAL_ASPECTS.map(([t, ch]) => b(ch, ASPECT[t].name, `<span class="a-ic ${ASPECT[t].cls}" aria-hidden="true">${ASPECT[t].icon}</span>`)).join("")}</div>` +
+    `<div class="npal-row"><span>Ángulos</span>${b("Asc", "Ascendente", "Asc")}${b("MC", "Medio Cielo", "MC")}</div>`;
+}
+function setPal(open) {
+  const p = $("#notePal");
+  if (open && !p.innerHTML) p.innerHTML = palHTML();
+  p.hidden = !open;
+  $("#notePalBtn").setAttribute("aria-expanded", String(open));
+  $("#notePalBtn").textContent = open ? "Cerrar símbolos" : "Insertar símbolo";
+  if (open) { const ta = $("#noteEdText"); palSel = [ta.selectionStart, ta.selectionEnd]; }
+  placeNoteEd();
+}
+$("#notePalBtn").addEventListener("click", () => setPal($("#notePal").hidden));
+$("#notePal").addEventListener("pointerdown", (e) => { if (e.target.closest("[data-ins]")) e.preventDefault(); });     // con el mouse, el texto no pierde el foco
+$("#notePal").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ins]");
+  if (!b || !edNote) return;
+  const ta = $("#noteEdText");
+  if (document.activeElement !== ta) { ta.focus({ preventScroll: true }); if (palSel) ta.setSelectionRange(...palSel); }
+  const ins = b.dataset.ins;
+  // como si se escribiera: así el deshacer del navegador lo deshace
+  if (!document.execCommand?.("insertText", false, ins)) {
+    ta.setRangeText(ins, ta.selectionStart, ta.selectionEnd, "end");
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  palSel = [ta.selectionStart, ta.selectionEnd];
+});
+$("#noteEdText").addEventListener("blur", (e) => { palSel = [e.target.selectionStart, e.target.selectionEnd]; });
+$("#noteSym").addEventListener("click", () => {
+  if (!edNote) return;
+  if (symUndo !== null) { const t = symUndo; symUndo = null; setNoteText(t); paintSym(); return; }
+  const before = $("#noteEdText").value, after = toSymbols(before);
+  if (after === before) { noteStatus("No hay nombres de planetas, signos, aspectos ni casas para pasar."); return; }
+  setNoteText(after);
+  symUndo = before;
+  paintSym();
+});
+$("#noteEdText").addEventListener("input", (e) => {
+  if (!edNote) return;
+  if (symUndo !== null && !symBusy) { symUndo = null; paintSym(); }
+  edNote.text = e.target.value;
+  edNote.at = isoNow();
+  $("#noteEdDel").hidden = !edNote.text.trim() && !noteById(edNote.id);
+  putNote(edNote);
+  clearTimeout(edSugTimer);
+  edSugTimer = setTimeout(paintEditor, 250);         // las sugerencias, cuando se para de escribir un momento
+  if (litBar) paintLit();
+});
+$("#noteEd").addEventListener("click", (e) => {
+  const drop = e.target.closest("[data-drop]"), add = e.target.closest("[data-add]");
+  if (drop) { dropRef(drop.dataset.drop); $("#noteEdText").focus({ preventScroll: true }); }
+  else if (add) addRef(add.dataset.add);
+  else if (e.target.closest("#noteSugAll")) {
+    for (const b of [...$("#noteSugs").querySelectorAll("[data-add]")]) addRef(b.dataset.add, false);
+    putNote(edNote); paintEditor(); paintLit();
+  }
+});
+$("#noteEdX").addEventListener("click", () => closeNote());
+$("#noteEdDel").addEventListener("click", () => {
+  if (!edNote) return;
+  edNote.text = "";
+  putNote(edNote);
+  if (litId === edNote.id) litBar = false;
+  closeNote();
+});
+
+// «+ Vincular»: un planeta, una casa, el Ascendente, el Medio Cielo o un aspecto de los que tiene la carta
+function linkMenuHTML(view) {
+  const on = (key) => edNote?.refs.includes(key);
+  const item = (key, html, sub = "") => `<button type="button" role="menuitemcheckbox" aria-checked="${on(key)}" class="nmi${on(key) ? " has" : ""}" data-pick="${esc(key)}">${html}${sub ? `<small>${sub}</small>` : ""}</button>`;
+  const back = `<button type="button" role="menuitem" class="nmi nback" data-view="main">‹ Volver</button>`;
+  const asp = visAsp();
+  if (view === "pl") return back + chart.bodies.filter((b) => BODY[b.id]).sort((a, b) => REF_ORDER.indexOf(a.id) - REF_ORDER.indexOf(b.id))
+    .map((b) => item(keyPl(b.id), `${gl(b.id)} ${bodyName(b.id)}`, `${SIGNS[signOfLon(b.lon)]} · casa ${roman(b.house)}`)).join("");
+  if (view === "house") return back + chart.houses.cusps.map((lon, i) => {
+    const inside = chart.bodies.filter((b) => b.house === i + 1).map((b) => bodyName(b.id)).join(", ");
+    return item(keyHouse(i + 1), `Casa ${roman(i + 1)}`, `Cúspide en ${SIGNS[signOfLon(lon)]}${inside ? ` · ${inside}` : ""}`);
+  }).join("");
+  if (view === "asp") return back + [...asp].sort((a, b) => a.orb - b.orb).map((x) => item(keyAsp(x.a, x.b),
+    `${gl(x.a)} <span class="a-ic ${ASPECT[x.type].cls}" aria-hidden="true">${ASPECT[x.type].icon}</span> ${gl(x.b)} ${bodyName(x.a)} ${ASP_WORD[x.type]} ${bodyName(x.b)}`, `orbe ${fmtOrb(x.orb)}`)).join("");
+  return `<button type="button" role="menuitem" class="nmi" data-view="pl">Un planeta ›<small>En su casa y su signo</small></button>` +
+    `<button type="button" role="menuitem" class="nmi" data-view="house">Una casa ›</button>` +
+    item("asc", "Ascendente", SIGNS[signOfLon(chart.angles.asc)]) + item("mc", "Medio Cielo", SIGNS[signOfLon(chart.angles.mc)]) +
+    `<button type="button" role="menuitem" class="nmi" data-view="asp"${asp.length ? "" : " disabled"}>Un aspecto ›<small>De los ${asp.length} que tiene la carta</small></button>`;
+}
+function openLinkMenu(view = "main") {
+  const m = $("#noteLinkMenu");
+  m.innerHTML = linkMenuHTML(view);
+  m.hidden = false;
+  $("#noteLink").setAttribute("aria-expanded", "true");
+  m.querySelector("button:not([disabled])")?.focus({ preventScroll: true });
+}
+function closeLinkMenu(focusBtn = false) {
+  const m = $("#noteLinkMenu");
+  if (m.hidden) return;
+  m.hidden = true;
+  $("#noteLink").setAttribute("aria-expanded", "false");
+  if (focusBtn) $("#noteLink").focus({ preventScroll: true });
+}
+$("#noteLink").addEventListener("click", () => ($("#noteLinkMenu").hidden ? openLinkMenu() : closeLinkMenu()));
+$("#noteLinkMenu").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  if (b.dataset.view) { openLinkMenu(b.dataset.view); return; }
+  if (!b.dataset.pick) return;
+  if (edNote?.refs.includes(b.dataset.pick)) dropRef(b.dataset.pick); else addRef(b.dataset.pick);
+  closeLinkMenu(true);
+});
+$("#noteLinkMenu").addEventListener("keydown", (e) => {
+  const items = [...$("#noteLinkMenu").querySelectorAll("button:not([disabled])")];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") { e.preventDefault(); (items[i + 1] || items[0])?.focus(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); (items[i - 1] || items[items.length - 1])?.focus(); }
+});
+
+// -- el atajo: el botón de nota de una fila (o de la ficha) muestra las notas que nombran a ese elemento y deja empezar
+// una nueva ya vinculada; si no hay ninguna, abre directamente la nueva
+let popKey = null, popAnchor = null;
+function openShortcut(key, anchor) {
+  if (!notesOn()) return;
+  const list = touching(key);
+  if (!list.length) { openNote(null, anchor, [key]); return; }
+  closeNote(false);
+  popKey = key; popAnchor = anchor;
+  const p = $("#notePop");
+  p.innerHTML = `<p class="npop-h">${refHTML(key)} <span>${list.length === 1 ? "1 nota" : `${list.length} notas`}</span></p>` +
+    list.slice().reverse().map((n) => `<button type="button" class="npop-i" data-open="${n.id}"><span class="npop-t"></span><small>${noteWhen(n.at)}</small></button>`).join("") +
+    `<button type="button" class="npop-new" data-new="${esc(key)}">+ Nota nueva sobre ${esc(refAbout(key))}</button>`;
+  const ts = p.querySelectorAll(".npop-t");
+  list.slice().reverse().forEach((n, i) => { ts[i].textContent = n.text.trim().replace(/\s+/g, " "); });
+  p.hidden = false;
+  const r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;
+  p.style.left = `${Math.round(Math.max(8, Math.min(r.right - w, innerWidth - w - 16)) + scrollX)}px`;
+  p.style.top = `${Math.round(top + scrollY)}px`;
+  p.querySelector("button")?.focus({ preventScroll: true });
+}
+function closePop(focusBack = false) {
+  const p = $("#notePop");
+  if (p.hidden) return;
+  p.hidden = true;
+  const a = popAnchor;
+  popKey = popAnchor = null;
+  if (focusBack && a?.isConnected) a.focus({ preventScroll: true });
+}
+$("#notePop").addEventListener("click", (e) => {
+  const o = e.target.closest("[data-open]"), nw = e.target.closest("[data-new]");
+  const a = popAnchor;
+  if (o) { closePop(); openView(o.dataset.open); }
+  else if (nw) { closePop(); openNote(null, a?.closest?.("#wheel") ? null : a, [nw.dataset.new]); }
+});
+
+document.addEventListener("pointerdown", (e) => {
+  const t = e.target;
+  if (!$("#noteEd").hidden && !$("#noteEd").contains(t) && !t.closest?.("[data-note], .ncard, #noteAdd, #noteLit, #notePop")) closeNote(false);
+  if (!$("#noteLinkMenu").hidden && !$("#noteLinkMenu").contains(t) && !$("#noteLink").contains(t)) closeLinkMenu();
+  if (!$("#notePop").hidden && !$("#notePop").contains(t) && !t.closest?.("[data-note]")) closePop();
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("#noteLinkMenu").hidden) { e.preventDefault(); closeLinkMenu(true); }
+  else if (!$("#notePop").hidden) { e.preventDefault(); closePop(true); }
+  else if (!$("#noteEd").hidden) { e.preventDefault(); closeNote(); }
+});
+addEventListener("resize", () => { if (!$("#noteEd").hidden) placeNoteEd(); closePop(); });
+// los botones de nota de las tablas: antes que los otros clics de la fila (abrir la lectura, resaltar)
+for (const sel of ["#panel-pos", "#panel-asp", "#panel-casas"]) {
+  $(sel).addEventListener("click", (e) => {
+    const b = e.target.closest("[data-note]");
+    if (!b) return;
+    e.stopPropagation();
+    if (popKey === b.dataset.note && !$("#notePop").hidden) closePop();
+    else openShortcut(b.dataset.note, b);
+  }, true);
+}
+const noteBtn = (key, label) => {
+  const n = notesOn() ? touching(key).length : 0;
+  return `<button type="button" class="nbtn${n ? " has" : ""}" data-note="${esc(key)}" aria-label="${n ? `Notas (${n})` : "Escribir una nota"}: ${esc(label)}" title="${n ? (n === 1 ? "1 nota" : `${n} notas`) : "Nota"}">${NOTE_IC}</button>`;
+};
+
+/** Marca lo que tiene notas: los botones de las tablas y un puntito en la rueda (planetas, casas, ángulos, aspectos). */
+function paintNoteMarks() {
+  const on = notesOn();
+  for (const b of document.querySelectorAll(".nbtn[data-note]")) {
+    const n = on ? touching(b.dataset.note).length : 0;
+    b.classList.toggle("has", n > 0);
+    b.title = n ? (n === 1 ? "1 nota" : `${n} notas`) : "Nota";
+  }
+  const svg = $("#wheel");
+  svg.querySelectorAll(".wnote").forEach((e) => e.remove());
+  svg.querySelectorAll(".amark.noted-a").forEach((e) => e.classList.remove("noted-a"));
+  if (on) {
+    const notes = notesNow();
+    const refs = new Set(notes.flatMap((n) => n.refs));
+    const dot = (parent, x, y, r = 4.4) => {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("class", "wnote");
+      c.setAttribute("cx", (+x).toFixed(1)); c.setAttribute("cy", (+y).toFixed(1)); c.setAttribute("r", r);
+      c.setAttribute("aria-hidden", "true");
+      parent.append(c);
+    };
+    for (const b of chart.bodies) {
+      if (!notes.some((n) => touches(n, keyPl(b.id), chart))) continue;
+      const g = svg.querySelector(`.pl[data-id="${b.id}"]:not(.trip):not(.out):not(.ghost) .pdw`);
+      const m = g && /translate\(([-\d.]+)[ ,]+([-\d.]+)\)/.exec(g.getAttribute("transform") || "");
+      if (m) dot(g.closest(".pl"), +m[1] + 11, +m[2] - 11);
+    }
+    for (const t of svg.querySelectorAll(".hnum[data-h]")) {
+      if (refs.has(keyHouse(+t.dataset.h))) dot(t.parentNode, +t.getAttribute("x") + 9, +t.getAttribute("y") - 8, 3.6);
+    }
+    for (const ax of ["asc", "mc"]) {
+      const t = refs.has(ax) && svg.querySelector(`.axis-label[data-ax="${ax}"]`);
+      if (!t) continue;
+      const bb = t.getBBox();
+      dot(t.parentNode, bb.x + bb.width + 4, bb.y + 2, 3.6);
+    }
+    for (const m of svg.querySelectorAll(".amark[data-a]")) if (refs.has(keyAsp(m.dataset.a, m.dataset.b))) m.classList.add("noted-a");
+    // las casas y los ángulos que se pueden tocar para ver sus notas
+    for (const e of svg.querySelectorAll(".hwedge[data-h], .hnum[data-h]")) e.classList.toggle("nt", touching(keyHouse(+e.dataset.h)).length > 0);
+    for (const e of svg.querySelectorAll(".axis-label[data-ax]")) e.classList.toggle("nt", (e.dataset.ax === "asc" || e.dataset.ax === "mc") && refs.has(e.dataset.ax));
+  } else {
+    svg.querySelectorAll(".nt").forEach((e) => e.classList.remove("nt"));
+  }
+  if (!$("#panel-notas").hidden) $("#noteCount").textContent = countText();
+}
+const countText = () => { const n = noteCount(notesNow()); return n === 0 ? "Sin notas" : n === 1 ? "1 nota" : `${n} notas`; };
+
+// -- las marcas doradas en la rueda (lo que tiene notas): apagadas salvo que se pidan; se recuerda en este navegador
+let noteMarksOn = false;
+try { noteMarksOn = localStorage.getItem("carta:notemarks") === "1"; } catch { /* sin almacenamiento */ }
+const paintMarksPref = () => { document.documentElement.toggleAttribute("data-nmarks", noteMarksOn); $("#noteMarks").checked = noteMarksOn; };
+paintMarksPref();
+$("#noteMarks").addEventListener("change", (e) => {
+  noteMarksOn = e.target.checked;
+  try { localStorage.setItem("carta:notemarks", noteMarksOn ? "1" : "0"); } catch { /* sin almacenamiento */ }
+  paintMarksPref();
+});
+
+// -- la pestaña «Notas»: todas, la más nueva arriba, con un filtro por elemento
+let noteFilter = "";
+function renderNotes() {
+  const list = $("#noteList");
+  if (!chart || mode !== "natal") { list.replaceChildren(); return; }
+  if (!notesOn()) {
+    $("#noteCount").textContent = "";
+    $("#noteAdd").hidden = true;
+    $("#noteFilter").hidden = true;
+    $("#noteMarksRow").hidden = true;
+    list.innerHTML = `<p class="muted nempty">Guardá la carta para poder escribirle notas.</p>`;
+    return;
+  }
+  $("#noteAdd").hidden = false;
+  $("#noteCount").textContent = countText();
+  const notes = notesNow();
+  $("#noteMarksRow").hidden = !notes.length;
+  // el filtro: lo que vinculan las notas (y los planetas de sus aspectos)
+  const keys = new Set();
+  for (const n of notes) for (const r of n.refs) {
+    if (!refExists(r, chart, visAsp()) && !r.startsWith("asp:")) continue;
+    keys.add(r);
+    if (r.startsWith("asp:")) r.slice(4).split("|").forEach((id) => keys.add(keyPl(id)));
+  }
+  if (noteFilter && !keys.has(noteFilter)) noteFilter = "";
+  const f = $("#noteFilter");
+  f.hidden = !keys.size;
+  f.innerHTML = `<option value="">Todas</option>` + [...keys].sort(refSort)
+    .map((k) => `<option value="${esc(k)}"${k === noteFilter ? " selected" : ""}>${esc(refText(k))} (${notes.filter((n) => touches(n, k, chart)).length})</option>`).join("");
+  if (!notes.length) {
+    list.innerHTML = `<p class="muted nempty">Todavía no hay notas. Tocá «+ Nota» y escribí: la app te propone qué vincular (planetas en su casa, casas, el Ascendente, el Medio Cielo, aspectos). También desde ${NOTE_IC.replace("<svg", '<svg class="nic-inline"')} en Posiciones, Casas o Aspectos.</p>`;
+    return;
+  }
+  const shown = notes.filter((n) => !noteFilter || touches(n, noteFilter, chart)).reverse();
+  const phone = matchMedia("(max-width: 640px)").matches;
+  list.innerHTML = shown.map((n) => {
+    const warn = n.refs.some((r) => refChange(r, n.snap[r]));
+    const chips = [...n.refs].sort(refSort).map((r) => {
+      const w = refChange(r, n.snap[r]);
+      return `<button type="button" class="nchip${r === noteFilter ? " cur" : ""}${w ? " warn" : ""}" data-filter="${esc(r)}" aria-label="Filtrar: ${esc(refText(r))}"${w ? ` title="${esc(w)}"` : ""}>${refHTML(r)}</button>`;
+    }).join("");
+    return `<article class="ncard${n.id === litId ? " lit" : ""}" data-nid="${n.id}">` +
+      `<p class="ntext"></p>` +
+      `<div class="nchips">${chips || `<span class="nchip gen">General</span>`}</div>` +
+      `<div class="nfoot"><span class="nd">${noteWhen(n.at)}${warn ? ` · <span class="nwarn">algo cambió en la carta</span>` : ""}</span>` +
+      `${phone && n.refs.length ? `<button type="button" class="nlink-btn" data-see="${n.id}">Ver en la carta</button>` : ""}` +
+      `<button type="button" class="nlink-btn" data-edit="${n.id}">Editar</button></div></article>`;
+  }).join("") || `<p class="muted nempty">Ninguna nota nombra eso.</p>`;
+  const ps = list.querySelectorAll(".ntext");
+  shown.forEach((n, i) => { ps[i].textContent = n.text; });      // el texto va como texto (puede tener cualquier cosa)
+}
+$("#noteFilter").addEventListener("change", (e) => { noteFilter = e.target.value; renderNotes(); });
+$("#noteAdd").addEventListener("click", () => openNote(null, $("#noteAdd")));
+$("#noteList").addEventListener("click", (e) => {
+  const fb = e.target.closest("[data-filter]"), ed = e.target.closest("[data-edit]"), see = e.target.closest("[data-see]");
+  if (fb) { noteFilter = noteFilter === fb.dataset.filter ? "" : fb.dataset.filter; renderNotes(); return; }
+  if (see) {                                   // celular: a la rueda, con la nota iluminada y un cartelito para volver
+    closeNote(false);
+    mview = "carta"; paintBar(); scrollTo(0, 0);
+    lightNote(see.dataset.see, true);
+    return;
+  }
+  const card = e.target.closest(".ncard");
+  if (ed) { if (edNote?.id === ed.dataset.edit) closeNote(); else openNote(ed.dataset.edit, card); }
+  else if (card && !e.target.closest("button, a")) openView(card.dataset.nid);
+});
+
+// -- leer una nota: en el centro, grande y sin editar, con sus vínculos (iluminados en la rueda) y «Editar»
+let viewId = null;
+function openView(nid) {
+  const n = noteById(nid);
+  if (!n || !notesOn()) return;
+  closeNote(false);
+  closePop();
+  hideFicha();
+  viewId = nid;
+  $("#noteViewCtx").textContent = `Nota · ${noteWhen(n.at)}`;
+  $("#noteViewTitle").textContent = chart.input.name || "Carta natal";
+  $("#noteViewText").textContent = n.text.trim();
+  const warns = n.refs.map((r) => refChange(r, n.snap[r])).filter(Boolean);
+  $("#noteViewWarn").hidden = !warns.length;
+  $("#noteViewWarn").textContent = warns.join(" ");
+  $("#noteViewRefs").innerHTML = n.refs.length
+    ? [...n.refs].sort(refSort).map((r) => { const w = refChange(r, n.snap[r]); return `<span class="nchip${w ? " warn" : ""}" title="${esc(w || refText(r))}">${refHTML(r)}</span>`; }).join("")
+    : `<span class="nchip gen">General</span>`;
+  const d = $("#noteView");
+  if (!d.open) d.showModal();
+  d.querySelector(".nview-body").scrollTop = 0;
+  lightNote(nid, litBar && litId === nid);
+}
+function closeView() {
+  const d = $("#noteView");
+  if (d.open) d.close();
+}
+$("#noteView").addEventListener("close", () => {
+  if (viewId && !edNote && !litBar) lightNote(null);
+  viewId = null;
+});
+$("#noteView").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeView(); });     // el fondo
+$("#noteViewX").addEventListener("click", closeView);
+$("#noteViewEdit").addEventListener("click", () => {
+  const nid = viewId;
+  closeView();
+  if (nid) openNote(nid, null);
+});
+// con el mouse, pasar por una tarjeta ilumina en la rueda lo que vincula (si no hay otra nota abierta)
+$("#noteList").addEventListener("mouseover", (e) => {
+  const card = e.target.closest(".ncard");
+  if (!card || edNote || !wheel?.note) return;
+  const n = noteById(card.dataset.nid);
+  wheel.note(n && n.refs.length ? litSel(n) : null);
+});
+$("#noteList").addEventListener("mouseleave", () => { if (!edNote) paintLit(); });
+// -- tocar en la rueda algo que tiene notas (un planeta, una casa, el Asc o el MC, un aspecto) las ofrece. Con el dedo, el
+// planeta abre su ficha (que ya trae sus notas); con lecturas, el planeta y los ángulos abren su ventana como siempre.
+let wheelPointer = "mouse";
+$("#wheel").addEventListener("pointerdown", (e) => { wheelPointer = e.pointerType || "mouse"; }, true);
+$("#wheel").addEventListener("click", (e) => {
+  if (!notesOn() || !e.target.closest) return;
+  const t = e.target;
+  let key = null, anchor = null;
+  const pl = t.closest(".pl"), ax = t.closest(".axis-label[data-ax]"), am = t.closest(".amark[data-a], .asp[data-a]"), h = t.closest(".hnum[data-h], .hwedge[data-h]");
+  if (pl) {
+    if (pl.classList.contains("out") || pl.classList.contains("trip") || pl.dataset.tip || interpOn || wheelPointer !== "mouse") return;
+    key = keyPl(pl.dataset.id); anchor = pl.querySelector(".pdw") || pl;
+  } else if (ax) {
+    if (interpOn || (ax.dataset.ax !== "asc" && ax.dataset.ax !== "mc")) return;
+    key = ax.dataset.ax; anchor = ax;
+  } else if (am) {
+    if (am.dataset.a.startsWith("o:") || am.dataset.b.startsWith("o:")) return;
+    key = keyAsp(am.dataset.a, am.dataset.b); anchor = am;
+  } else if (h) {
+    key = keyHouse(+h.dataset.h); anchor = svg_hnum(h);
+  }
+  if (!key || !touching(key).length) return;
+  e.stopPropagation();
+  openShortcut(key, anchor);
+});
+const svg_hnum = (el) => $("#wheel").querySelector(`.hnum[data-h="${el.dataset.h}"]`) || el;
+$("#noteLitEdit").addEventListener("click", () => { if (litId) openNote(litId, null); });
+$("#noteLitX").addEventListener("click", () => { closeNote(false); lightNote(null); });
+
 // -- la ficha del planeta tocado en la rueda (con el dedo y sin lecturas): signo, grados, casa y sus aspectos, en una
 // tarjeta abajo de la pantalla. Se va al soltar el planeta (tocar afuera, de nuevo el mismo o la ×).
+/** En la ficha: las notas que nombran a ese planeta (tocarlas las abre) y empezar una nueva ya vinculada. */
+function pfiNotesHTML(bid) {
+  const list = touching(keyPl(bid)).slice().reverse();
+  return `<div class="pfi-nsec"><p class="pfi-nlab">${NOTE_IC} Notas${list.length ? ` <span class="pfi-ncount">${list.length}</span>` : ""}</p>` +
+    list.map((n) => `<button type="button" class="pfi-ni" data-open="${n.id}">${esc(n.text.trim().replace(/\s+/g, " "))}</button>`).join("") +
+    `<button type="button" class="pfi-nnew" data-new="${keyPl(bid)}">+ Nota sobre ${esc(bodyName(bid))}</button></div>`;
+}
+$("#pfi").addEventListener("click", (e) => {
+  const o = e.target.closest("[data-open]"), nw = e.target.closest("[data-new]");
+  if (o) openView(o.dataset.open);
+  else if (nw) openNote(null, null, [nw.dataset.new]);
+});
 function hideFicha() {
   const el = $("#pfi");
   if (!el.hidden) { el.hidden = true; el.replaceChildren(); }
@@ -1272,6 +1980,7 @@ function showFicha(id, note = "", trip = false) {
     `${s.deg}°${String(s.min).padStart(2, "0")}′${body.retro ? ' <span class="rx">R</span>' : ""}${house ? ` · ${house}` : ""}</p></div>` +
     `<button type="button" class="iconbtn pfi-x" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>` +
     (note ? `<div class="pfi-note${trip ? " trip" : ""}">${String(note).split("\n").map((l) => `<p>${esc(l)}</p>`).join("")}</div>` : "") +
+    (!out && notesOn() ? pfiNotesHTML(bid) : "") +
     (rows ? `<ul class="pfi-list" aria-label="Aspectos">${rows}</ul>` : `<p class="pfi-none">Sin aspectos en la rueda.</p>`);
   el.hidden = false;
 }
@@ -1357,7 +2066,7 @@ $("#mbar").addEventListener("click", async (e) => {
   // se resuelve en el click (no al apoyar) para que arrastrar para desplazarse no suelte el resaltado
   document.addEventListener("click", (e) => {
     const t = tap; tap = null;
-    if (!wheel || !t || !t.type || t.type === "mouse" || e.target.closest?.("#pfi")) return;      // (dentro de la ficha se lee, no se suelta)
+    if (!wheel || !t || !t.type || t.type === "mouse" || e.target.closest?.("#pfi, #noteEd, [data-note], #notePop, #noteLit, #panel-notas, #noteView")) return;      // (dentro de la ficha se lee, no se suelta)
     const hit = target(e.target);
     // sin lecturas, la explicación de «Entre casas» o del viaje va en la ficha, junto con los aspectos: no se abre además el cartelito
     if (hit?.inWheel && hit.tip && !interpOn) e.stopPropagation();
@@ -1444,6 +2153,7 @@ function selectTab(tab) {
   wheel?.clear();
   if (tab.id === "tab-cal") ensureCalendar();
   if (tab.id === "tab-sum") ensureSummary();
+  if (tab.id === "tab-notas") renderNotes();
   showTab(tab);
 }
 

@@ -35,6 +35,12 @@ const remote = {
   create: (body) => call("/api/charts", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) }),
   update: (id, body) => call(`/api/charts/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) }),
   remove: (id) => call(`/api/charts/${id}`, { method: "DELETE" }),
+  // un servidor de una versión anterior (abierto desde antes de las notas) no conoce esta ruta: se dice qué hacer
+  setNotes: (id, notes) => call(`/api/charts/${id}/notes`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ notes }) })
+    .catch((err) => {
+      if (err.status !== 404 || /carta/i.test(err.message)) throw err;
+      throw Object.assign(new Error("el servidor de la app es de una versión anterior. La nota queda guardada en esta ventana: cerrá todas las ventanas de Carta natal, esperá unos segundos y volvé a abrirla"), { status: 404, stale: true });
+    }),
 
   /** Copia de seguridad: el mismo archivo que exporta la versión pública, así las cartas pasan de una a la otra. */
   async exportData() {
@@ -69,6 +75,7 @@ export const charts = {
   create: async (body) => (await store()).create(body),
   update: async (id, body) => (await store()).update(id, body),
   remove: async (id) => (await store()).remove(id),
+  setNotes: async (id, notes) => (await store()).setNotes(id, notes),
   exportData: async () => (await store()).exportData(),
   importData: async (obj) => (await store()).importData(obj),
 };
