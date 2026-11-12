@@ -1586,7 +1586,7 @@ function paintSym() {
 }
 // «Insertar símbolo»: una paleta de planetas, signos, aspectos y ángulos que escribe el símbolo donde está el cursor
 // (por si «Pasar a símbolos» no reconoce una palabra, o para escribir directamente con símbolos)
-const PAL_PLANETS = [["sun", "☉"], ["moon", "☽"], ["mercury", "☿"], ["venus", "♀"], ["mars", "♂"], ["jupiter", "♃"], ["saturn", "♄"], ["uranus", "♅"], ["neptune", "♆"], ["pluto", "♇"], ["node", "☊"]];
+const PAL_PLANETS = [["sun", "☉"], ["moon", "☽"], ["mercury", "☿"], ["venus", "♀"], ["mars", "♂"], ["jupiter", "♃"], ["saturn", "♄"], ["uranus", "♅"], ["neptune", "♆"], ["pluto", "⯓"], ["node", "☊"]];
 const PAL_SIGNS = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
 const PAL_ASPECTS = [["conjunction", "☌"], ["opposition", "☍"], ["square", "□"], ["trine", "△"], ["sextile", "⚹"], ["quincunx", "⚻"], ["semisquare", "∠"], ["sesquiquadrate", "⚼"]];
 const VS15 = "\uFE0E";
@@ -1634,6 +1634,11 @@ $("#noteSym").addEventListener("click", () => {
 });
 $("#noteEdText").addEventListener("input", (e) => {
   if (!edNote) return;
+  if (e.target.value.includes("♇")) {                // Plutón: siempre con su símbolo astrológico (⯓), no el «PL»
+    const a = e.target.selectionStart, b = e.target.selectionEnd;
+    e.target.value = e.target.value.replace(/♇/g, "⯓");
+    e.target.setSelectionRange(a, b);
+  }
   if (symUndo !== null && !symBusy) { symUndo = null; paintSym(); }
   edNote.text = e.target.value;
   $("#noteEdStatus").classList.remove("err");

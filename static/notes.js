@@ -129,7 +129,8 @@ export function cleanNotes(data) {
   for (const v of list) {
     if (out.length >= NOTE_MAX) break;
     if (!v || typeof v !== "object" || typeof v.text !== "string") continue;
-    const text = v.text.trim() ? v.text.slice(0, NOTE_TEXT) : "";
+    // (Plutón con su símbolo astrológico: el «PL» de antes, ♇, pasa a ⯓)
+    const text = v.text.trim() ? v.text.slice(0, NOTE_TEXT).replace(/♇/g, "⯓") : "";
     if (!text) continue;
     let id = typeof v.id === "string" && /^[a-z0-9]{2,16}$/.test(v.id) ? v.id : newId();
     while (seen.has(id)) id = newId();
@@ -200,11 +201,13 @@ function houseNum(tok) {
 
 // los símbolos (con o sin el selector de variante que los muestra como texto y no como emoji)
 const VS = "︎";
-const PLANET_G = { sun: "☉", moon: "☽", mercury: "☿", venus: "♀", mars: "♂", jupiter: "♃", saturn: "♄", uranus: "♅", neptune: "♆", pluto: "♇", node: "☊" };
+// Plutón con el símbolo astrológico (⯓, el círculo sobre la medialuna y la cruz), no el «PL» (♇), que también se entiende
+const PLANET_G = { sun: "☉", moon: "☽", mercury: "☿", venus: "♀", mars: "♂", jupiter: "♃", saturn: "♄", uranus: "♅", neptune: "♆", pluto: "⯓", node: "☊" };
 const SIGN_G = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
 const ASP_G = { conjunction: "☌", opposition: "☍", square: "□", trine: "△", sextile: "⚹", quincunx: "⚻", semisquare: "∠", sesquiquadrate: "⚼" };
 const G_PLANET = Object.fromEntries(Object.entries(PLANET_G).map(([k, g]) => [g, k]));
 G_PLANET["☾"] = "moon";
+G_PLANET["♇"] = "pluto";
 const G_ASP = Object.fromEntries(Object.entries(ASP_G).map(([k, g]) => [g, k]));
 const GLYPHS = [...Object.keys(G_PLANET), ...SIGN_G, ...Object.keys(G_ASP)].join("");
 // los sustantivos de los aspectos (lo que se puede pasar a símbolo; «conjunta», «opuesto»… quedan como están)
@@ -226,7 +229,7 @@ function entities(text) {
     const t = toks[i], prev = toks[i - 1]?.w, next = toks[i + 1];
     const push = (e, used = 0) => { out.push({ ...e, at: t.at, end: toks[i + used].end }); i += used; };
     const g = t.raw[0];
-    if (G_PLANET[g]) { push({ t: "pl", id: G_PLANET[g] }); continue; }
+    if (G_PLANET[g]) { push({ t: "pl", id: G_PLANET[g], sym: g === "♇" ? PLANET_G.pluto + VS : null }); continue; }
     if (SIGN_G.includes(g)) { push({ t: "sign", n: SIGN_G.indexOf(g) }); continue; }
     if (G_ASP[g]) { push({ t: "asp", type: G_ASP[g] }); continue; }
     if (/^[.;:!?\n]$/.test(t.raw)) { push({ t: "end" }); continue; }

@@ -90,6 +90,8 @@ COMPUTE["/api/validate-chart"] = _validate
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # la letra de las notas va incluida (static/fonts): que se sirva con su tipo en cualquier sistema
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".woff2": "font/woff2"}
     server_version = "carta-natal"
     sys_version = ""
 

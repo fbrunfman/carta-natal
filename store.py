@@ -178,6 +178,7 @@ def clean_notes(data) -> list:
             raise StoreError("Notas inválidas.")
         if not text.strip():
             continue
+        text = text.replace("\u2647", "\u2bd3")    # Plutón: el «PL» (♇) pasa al símbolo astrológico (⯓)
         if len(text) > NOTE_TEXT:
             raise StoreError(f"Una nota puede tener hasta {NOTE_TEXT} caracteres.")
         nid = v.get("id")

@@ -225,6 +225,9 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     Ascendente → Asc, Medio Cielo → MC) y las casas a romanos («casa 12» → «casa XII», «cuarta casa» → «casa IV»,
     «Marte en 4» → «Marte en IV»). «Leo» y «Libra» solo después de «en» o «de» (para no tocar «leo mucho»). Se deshace
     con el mismo botón o con Cmd/Ctrl+Z.
+  - **La letra de las notas** es Kalam (manuscrita y clara, de Indian Type Foundry) y Plutón va siempre con su símbolo
+    astrológico (⯓): el «PL» (♇) de notas viejas o pegado en el texto se cambia solo. Las dos letras van incluidas en `static/fonts` (licencia OFL,
+    con sus textos ahí mismo): la app no pide nada a internet.
   - **«Insertar símbolo»** (en el editor) abre una paleta con los planetas, los signos, los aspectos, Asc y MC: tocar uno
     lo escribe donde está el cursor (se deshace con Cmd/Ctrl+Z). Sirve cuando «Pasar a símbolos» no reconoce una palabra.
   - **En la rueda:** con una nota abierta se iluminan sus planetas, sus aspectos, sus casas (sombreadas) y el Asc o el MC;
