@@ -391,6 +391,9 @@
         </button><button type="button" id="tripMore" class="secondary compact trip-more" aria-haspopup="dialog" aria-expanded="false" aria-controls="tripPick" aria-label="Filtrar los viajes" title="Filtrar los viajes por planeta o por casa" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
         </button>
+        <button type="button" id="notesBtn" class="secondary compact with-ic" aria-pressed="false" aria-controls="panel-notas" hidden title="Las notas de la carta">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg>Notas<span class="nb-count" id="notesCount" hidden></span>
+        </button>
         <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
         </button>
@@ -568,7 +571,7 @@
     </div>
 
     <!-- el editor de una nota (en el celular, una hoja desde abajo): el texto, sus vínculos y los que sugiere el texto -->
-    <div class="noted" id="noteEd" role="dialog" aria-labelledby="noteEdTitle" hidden>
+    <dialog class="noted" id="noteEd" aria-labelledby="noteEdTitle">
       <div class="noted-head">
         <div class="noted-title" id="noteEdTitle"></div>
         <button type="button" class="iconbtn noted-x" id="noteEdX" aria-label="Cerrar la nota"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
@@ -592,8 +595,16 @@
           <div class="nmenu" id="noteLinkMenu" role="menu" hidden></div>
         </div>
       </div>
-      <div class="noted-foot"><span id="noteEdStatus" role="status" aria-live="polite"></span><button type="button" id="noteEdDel">Borrar nota</button></div>
-    </div>
+      <div class="nask" id="noteEdAsk" role="alert" hidden>
+        <p>Tenés cambios sin guardar.</p>
+        <div><button type="button" class="nadd" id="noteAskSave">Guardar</button><button type="button" class="nlink-add" id="noteAskDrop">Descartar</button><button type="button" class="nlink-btn" id="noteAskBack">Seguir editando</button></div>
+      </div>
+      <div class="noted-foot">
+        <button type="button" id="noteEdDel">Borrar nota</button>
+        <span id="noteEdStatus" role="status" aria-live="polite"></span>
+        <button type="button" class="nadd" id="noteEdSave" disabled>Guardar</button>
+      </div>
+    </dialog>
     <!-- el atajo de las tablas: las notas que nombran a ese elemento y empezar una nueva -->
     <div class="npop" id="notePop" role="dialog" aria-label="Notas" hidden></div>
     <!-- celular: la nota iluminada en la rueda -->
@@ -608,7 +619,7 @@
     <!-- celular: la ficha del planeta que se tocó en la rueda y la barra de abajo (Carta · Tablas · Tránsitos · Sinastría) -->
     <div class="pfi" id="pfi" role="dialog" aria-modal="false" aria-labelledby="pfiTitle" hidden></div>
     <!-- celular: Entre casas, Viajes e Imprimir viven en este botón flotante, que se despliega hacia arriba -->
-    <button type="button" class="fab" id="fab" aria-label="Opciones de la rueda: Entre casas, Viajes e Imprimir" aria-expanded="false">
+    <button type="button" class="fab" id="fab" aria-label="Opciones de la rueda: Entre casas, Viajes, Notas e Imprimir" aria-expanded="false">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 3.5 8 12 12.5 20.5 8Z"/><path d="m3.5 12 8.5 4.5 8.5-4.5"/><path d="m3.5 16 8.5 4.5 8.5-4.5"/></svg>
       <span class="fab-dot" aria-hidden="true"></span>
     </button>

@@ -580,6 +580,7 @@ function showError(err) {
   $("#stage").hidden = true;
   $("#printBtn").hidden = true;
   $("#spillBtn").hidden = true;
+  $("#notesBtn").hidden = true;
   $("#warnings").hidden = true;
   $("#timeNote").hidden = true;
   paintBar();
@@ -788,6 +789,7 @@ function render() {
   $("#stage").hidden = false;
   $("#printBtn").hidden = false;
   $("#spillBtn").hidden = mode !== "natal";
+  $("#notesBtn").hidden = mode !== "natal";
   $("#tripBtn").hidden = mode !== "natal";
   header(c);
   paintBar();
@@ -1293,9 +1295,6 @@ function putNote(note) {
     if (i < 0) list.push(copy); else list.splice(i, 0, copy);
   }
   notesPending = { id, notes: list };
-  noteStatus("Guardando…");
-  clearTimeout(notesTimer);
-  notesTimer = setTimeout(flushNotes, 600);
   paintNoteMarks();
 }
 // Si no se pudo guardar (por ejemplo, el servidor de la Mac es de una versión anterior), las notas quedan de respaldo en
@@ -1437,72 +1436,109 @@ function lightNote(nid, bar = false) {
   paintLit();
 }
 
-// -- el editor: flota junto a lo que se tocó (en el celular, una hoja desde abajo)
-let edNote = null, edAnchor = null, edSugTimer = 0;
+// -- el editor: una ventana en el centro (en el celular también), con «Guardar». No se guarda solo: si se cierra con
+// cambios, pregunta si guardarlos o descartarlos.
+let edNote = null, edOrig = "", edAnchor = null, edSugTimer = 0;
+const edState = (n) => JSON.stringify([n.text, n.refs]);
+const edDirty = () => !!edNote && edState(edNote) !== edOrig;
 function openNote(nid, anchor, preRefs = []) {
   if (!notesOn()) return;
   closePop();
   closeLinkMenu();
   setFab?.(false);
   hideFicha();
+  closeView?.();
   wheel?.clear();                                    // (suelta lo tocado con el dedo: la rueda pasa a mostrar la nota)
   const n = nid ? noteById(nid) : null;
   edNote = n ? { ...n, refs: [...n.refs], snap: { ...n.snap } } : { id: newId(), text: "", at: isoNow(), refs: [], snap: {} };
-  for (const r of preRefs) addRef(r, false);
+  edOrig = edState(edNote);
+  for (const r of preRefs) addRef(r);
   edAnchor = anchor || null;
   $("#noteEdTitle").textContent = n ? `Nota · ${noteWhen(n.at)}` : "Nota nueva";
   $("#noteEdText").value = edNote.text;
   symUndo = null; paintSym();
   setPal(false);
+  askClose(false);
+  delArm(false);
   $("#noteEdDel").hidden = !n;
-  noteStatus(n ? "Se guarda sola mientras escribís." : "Escribí y vinculá: se guarda sola.");
+  noteStatus("");
   paintEditor();
-  $("#noteEd").hidden = false;
+  const ed = $("#noteEd");
+  if (!ed.open) ed.showModal();
   placeNoteEd();
   lightNote(edNote.id, litBar && litId === edNote.id);
   $("#noteEdText").focus({ preventScroll: true });
 }
+/** En el centro de lo que se ve (en el celular, con el teclado abierto, en el centro de lo que queda arriba del teclado). */
 function placeNoteEd() {
   const ed = $("#noteEd");
-  ed.style.left = ed.style.top = "";
-  if (ed.hidden || matchMedia("(max-width: 640px)").matches) return;     // celular: la CSS la pone abajo
-  if (!edAnchor?.isConnected) {                      // sin nada al lado (desde la nota abierta para leer): en el centro
-    ed.style.left = `${Math.round((innerWidth - ed.offsetWidth) / 2 + scrollX)}px`;
-    ed.style.top = `${Math.round(Math.max(8, (innerHeight - ed.offsetHeight) / 2) + scrollY)}px`;
-    return;
-  }
-  const r = edAnchor.getBoundingClientRect(), w = ed.offsetWidth, h = ed.offsetHeight;
-  const left = Math.max(8, Math.min(r.right - w, innerWidth - w - 16));
-  let top = r.bottom + 6;
-  if (top + h > innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;      // si no entra abajo, arriba
-  if (top + h > innerHeight - 8) top = Math.max(8, innerHeight - h - 8);
-  ed.style.left = `${Math.round(left + scrollX)}px`;
-  ed.style.top = `${Math.round(top + scrollY)}px`;
+  if (!ed.open) return;
+  const vv = window.visualViewport;
+  const H = vv ? vv.height : innerHeight, top0 = vv ? vv.offsetTop : 0;
+  ed.style.maxHeight = `${Math.floor(H - 16)}px`;
+  const h = ed.offsetHeight;
+  ed.style.top = `${Math.round(top0 + Math.max(8, (H - h) / 2))}px`;
 }
-function closeNote(focusBack = true) {
+window.visualViewport?.addEventListener("resize", placeNoteEd);
+window.visualViewport?.addEventListener("scroll", placeNoteEd);
+function paintSave() {
+  const dirty = edDirty(), empty = !edNote?.text.trim();
+  $("#noteEdSave").disabled = !dirty || empty;
+  if (!$("#noteEdStatus").classList.contains("err")) {
+    $("#noteEdStatus").textContent = dirty ? (empty ? "Escribí algo para poder guardar." : "Sin guardar") : "";
+  }
+}
+/** Guarda la nota abierta; si se pudo, cierra el editor. */
+async function saveNote() {
+  if (!edNote || !edNote.text.trim()) return false;
+  edNote.at = isoNow();
+  putNote(edNote);
+  noteStatus("Guardando…");
+  await flushNotes();
+  if (notesPending) return false;                    // no se pudo: el error queda a la vista (y las notas, de respaldo)
+  edOrig = edState(edNote);
+  closeNote(true, true);
+  return true;
+}
+/** Cerrar: si hay cambios sin guardar, primero pregunta. */
+function closeNote(focusBack = true, force = false) {
   const ed = $("#noteEd");
-  if (ed.hidden) return;
-  ed.hidden = true;
+  if (!ed.open) return;
+  if (!force && edDirty() && edNote.text.trim()) { askClose(true); return; }
+  askClose(false);
+  ed.close();
   closeLinkMenu();
   clearTimeout(edSugTimer);
-  flushNotes();
   const a = edAnchor, wasLit = litBar;
   edNote = edAnchor = null;
   if (!wasLit) lightNote(null); else paintLit();
   if (focusBack && a?.isConnected) a.focus({ preventScroll: true });
 }
-function addRef(key, save = true) {
+function askClose(on) {
+  $("#noteEdAsk").hidden = !on;
+  if (on) $("#noteAskSave").focus({ preventScroll: true });
+  placeNoteEd();
+}
+let delTimer = 0;
+function delArm(on) {
+  const b = $("#noteEdDel");
+  clearTimeout(delTimer);
+  b.dataset.arm = on ? "1" : "";
+  b.textContent = on ? "¿Borrar? Tocá de nuevo" : "Borrar nota";
+  if (on) delTimer = setTimeout(() => delArm(false), 4000);
+}
+function addRef(key, paint = true) {
   if (!edNote || edNote.refs.includes(key) || edNote.refs.length >= REF_MAX || !refExists(key, chart, visAsp())) return;
   edNote.refs.push(key);
   const s = snapOf(key, chart, visAsp());
   if (Object.keys(s).length) edNote.snap[key] = s;
-  if (save) { putNote(edNote); paintEditor(); paintLit(); }
+  if (paint && $("#noteEd").open) { paintEditor(); paintLit(); }
 }
 function dropRef(key) {
   if (!edNote) return;
   edNote.refs = edNote.refs.filter((r) => r !== key);
   delete edNote.snap[key];
-  putNote(edNote); paintEditor(); paintLit();
+  paintEditor(); paintLit();
 }
 const chipHTML = (key, cls, extra = "") => `<span class="nchip ${cls}" data-ref="${esc(key)}"${extra}>${refHTML(key)}</span>`;
 /** Los vínculos de la nota abierta, los sugeridos por el texto y el aviso si algo cambió. */
@@ -1526,6 +1562,7 @@ function paintEditor() {
     `aria-label="Vincular: ${esc(refText(s.key))}${s.warn ? `. Ojo: ${esc(s.warn)}` : ""}"${s.warn ? ` title="Ojo: ${esc(s.warn)}"` : ""}>` +
     `<span class="nchip-plus" aria-hidden="true">+</span>${refHTML(s.key)}</button>`).join("");
   $("#noteLink").disabled = refs.length >= REF_MAX;
+  paintSave();
   placeNoteEd();
 }
 // «Pasar a símbolos»: los nombres por sus símbolos y las casas en romanos (se puede deshacer, también con Cmd/Ctrl+Z)
@@ -1599,9 +1636,9 @@ $("#noteEdText").addEventListener("input", (e) => {
   if (!edNote) return;
   if (symUndo !== null && !symBusy) { symUndo = null; paintSym(); }
   edNote.text = e.target.value;
-  edNote.at = isoNow();
-  $("#noteEdDel").hidden = !edNote.text.trim() && !noteById(edNote.id);
-  putNote(edNote);
+  $("#noteEdStatus").classList.remove("err");
+  askClose(false);
+  paintSave();
   clearTimeout(edSugTimer);
   edSugTimer = setTimeout(paintEditor, 250);         // las sugerencias, cuando se para de escribir un momento
   if (litBar) paintLit();
@@ -1612,17 +1649,36 @@ $("#noteEd").addEventListener("click", (e) => {
   else if (add) addRef(add.dataset.add);
   else if (e.target.closest("#noteSugAll")) {
     for (const b of [...$("#noteSugs").querySelectorAll("[data-add]")]) addRef(b.dataset.add, false);
-    putNote(edNote); paintEditor(); paintLit();
+    paintEditor(); paintLit();
   }
 });
 $("#noteEdX").addEventListener("click", () => closeNote());
-$("#noteEdDel").addEventListener("click", () => {
-  if (!edNote) return;
-  edNote.text = "";
-  putNote(edNote);
-  if (litId === edNote.id) litBar = false;
-  closeNote();
+$("#noteEdSave").addEventListener("click", saveNote);
+$("#noteAskSave").addEventListener("click", saveNote);
+$("#noteAskDrop").addEventListener("click", () => closeNote(true, true));
+$("#noteAskBack").addEventListener("click", () => { askClose(false); $("#noteEdText").focus({ preventScroll: true }); });
+$("#noteEd").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveNote(); }
 });
+$("#noteEd").addEventListener("cancel", (e) => {        // Esc: primero cierra un menú abierto; si hay cambios, pregunta
+  e.preventDefault();
+  if (!$("#noteLinkMenu").hidden) closeLinkMenu(true);
+  else if (!$("#noteEdAsk").hidden) askClose(false);
+  else closeNote();
+});
+$("#noteEd").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeNote(); });      // el fondo
+$("#noteEdDel").addEventListener("click", async () => {
+  if (!edNote) return;
+  if ($("#noteEdDel").dataset.arm !== "1") { delArm(true); return; }
+  delArm(false);
+  const id = edNote.id;
+  putNote({ ...edNote, text: "" });
+  await flushNotes();
+  if (notesPending) return;
+  if (litId === id) litBar = false;
+  closeNote(true, true);
+});
+addEventListener("beforeunload", (e) => { if (edDirty() && edNote.text.trim()) e.preventDefault(); });
 
 // «+ Vincular»: un planeta, una casa, el Ascendente, el Medio Cielo o un aspecto de los que tiene la carta
 function linkMenuHTML(view) {
@@ -1713,7 +1769,6 @@ $("#notePop").addEventListener("click", (e) => {
 
 document.addEventListener("pointerdown", (e) => {
   const t = e.target;
-  if (!$("#noteEd").hidden && !$("#noteEd").contains(t) && !t.closest?.("[data-note], .ncard, #noteAdd, #noteLit, #notePop")) closeNote(false);
   if (!$("#noteLinkMenu").hidden && !$("#noteLinkMenu").contains(t) && !$("#noteLink").contains(t)) closeLinkMenu();
   if (!$("#notePop").hidden && !$("#notePop").contains(t) && !t.closest?.("[data-note]")) closePop();
 }, true);
@@ -1721,9 +1776,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("#noteLinkMenu").hidden) { e.preventDefault(); closeLinkMenu(true); }
   else if (!$("#notePop").hidden) { e.preventDefault(); closePop(true); }
-  else if (!$("#noteEd").hidden) { e.preventDefault(); closeNote(); }
 });
-addEventListener("resize", () => { if (!$("#noteEd").hidden) placeNoteEd(); closePop(); });
+addEventListener("resize", () => { placeNoteEd(); closePop(); });
 // los botones de nota de las tablas: antes que los otros clics de la fila (abrir la lectura, resaltar)
 for (const sel of ["#panel-pos", "#panel-asp", "#panel-casas"]) {
   $(sel).addEventListener("click", (e) => {
@@ -1783,6 +1837,14 @@ function paintNoteMarks() {
     svg.querySelectorAll(".nt").forEach((e) => e.classList.remove("nt"));
   }
   if (!$("#panel-notas").hidden) $("#noteCount").textContent = countText();
+  paintNotesCount();
+}
+/** El número de notas en el botón «Notas». */
+function paintNotesCount() {
+  const n = notesOn() ? noteCount(notesNow()) : 0;
+  $("#notesCount").hidden = !n;
+  $("#notesCount").textContent = n;
+  $("#notesBtn").title = n ? `Las notas de la carta (${n})` : "Las notas de la carta";
 }
 const countText = () => { const n = noteCount(notesNow()); return n === 0 ? "Sin notas" : n === 1 ? "1 nota" : `${n} notas`; };
 
@@ -2018,6 +2080,20 @@ function paintFab() {
 }
 new MutationObserver(paintFab).observe($(".modeacts"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed", "hidden"] });
 $("#printBtn").addEventListener("click", () => setFab(false));
+// «Notas»: abre las notas en la columna de las tablas (de nuevo, vuelve a la pestaña de antes); en el celular, desde el
+// botón flotante, va a «Tablas» con las notas
+let tabBeforeNotes = "tab-stair";
+$("#notesBtn").addEventListener("click", () => {
+  const phone = document.documentElement.hasAttribute("data-mbar");
+  setFab(false);
+  if (!$("#panel-notas").hidden && !(phone && mview !== "tablas")) {
+    selectTab(visibleTabs().find((t) => t.id === tabBeforeNotes) || visibleTabs()[0]);
+    return;
+  }
+  if (phone) { wheel?.clear(); mview = "tablas"; paintBar(); }
+  selectTab($("#tab-notas"));
+  if (phone) scrollTo(0, 0);
+});
 $("#tripMore").addEventListener("click", () => setFab(false));
 document.addEventListener("pointerdown", (e) => {
   if (document.documentElement.hasAttribute("data-fab") && !$(".modeacts").contains(e.target) && !$("#fab").contains(e.target)) setFab(false);
@@ -2140,10 +2216,13 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
 // ---------- pestañas, modos y filtro -------------------------------------
 const tabs = [...document.querySelectorAll("[role=tab]")];
 const lastTab = { natal: "tab-stair", transit: "tab-sum", syn: "tab-asp" };    // en la carta natal se abre en el Cuadro
-const visibleTabs = () => tabs.filter((t) => t.dataset.modes.split(" ").includes(mode));
+// (la de Notas no va en la fila: se abre con el botón «Notas» de arriba, o desde el botón flotante en el celular)
+const visibleTabs = () => tabs.filter((t) => t.id !== "tab-notas" && t.dataset.modes.split(" ").includes(mode));
 
 function selectTab(tab) {
+  if (tab.id === "tab-notas" && lastTab[mode] !== "tab-notas") tabBeforeNotes = lastTab[mode];
   lastTab[mode] = tab.id;
+  $("#notesBtn").setAttribute("aria-pressed", String(tab.id === "tab-notas"));
   for (const t of tabs) {
     const on = t === tab;
     t.setAttribute("aria-selected", on);
@@ -2182,7 +2261,7 @@ if (typeof ResizeObserver !== "undefined") new ResizeObserver(tabEdges).observe(
 function applyTabs() {
   const vis = visibleTabs();
   for (const t of tabs) t.hidden = !vis.includes(t);
-  selectTab(vis.find((t) => t.id === lastTab[mode]) || vis[0]);
+  selectTab((mode === "natal" && lastTab.natal === "tab-notas" ? $("#tab-notas") : null) || vis.find((t) => t.id === lastTab[mode]) || vis[0]);
 }
 
 tabs.forEach((t) => {
@@ -2202,7 +2281,7 @@ function paintMode() {
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === mode));
   $("#toolsTransit").hidden = mode !== "transit";
   $("#toolsSyn").hidden = mode !== "syn";
-  if (!$("#stage").hidden) { $("#spillBtn").hidden = mode !== "natal"; $("#tripBtn").hidden = mode !== "natal"; }
+  if (!$("#stage").hidden) { $("#spillBtn").hidden = mode !== "natal"; $("#tripBtn").hidden = mode !== "natal"; $("#notesBtn").hidden = mode !== "natal"; }
   paintBar();
 }
 

@@ -209,9 +209,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Notas de la carta natal**: cada carta guardada puede llevar **muchas notas** (de esa persona). Una nota es un texto
   libre con sus **vínculos**: planetas (en su casa y su signo), casas, el Ascendente, el Medio Cielo y aspectos que tiene
   la carta. Sin vínculos, la nota es sobre la carta en general. Solo se vincula lo que la carta tiene de verdad.
-  - **El editor** (un cuadro flotante; en el celular, una hoja desde abajo) tiene el texto, lo **vinculado** (chips con
-    × para quitar), los **sugeridos por el texto** y **«+ Vincular»** (un planeta, una casa, el Asc, el MC o un aspecto de
-    la carta). Se guarda sola mientras se escribe, con «Borrar nota».
+  - **El editor** es una ventana en el centro de la pantalla (también en el celular: se acomoda en lo que queda arriba
+    del teclado). Tiene el texto, lo **vinculado** (chips con × para quitar), los **sugeridos por el texto** y
+    **«+ Vincular»** (un planeta, una casa, el Asc, el MC o un aspecto de la carta). **No se guarda solo:** el botón
+    **Guardar** (o Cmd/Ctrl+Enter) guarda y cierra; cerrar con cambios sin guardar (×, Esc o tocar afuera) pregunta
+    «Guardar / Descartar / Seguir editando». «Borrar nota» pide tocarlo dos veces.
   - **Sugeridos**: la app lee el texto en castellano y propone vínculos que se confirman tocándolos (o «Sumar todos»).
     «Un Sol en I en Aries, haciendo cuadratura con la Luna y con Marte en IV, … el ascendente en Piscis» propone ☉ en I,
     la casa I, ☉□☽, ☉□♂, ☽ en IV, ♂ en IV, la casa IV y el Asc. Entiende planetas, signos, casas («en IV», «casa 4»,
@@ -228,13 +230,14 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - **En la rueda:** con una nota abierta se iluminan sus planetas, sus aspectos, sus casas (sombreadas) y el Asc o el MC;
     lo demás queda tenue. Lo que tiene notas lleva un **puntito dorado** (planetas, número de casa, Asc/MC; el símbolo del
     aspecto, con borde dorado); esas marcas están **apagadas por defecto** y se prenden con «Marcar en el mandala lo que
-    tiene notas» en la pestaña Notas (se recuerda en ese navegador). Con el mouse, pasar por una tarjeta de «Notas» la ilumina.
+    tiene notas» en las notas (se recuerda en ese navegador). Con el mouse, pasar por una tarjeta de «Notas» la ilumina.
   - **Leer una nota:** tocar una tarjeta (o una nota de las listas) la abre en el centro, grande y sin editar, con sus
     vínculos iluminados en la rueda y «Editar».
   - **Tocar la rueda:** un planeta, el número o la zona de una casa, el Asc o el MC o el símbolo de un aspecto que tienen
     notas muestran esas notas (y «+ Nota nueva sobre…»). Con el dedo, el planeta abre su ficha, que ya las trae; con
     lecturas, el planeta y los ángulos abren su ventana como siempre.
-  - **La pestaña «Notas»**: todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
+  - **Las notas** se abren con el botón **«Notas»** de arriba, entre Viajes e Imprimir (con la cantidad; tocarlo de
+    nuevo vuelve a la pestaña de antes); en el celular está en el botón flotante. Todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
     (un planeta encuentra también las notas de sus aspectos; una casa, las de los planetas que están en ella); tocar un
     chip filtra por eso. En el celular, «Ver en la carta» va a la rueda con la nota iluminada y un cartelito (Editar, ×).
   - **Atajos:** en Posiciones, Casas y Aspectos cada fila tiene un botón de nota (marcado si hay notas que lo nombran): sin
