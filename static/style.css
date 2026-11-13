@@ -1293,6 +1293,9 @@ button.nchip:hover { background: var(--hover); }
 .mc-frow select { width: auto; min-width: 9.5em; max-width: 100%; }
 .mc-frow select:disabled { opacity: .45; }
 .mc-w { font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
+.mc-chk { display: inline-flex; align-items: center; gap: 7px; margin-left: 4px; font-size: calc(13.5px * var(--fs)); color: var(--ink); cursor: pointer; }
+.mc-chk:has(input:disabled) { opacity: .45; cursor: default; }
+.mc-chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-2); }
 .mc-fact { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .mc-fact .home-tr-prog:empty { display: none; }
 .mc-filters .home-tr-note { margin: 8px 0 0; font-size: calc(13px * var(--fs)); }

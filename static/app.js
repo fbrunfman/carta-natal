@@ -1421,10 +1421,16 @@ function refText(key) {
   if (k.kind === "house") return `Casa ${roman(k.n)} (cúspide en ${SIGNS[signOfLon(chart.houses.cusps[k.n - 1])]})`;
   if (k.kind === "pl") {
     const b = chart.bodies.find((x) => x.id === k.ids[0]);
-    return b ? `${bodyName(b.id)} en casa ${roman(b.house)}, ${SIGNS[signOfLon(b.lon)]}` : bodyName(k.ids[0]);
+    return b ? `${bodyName(b.id)} en ${houseWords(b)}, ${SIGNS[signOfLon(b.lon)]}` : bodyName(k.ids[0]);
   }
   const x = aspectBetween(visAsp(), ...k.ids);
   return x ? `${bodyName(x.a)} ${ASP_WORD[x.type]} ${bodyName(x.b)}` : `${bodyName(k.ids[0])} y ${bodyName(k.ids[1])}`;
+}
+/** La casa de un planeta con la lógica de «Entre casas»: «casa III», «casas III y IV» o «casa III, en cúspide de la IV». */
+function houseWords(b) {
+  const r = reachData().find((x) => x.id === b.id);
+  if (!r) return `casa ${roman(b.house)}`;
+  return r.kind === "pass" ? `casa ${roman(b.house)}, en cúspide de la ${roman(r.also)}` : `casas ${roman(b.house)} y ${roman(r.also)}`;
 }
 /** De qué es una nota nueva: «el Sol», «la casa IV», «el Ascendente», «Sol cuadratura Luna». */
 function refAbout(key) {
@@ -1443,7 +1449,8 @@ function refHTML(key) {
   if (k.kind === "house") return `Casa ${roman(k.n)}`;
   if (k.kind === "pl") {
     const b = chart.bodies.find((x) => x.id === k.ids[0]);
-    return b ? `${gl(b.id)} en ${roman(b.house)} · ${sgl(signOfLon(b.lon))}` : gl(k.ids[0]);
+    const r = b && reachData().find((x) => x.id === b.id);
+    return b ? `${gl(b.id)} en ${roman(b.house)}${r ? `/${roman(r.also)}` : ""} · ${sgl(signOfLon(b.lon))}` : gl(k.ids[0]);
   }
   const x = aspectBetween(visAsp(), ...k.ids);
   if (!x) return `${gl(k.ids[0])} ${gl(k.ids[1])}`;
@@ -1768,9 +1775,11 @@ function linkMenuHTML(view) {
   const back = `<button type="button" role="menuitem" class="nmi nback" data-view="main">‹ Volver</button>`;
   const asp = visAsp();
   if (view === "pl") return back + chart.bodies.filter((b) => BODY[b.id]).sort((a, b) => REF_ORDER.indexOf(a.id) - REF_ORDER.indexOf(b.id))
-    .map((b) => item(keyPl(b.id), `${gl(b.id)} ${bodyName(b.id)}`, `${SIGNS[signOfLon(b.lon)]} · casa ${roman(b.house)}`)).join("");
+    .map((b) => item(keyPl(b.id), `${gl(b.id)} ${bodyName(b.id)}`, `${SIGNS[signOfLon(b.lon)]} · ${houseWords(b)}`)).join("");
   if (view === "house") return back + chart.houses.cusps.map((lon, i) => {
-    const inside = chart.bodies.filter((b) => b.house === i + 1).map((b) => bodyName(b.id)).join(", ");
+    const R = reachData();
+    const inside = [...chart.bodies.filter((b) => b.house === i + 1).map((b) => bodyName(b.id)),
+      ...R.filter((r) => r.also === i + 1 && chart.bodies.some((b) => b.id === r.id)).map((r) => `${bodyName(r.id)} (entre casas)`)].join(", ");
     return item(keyHouse(i + 1), `Casa ${roman(i + 1)}`, `Cúspide en ${SIGNS[signOfLon(lon)]}${inside ? ` · ${inside}` : ""}`);
   }).join("");
   if (view === "asp") return back + [...asp].sort((a, b) => a.orb - b.orb).map((x) => item(keyAsp(x.a, x.b),
@@ -2995,6 +3004,9 @@ try {
         e.csig = r.csig;
         e.house = Object.fromEntries(TRIP_PLANETS.map((b) => [b, r.house[b]]));
         e.asp = r.asp.filter((x) => Array.isArray(x) && TRIP_PLANETS.includes(x[0]) && TRIP_PLANETS.includes(x[1]) && HARD.includes(x[2]));
+        if (r.reach && typeof r.reach === "object") {         // «Entre casas»: [la casa que sigue, "pass" | "both"]
+          e.reach = Object.fromEntries(Object.entries(r.reach).filter(([id, x]) => TRIP_PLANETS.includes(id) && Array.isArray(x) && x[0] >= 1 && x[0] <= 12 && (x[1] === "pass" || x[1] === "both")));
+        }
       }
       find.pos.set(id, e);
     }
@@ -3008,7 +3020,7 @@ function findSave() {
   } catch {}
 }
 const posReady = (it) => find.pos.get(it.id)?.sig === trSig(it);                       // los signos
-const fullReady = (it) => posReady(it) && find.pos.get(it.id).csig === cfgSig();       // también las casas y los aspectos
+const fullReady = (it) => posReady(it) && find.pos.get(it.id).csig === cfgSig() && !!find.pos.get(it.id).reach;   // también las casas, los aspectos y «Entre casas»
 
 async function retryBusy(call, alive) {
   for (let i = 0; ; i++) {
@@ -3040,7 +3052,9 @@ async function runFind(full = true) {
         const house = Object.fromEntries(pl.map((b) => [b.id, b.house]));
         const asp = (c.aspects || []).filter((x) => TRIP_PLANETS.includes(x.a) && TRIP_PLANETS.includes(x.b) && HARD.includes(x.type))
           .map((x) => [x.a, x.b, x.type, Math.round(x.orb * 100) / 100]);
-        find.pos.set(it.id, { sig, lon, csig, house, asp });
+        const reach = Object.fromEntries((c.orbs_v === ORBS_VERSION ? c.house_reach || [] : [])
+          .filter((r) => TRIP_PLANETS.includes(r.id)).map((r) => [r.id, [r.also, r.kind]]));
+        find.pos.set(it.id, { sig, lon, csig, house, asp, reach });
       } catch (err) {
         find.errs.set(it.id, err);
       }
@@ -3063,7 +3077,7 @@ function paintFindState() {
 // -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
 // un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
 const MC_PAGE = 24;
-const mc = { q: "", letter: "", pl: "", sign: "all", house: "all", a: "", asp: "hard", b: "any", page: 1 };
+const mc = { q: "", letter: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
 (() => {
@@ -3078,11 +3092,13 @@ const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(
     $(sel).addEventListener("change", (e) => { mc[key] = e.target.value; mc.page = 1; renderMyCharts(); });
   }
   $("#mcQ").addEventListener("input", (e) => { mc.q = e.target.value; mc.page = 1; renderMyCharts(); });
+  $("#mcSpill").addEventListener("change", (e) => { mc.spill = e.target.checked; mc.page = 1; renderMyCharts(); });
   $("#mcNew").addEventListener("click", () => openForm("new"));
   $("#mcCalc").addEventListener("click", () => runFind(true));
   $("#mcClear").addEventListener("click", () => {
-    Object.assign(mc, { q: "", letter: "", pl: "", sign: "all", house: "all", a: "", asp: "hard", b: "any", page: 1 });
+    Object.assign(mc, { q: "", letter: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 });
     $("#mcQ").value = "";
+    $("#mcSpill").checked = false;
     for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) $(sel).value = mc[key];
     renderMyCharts();
   });
@@ -3093,14 +3109,24 @@ const signTxt = (lon) => { const s = split(lon); return `<span class="g" aria-hi
 function posHits(it) {
   const hits = [];
   const P = find.pos.get(it.id);
+  // las casas de un planeta: la suya o, con «Entre casas», también (o solo) la que sigue si está cerca de su cúspide
+  const housesOf = (id) => {
+    const r = mc.spill ? P.reach?.[id] : null;
+    return !r ? [P.house[id]] : r[1] === "pass" ? [r[0]] : [P.house[id], r[0]];
+  };
+  const houseTxt = (id) => {
+    const r = mc.spill ? P.reach?.[id] : null;
+    if (!r) return `casa ${roman(P.house[id])}`;
+    return r[1] === "pass" ? `casa ${roman(r[0])} (en cúspide, desde la ${roman(P.house[id])})` : `casas ${roman(P.house[id])} y ${roman(r[0])}`;
+  };
   if (mc.pl) {
-    const needHouse = mc.house !== "all" && mc.pl !== "asc" && mc.pl !== "mc";
+    const angle = mc.pl === "asc" || mc.pl === "mc";
     const bodies = mc.pl === "any" ? TRIP_PLANETS : [mc.pl];
     const ok = bodies.filter((id) => (mc.sign === "all" || split(P.lon[id]).sign === +mc.sign)
-      && (mc.house === "all" || (needHouse || mc.pl === "any" ? P.house?.[id] === +mc.house : true)));
+      && (mc.house === "all" || angle || housesOf(id).includes(+mc.house)));
     if (!ok.length) return null;
     if (mc.sign !== "all" || mc.house !== "all") {
-      for (const id of ok) hits.push(`${plTxt(id)} · ${signTxt(P.lon[id])}${P.house?.[id] && !["asc", "mc"].includes(id) ? ` · casa ${roman(P.house[id])}` : ""}`);
+      for (const id of ok) hits.push(`${plTxt(id)} · ${signTxt(P.lon[id])}${P.house?.[id] && !angle ? ` · ${houseTxt(id)}` : ""}`);
     }
   }
   if (mc.a) {
@@ -3165,6 +3191,7 @@ function renderMyCharts() {
   const angle = mc.pl === "asc" || mc.pl === "mc";
   $("#mcHouse").disabled = angle;
   if (angle && mc.house !== "all") { mc.house = "all"; $("#mcHouse").value = "all"; }
+  $("#mcSpill").disabled = angle || mc.house === "all";
   const posOn = !!mc.pl && (mc.sign !== "all" || mc.house !== "all") || !!mc.a;
   const needFull = (!!mc.pl && mc.house !== "all") || !!mc.a;
   const ready = needFull ? fullReady : posReady;
@@ -3175,7 +3202,7 @@ function renderMyCharts() {
   calc.hidden = !posOn || find.running || !missing.length;
   calc.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
   $("#mcProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
-  $("#mcNote").textContent = "Los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
+  $("#mcNote").textContent = "Con «Entre casas», un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (los orbes de Reglas avanzadas). Los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
     (isPublic() ? " Cada carta se calcula una vez: los datos de nacimiento se envían al servidor solo para eso; las posiciones quedan en este navegador." : "");
   const anyFilter = !!(mc.q.trim() || mc.letter || mc.pl || mc.a);
   $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "Planeta en signo o casa · planeta en aspecto duro";

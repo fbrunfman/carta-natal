@@ -149,12 +149,24 @@ export function cleanNotes(data) {
   return out;
 }
 
+/**
+ * Las casas de un planeta: la suya y, con la lógica de «Entre casas» (chart.house_reach, con los orbes de Reglas avanzadas),
+ * también la que sigue si está cerca de su cúspide. [] si el planeta no está en la carta.
+ */
+export function housesOf(chart, id) {
+  const b = chart?.bodies?.find((x) => x.id === id);
+  if (!b) return [];
+  const r = (chart.house_reach || []).find((x) => x.id === id);
+  return r && r.also !== b.house ? [b.house, r.also] : [b.house];
+}
+
 /** Cuántas notas con texto tiene una carta guardada. */
 export const noteCount = (notes) => (Array.isArray(notes) ? notes.filter((n) => n && n.text && n.text.trim()).length : 0);
 
 /**
  * ¿La nota toca eso? Lo vincula, o (para un planeta) vincula un aspecto suyo, o (para una casa) vincula un planeta que está
- * en esa casa. Así el filtro «casa IV» encuentra también «Marte en IV».
+ * en esa casa, también con la lógica de «Entre casas». Así el filtro «casa IV» encuentra también «Marte en IV» y, si Marte
+ * está al final de la III cerca de la cúspide de la IV, también las notas de Marte.
  */
 export function touches(note, key, chart) {
   const refs = note?.refs || [];
@@ -163,7 +175,7 @@ export function touches(note, key, chart) {
   if (!k) return false;
   if (k.kind === "pl") return refs.some((r) => r.startsWith("asp:") && r.slice(4).split("|").includes(k.ids[0]));
   if (k.kind === "house" && chart) {
-    return refs.some((r) => r.startsWith("pl:") && chart.bodies.find((b) => b.id === r.slice(3))?.house === k.n);
+    return refs.some((r) => r.startsWith("pl:") && housesOf(chart, r.slice(3)).includes(k.n));
   }
   return false;
 }
@@ -327,7 +339,11 @@ export function detectRefs(text, chart, aspects, names = {}) {
       const b = chart.bodies.find((x) => x.id === e.id);
       if (!b) continue;
       const bits = [];
-      if ("house" in c && c.house !== b.house) bits.push(`el texto dice casa ${roman(c.house)}; en la carta está en la ${roman(b.house)}`);
+      // la casa que dice el texto vale si es la suya o, con la lógica de «Entre casas», la que sigue
+      const hs = housesOf(chart, e.id);
+      if ("house" in c && !hs.includes(c.house)) {
+        bits.push(`el texto dice casa ${roman(c.house)}; en la carta está en la ${roman(b.house)}${hs.length > 1 ? ` (y entre casas, en la ${roman(hs[1])})` : ""}`);
+      }
       if ("sign" in c && c.sign !== signOf(b.lon)) bits.push(`el texto dice ${signName(c.sign)}; en la carta está en ${signName(signOf(b.lon))}`);
       add(keyPl(e.id), e.at, bits.join(" · "));
     } else if (e.t === "angle") {

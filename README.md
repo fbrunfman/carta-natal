@@ -105,7 +105,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
     - **por inicial**: una fila de letras (las que no tienen cartas no se pueden tocar; «Ágata» va en la A);
     - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
-      signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo) y *planeta en aspecto duro* con otro
+      signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo; con **«con Entre casas»** la casa se
+      cuenta con la lógica del botón «Entre casas»: un planeta cerca de la cúspide de la casa que sigue cuenta también en
+      ella, o solo en ella si está en cúspide, con los orbes de *Reglas avanzadas*, y la tarjeta lo dice: «casas X y XI» o
+      «casa XI (en cúspide, desde la X)») y *planeta en aspecto duro* con otro
       (o con cualquiera): «cualquier aspecto duro» son los de los viajes de planetas (Configuración → *Reglas avanzadas*;
       de fábrica conjunción, oposición y cuadratura), o uno en particular (también semicuadratura y sesquicuadratura). Los
       aspectos usan los orbes de Configuración y las casas, el sistema de casas elegido. Todo se combina (nombre, inicial y
@@ -239,7 +242,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     la casa I, ☉□☽, ☉□♂, ☽ en IV, ♂ en IV, la casa IV y el Asc. Entiende planetas, signos, casas («en IV», «casa 4»,
     «cuarta casa», «5ta casa», «casas II y VII»), Asc y MC, y aspectos con la palabra («cuadratura con…», «la oposición
     entre…», «Sol y Luna en trígono», «Sol-Luna»). Si el texto dice otra cosa que la carta («Marte en III» y está en la IV,
-    o «trígono» y es cuadratura), lo propone igual con un aviso (!). Un número suelto después de «en» o «la» también es
+    o «trígono» y es cuadratura), lo propone igual con un aviso (!). **Las casas siguen la lógica de «Entre casas»**: si
+    Marte está al final de la III cerca de la cúspide de la IV (con los orbes de *Reglas avanzadas*), «Marte en IV» no
+    lleva aviso, el aviso de «Marte en V» lo dice («está en la III (y entre casas, en la IV)»), el filtro «casa IV» de las
+    notas encuentra las notas de Marte, y los vínculos lo muestran («♂ en III/IV», «casas III y IV», «casa III, en cúspide
+    de la IV»). Un número suelto después de «en» o «la» también es
     una casa («Marte en 4»), salvo que siga una unidad («en 3 días»). El texto con símbolos se entiende igual.
   - **«Pasar a símbolos»** (en el editor) cambia los nombres por sus símbolos (Sol → ☉, Aries → ♈, cuadratura → □,
     Ascendente → Asc, Medio Cielo → MC) y las casas a romanos («casa 12» → «casa XII», «cuarta casa» → «casa IV»,
