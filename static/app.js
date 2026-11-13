@@ -5,7 +5,8 @@ import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
-import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs } from "./settings.js";
+import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY } from "./settings.js";
+import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
 import { profection, profectionHTML, featuredHTML, featuredRowsHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
@@ -20,7 +21,6 @@ const $ = (s) => document.querySelector(s);
 const form = $("#form");
 const STORE = "carta:last";
 const VIEW = "carta:view";
-const SIDE_KEY = "carta:side";
 
 // Datos iniciales: en tu computadora, tu carta (están en defaults-local.js, que la versión pública no sirve).
 // Se recuerda lo último que calculaste.
@@ -53,6 +53,7 @@ let tripHSel = new Set(HOUSES);            // por casa: a cuáles llegan
 const tripReset = (by = "planet") => { tripBy = by; tripSel = new Set(TRIP_PLANETS); tripHSel = new Set(HOUSES); };
 let interpOn = loadSettings().interp;      // false = «solo datos»: ninguna lectura ni descripción (Configuración)
 let chart = null;          // carta natal mostrada (en sinastría, la carta A)
+let curCfg = null;         // la configuración de ahora (settings.js), para los resúmenes del panel
 let transit = null;        // respuesta de /api/transits
 let syn = null;            // respuesta de /api/synastry
 let partnerId = null;      // carta guardada con la que se compara
@@ -160,10 +161,9 @@ form.addEventListener("submit", (e) => {
 
 // ---------- cartas guardadas ---------------------------------------------
 const saved = createSaved({
-  list: $("#savedList"), where: $("#savedWhere"),
-  picker: { root: $("#picker"), btn: $("#pickBtn"), pop: $("#pickPop"), q: $("#pickQ"), none: $("#pickNone"), count: $("#savedCount") },
+  where: $("#savedWhere"),
   onOpen: openSaved,
-  onChange: () => { syncPartners(); syncActions(); paintTitlePick(); if (page === "home") renderHomeCharts(); },
+  onChange: () => { syncPartners(); syncActions(); paintTitlePick(); paintNavChart(); if (page === "home") renderHomeCharts(); },
 });
 
 let noteTimer = 0;
@@ -201,17 +201,17 @@ async function openSaved(item) {
   fillForm(item);
   note("");
   syncSaveButtons();
-  closeDrawer();
   await calculate();
 }
 
-// -- cambiar de carta desde la carta: la lupa al lado del nombre abre la lista de las guardadas, con buscador
-const cpick = $("#cpick"), cpickBtn = $("#titlePick"), cpickQ = $("#cpickQ"), cpickList = $("#cpickList");
+// -- cambiar de carta: la lupa al lado del nombre (o el buscador de la barra de arriba) abre la lista de las guardadas, con buscador
+const cpick = $("#cpick"), cpickQ = $("#cpickQ"), cpickList = $("#cpickList");
+let cpickBtn = $("#titlePick");
 const dmy = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d.split("-").reverse().join("/") : "");
 function paintTitlePick() {                                  // (se llama también desde onChange de las guardadas: sin las constantes de acá)
   const b = $("#titlePick");
-  b.hidden = !saved.items.length;
-  if (b.hidden) { $("#cpick").hidden = true; b.setAttribute("aria-expanded", "false"); }
+  b.hidden = false;                                           // aunque no haya guardadas: ahí está «Nueva carta»
+  paintFind();
 }
 function fillCpick() {
   const q = cpickQ.value.trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -225,15 +225,18 @@ function fillCpick() {
     li.append(b);
     return li;
   }));
-  if (!items.length) cpickList.append(Object.assign(document.createElement("li"), { className: "cpick-none", textContent: "Ninguna carta con ese nombre." }));
+  if (!items.length) cpickList.append(Object.assign(document.createElement("li"), { className: "cpick-none", textContent: saved.items.length ? "Ninguna carta con ese nombre." : "Todavía no guardaste ninguna carta." }));
+  cpickQ.hidden = !saved.items.length;
 }
-function openCpick() {
+function openCpick(btn = $("#titlePick")) {
+  if (!cpick.hidden) closeCpick(false);
+  cpickBtn = btn;
   cpickQ.value = "";
   fillCpick();
   cpick.hidden = false;
-  const room = cpick.offsetParent ? cpick.offsetParent.clientWidth - cpick.offsetWidth : 0;      // que no se salga por la derecha
-  cpick.style.left = `${Math.max(0, Math.min(cpickBtn.offsetLeft - 6, room))}px`;
-  cpick.style.top = `${cpickBtn.offsetTop + cpickBtn.offsetHeight + 6}px`;
+  const r = btn.getBoundingClientRect(), w = cpick.offsetWidth;                // debajo del botón, sin salirse de la pantalla
+  cpick.style.left = `${Math.round(Math.max(8, Math.min(r.left - 6, innerWidth - w - 8)))}px`;
+  cpick.style.top = `${Math.round(r.bottom + 6)}px`;
   cpickBtn.setAttribute("aria-expanded", "true");
   (matchMedia("(pointer: coarse)").matches ? cpickList.querySelector("[aria-current]") || cpickList.querySelector("button") : cpickQ)?.focus({ preventScroll: true });
 }
@@ -243,7 +246,8 @@ function closeCpick(focusBtn = true) {
   cpickBtn.setAttribute("aria-expanded", "false");
   if (focusBtn) cpickBtn.focus({ preventScroll: true });
 }
-cpickBtn.addEventListener("click", () => (cpick.hidden ? openCpick() : closeCpick()));
+for (const b of [$("#titlePick"), $("#tbFind")]) b.addEventListener("click", () => (cpick.hidden || cpickBtn !== b ? openCpick(b) : closeCpick()));
+addEventListener("resize", () => closeCpick(false));
 cpickQ.addEventListener("input", fillCpick);
 cpickList.addEventListener("click", (e) => {
   const b = e.target.closest(".cpick-it");
@@ -262,6 +266,10 @@ cpick.addEventListener("keydown", (e) => {
   else if (e.key === "Enter" && e.target === cpickQ && opts[0]) { e.preventDefault(); opts[0].click(); }
 });
 document.addEventListener("pointerdown", (e) => { if (!cpick.hidden && !cpick.contains(e.target) && !cpickBtn.contains(e.target)) closeCpick(false); }, true);
+/** El buscador de la barra de arriba: con cartas guardadas, fuera de la carta (en la carta está la lupa al lado del nombre). */
+function paintFind() {
+  $("#tbFind").hidden = !saved.items.length || page === "chart";
+}
 
 // -- celular: el nombre en su renglón. Si no entra, primero se achica un poco y después se corta con «…»; la lupa y el
 // ícono de info van al lado o, si el nombre ocupa todo el ancho, arriba (style.css). Los datos de nacimiento, detrás de la info.
@@ -277,7 +285,8 @@ addEventListener("resize", () => { fitTitle(); if (!$("#cinfo").hidden) closeCin
 function openCinfo() {
   const box = $("#cinfo"), btn = $("#titleInfo");
   const parts = [["cinfo-sub", $("#sub").textContent], ["cinfo-utc", $("#timeNote").hidden ? "" : $("#timeNote").textContent]];
-  box.replaceChildren(...parts.filter(([, t]) => t).map(([cls, t]) => Object.assign(document.createElement("p"), { className: cls, textContent: t })));
+  $("#cinfoText").replaceChildren(...parts.filter(([, t]) => t).map(([cls, t]) => Object.assign(document.createElement("p"), { className: cls, textContent: t })));
+  $("#edit").hidden = !hasChart();
   box.hidden = false;
   box.style.top = `${btn.closest("h2").offsetTop + btn.closest("h2").offsetHeight + 8}px`;
   btn.setAttribute("aria-expanded", "true");
@@ -316,7 +325,6 @@ async function persist(asNew) {
     note(updating ? "Cambios guardados." : "Carta guardada.");
     showChart();
     await calculate();                  // lo que se ve es lo que se guardó
-    closeDrawer();                      // en el celular, el menú se cierra para ver la carta
   } catch (err) {
     note(err.message, true);
   } finally {
@@ -327,30 +335,27 @@ async function persist(asNew) {
 
 $("#saveAs").addEventListener("click", () => persist(true));
 
-// ---------- el formulario aparece con «Nueva carta» o «Editar» ----------------
-// Oculto, el menú muestra solo la carta abierta y los botones. Al cerrarlo con la ✕ todo vuelve a como estaba;
-// al calcular, lo que se ve pasa a ser el nuevo punto de partida de esa ✕.
-const formPanel = $("#formPanel");
+// ---------- el formulario: una ventana en el centro, con «Nueva carta» o «Editar los datos» ----------------
+// Al cerrarla con la ✕ (o Esc) todo vuelve a como estaba; al calcular, lo que se ve pasa a ser el nuevo punto de partida.
+const formDlg = $("#formDlg");
 let editing = null;                     // { values, active } de antes de abrir; null con el formulario cerrado
-const formOpen = () => !formPanel.hidden;
+let formBack = null;                    // a dónde vuelve el foco al cerrar
+const formOpen = () => formDlg.open;
 const hasChart = () => !!birth;
 
-/** Qué se ve en «Cartas guardadas»: la lista y sus botones, o el primer paso si no hay ninguna. */
+/** Lo que depende de si hay cartas guardadas. */
 function syncActions() {
   const none = saved.items.length === 0;
-  const open = formOpen();
-  $("#savedSec").hidden = none && open;          // sin cartas y con el formulario abierto, el aviso sobra
-  $("#savedEmpty").hidden = !none || open;
-  $("#chartActions").hidden = none || open;
-  $("#edit").hidden = !hasChart();
   if (none) root.dataset.nocharts = ""; else delete root.dataset.nocharts;
-  paintSideBtn();
+  $("#edit").hidden = !hasChart();
 }
 
 /** kind: "new" (en blanco) o "edit" (los datos de la carta que se está viendo). */
 function openForm(kind) {
-  if (!formOpen()) editing = { values: readForm(), active: saved.activeId };
-  saved.closePicker();
+  if (!formOpen()) { editing = { values: readForm(), active: saved.activeId }; formBack = document.activeElement; }
+  closeCpick(false);
+  closeCinfo(false);
+  closeCfg(false);
   if (kind === "new") {
     saved.setActive(null);
     fillForm(BLANK);
@@ -358,11 +363,11 @@ function openForm(kind) {
   note("");
   syncSaveButtons();
   $("#formTitle").textContent = kind === "new" ? "Nueva carta" : saved.activeId ? "Editar carta" : "Carta sin guardar";
-  formPanel.hidden = false;
+  delArmChart(false);
+  $("#formDel").hidden = !saved.activeId;
+  if (!formDlg.open) formDlg.showModal();
   syncActions();
-  revealSide();
   form.elements.name.focus({ preventScroll: true });
-  formPanel.scrollIntoView({ block: "nearest" });
 }
 
 /** cancel: vuelve a los datos de antes de abrir (la ✕). Guardar o elegir otra carta la cierran sin volver atrás. */
@@ -374,20 +379,45 @@ function closeForm(cancel) {
     syncSaveButtons();
   }
   editing = null;
-  formPanel.hidden = true;
+  if (formDlg.open) formDlg.close();
   syncActions();
+  if (formBack?.isConnected && formBack.offsetParent !== null) formBack.focus({ preventScroll: true });
+  formBack = null;
 }
 
 /** El primer paso: con una carta ya a la vista (sin guardar) se guarda esa; si no, una en blanco. */
 const createFirst = () => openForm(hasChart() ? "edit" : "new");
 
-$("#new").addEventListener("click", () => openForm("new"));
 $("#edit").addEventListener("click", () => openForm("edit"));
-$("#first").addEventListener("click", createFirst);
 $("#introNew").addEventListener("click", createFirst);
-$("#formClose").addEventListener("click", () => {
-  closeForm(true);
-  [$("#edit"), $("#new"), $("#first")].find((b) => b.offsetParent !== null)?.focus();
+$("#formClose").addEventListener("click", () => closeForm(true));
+formDlg.addEventListener("cancel", (e) => { e.preventDefault(); closeForm(true); });          // Esc: como la ✕
+// eliminar la carta abierta: dos toques (el primero pide confirmar); después se vuelve al inicio
+let delChartTimer = 0;
+function delArmChart(on) {
+  const b = $("#formDel");
+  clearTimeout(delChartTimer);
+  b.dataset.arm = on ? "1" : "";
+  b.textContent = on ? "¿Eliminar? Tocá de nuevo" : "Eliminar esta carta";
+  if (on) delChartTimer = setTimeout(() => delArmChart(false), 6000);      // con el dedo hace falta tiempo para el segundo toque
+}
+$("#formDel").addEventListener("click", async () => {
+  const id = saved.activeId;
+  if (!id) return;
+  if ($("#formDel").dataset.arm !== "1") { delArmChart(true); return; }
+  delArmChart(false);
+  try {
+    await saved.remove(id);
+  } catch (err) { note(err.message, true); return; }
+  editing = null;
+  if (formDlg.open) formDlg.close();
+  fillForm(BLANK);
+  chart = null; birth = null;
+  chartStarted = false;
+  $("#stage").hidden = true;
+  syncSaveButtons();
+  syncActions();
+  go("#inicio");
 });
 
 // ---------- sinastría: elegir la otra carta -------------------------------
@@ -696,8 +726,9 @@ function placeTripPop() {
   const pop = $("#tripPick"), btn = $("#tripMore");
   pop.style.left = pop.style.top = "";
   if (matchMedia("(max-width: 640px)").matches) return;           // en el celular, la hoja de abajo la ubica la CSS
-  const max = pop.offsetParent ? pop.offsetParent.clientWidth - pop.offsetWidth : 0;
-  pop.style.left = `${Math.max(0, Math.min(btn.offsetLeft + btn.offsetWidth - pop.offsetWidth, max))}px`;
+  const par = pop.offsetParent?.getBoundingClientRect() || { left: 0 };     // que no se salga de la ventana (con la barra de arriba, puede pasar a la izquierda de los botones)
+  const min = 8 - par.left, max = document.documentElement.clientWidth - 8 - par.left - pop.offsetWidth;
+  pop.style.left = `${Math.round(Math.max(min, Math.min(btn.offsetLeft + btn.offsetWidth - pop.offsetWidth, max)))}px`;
   pop.style.top = `${btn.offsetTop + btn.offsetHeight + 6}px`;
 }
 $("#tripMore").addEventListener("click", () => setTripPop(!tripPop));
@@ -750,6 +781,7 @@ function fitWheel() {
   if ($("#stage").hidden || !svg.isConnected) return;
   const fig = svg.parentElement, legend = fig.querySelector(".legend");
   root.toggleAttribute("data-headrow", deskWide.matches && $("#chartPage").clientWidth >= 1080);
+  paintMerge();
   const top = svg.getBoundingClientRect().top + scrollY;
   const free = innerHeight - top - 16, colW = fig.clientWidth;
   // ¿la leyenda entra en el rincón de abajo a la izquierda sin tocar la rueda? La rueda es redonda: su esquina queda vacía.
@@ -768,6 +800,20 @@ function fitWheel() {
   root.toggleAttribute("data-legend-side", side);
   const room = Math.max(440, Math.floor(side || !legend ? free : free - legend.offsetHeight - 8));
   if (room !== fitWheel.room) { fitWheel.room = room; root.style.setProperty("--wheel-room", `${room}px`); }
+}
+/**
+ * Escritorio ancho, en la carta: el nombre (con la lupa y la info), los modos y los botones de la carta van en la barra de
+ * arriba (style.css, data-tbmerge). El nombre empieza después del botón de las secciones y termina antes de los modos.
+ */
+function paintMerge() {
+  const on = page === "chart" && deskWide.matches && innerWidth >= 900 && !$("#stage").hidden;
+  root.toggleAttribute("data-tbmerge", on);
+  if (!on) return;
+  const l = $("#appMenuBtn").getBoundingClientRect().right + 14;
+  const r = innerWidth - $("#theme").getBoundingClientRect().left + 12;
+  root.style.setProperty("--tb-l", `${Math.round(l)}px`);
+  root.style.setProperty("--tb-r", `${Math.round(r)}px`);
+  root.style.setProperty("--tb-mb", `${Math.round($("#chartPage > .modebar").offsetWidth)}px`);
 }
 {
   let raf = 0;
@@ -1856,9 +1902,13 @@ const countText = () => { const n = noteCount(notesNow()); return n === 0 ? "Sin
 // -- las marcas doradas en la rueda (lo que tiene notas): apagadas salvo que se pidan; se recuerda en este navegador
 let noteMarksOn = false;
 try { noteMarksOn = localStorage.getItem("carta:notemarks") === "1"; } catch { /* sin almacenamiento */ }
-const paintMarksPref = () => { document.documentElement.toggleAttribute("data-nmarks", noteMarksOn); $("#noteMarks").checked = noteMarksOn; };
+const paintMarksPref = () => {
+  document.documentElement.toggleAttribute("data-nmarks", noteMarksOn);
+  $("#noteMarks").checked = $("#cfgMarks").checked = noteMarksOn;
+  if (typeof paintCfgSums === "function") paintCfgSums();
+};
 paintMarksPref();
-$("#noteMarks").addEventListener("change", (e) => {
+for (const id of ["#noteMarks", "#cfgMarks"]) $(id).addEventListener("change", (e) => {
   noteMarksOn = e.target.checked;
   try { localStorage.setItem("carta:notemarks", noteMarksOn ? "1" : "0"); } catch { /* sin almacenamiento */ }
   paintMarksPref();
@@ -2112,6 +2162,7 @@ $("#mbar").addEventListener("click", async (e) => {
   if (!b) return;
   const v = b.dataset.v, cur = mode === "natal" ? mview : mode;
   setFab(false);
+  if (v === "inicio") { go("#inicio"); return; }
   if (v === cur) { scrollTo({ top: 0, behavior: "smooth" }); return; }
   wheel?.clear(); highlightRows(null);
   if (v === "carta" || v === "tablas") mview = v;
@@ -2310,123 +2361,89 @@ document.querySelectorAll(".seg.orb button").forEach((b) => b.addEventListener("
   if (mode !== "natal") drawWheel();      // en la rueda doble las líneas siguen el orbe elegido
 }));
 
-// ---------- menú lateral: fijo, u oculto y solapado --------------------------
-// Oculto: no ocupa lugar. Con mouse, al pasar por el borde izquierdo o por el botón de la esquina aparece flotando
-// encima del contenido («peek»); con un clic en el botón queda fijo. En el celular o la tableta no hay «pasar el
-// mouse»: el botón abre el menú encima, como un cajón con una cortina detrás, y se cierra al tocar afuera.
-// Sin cartas guardadas, el botón de la esquina es un «+» que abre el menú con el formulario para la primera.
+// ---------- la barra de arriba: las secciones (un menú), el tema y la configuración --------------------------
+// Las secciones van en un menú que se abre con el botón de la izquierda (dice en cuál estás). En la carta, en pantallas
+// anchas, el nombre, los modos y los botones de la carta pasan a esta misma fila (style.css, data-tbmerge): así la rueda
+// tiene todo el alto. En el celular la barra es solo el botón del menú y el de la configuración.
 const root = document.documentElement;
-const sideShowBtn = $("#sideShow");
-const sideHidden = () => root.dataset.side === "hidden";
-const hoverMode = () => matchMedia("(hover: hover) and (pointer: fine) and (min-width: 821px)").matches;
-const canPeek = () => sideHidden() && hoverMode();      // abrir pasando el mouse
-const peeking = () => "peek" in root.dataset;
-let peekTimer = 0;
-let sideChangedAt = 0;      // al ocultar con el mouse quieto sobre la esquina, el menú no tiene que reaparecer solo
-
-function paintSideBtn() {
-  const none = "nocharts" in root.dataset;
-  const label = peeking() ? "Fijar el menú" : none ? "Crear la primera carta" : "Mostrar el menú";
-  sideShowBtn.setAttribute("aria-label", label);
-  if (!peeking()) sideShowBtn.title = none
-    ? "Crear la primera carta"
-    : "Pasá el mouse para ver el menú encima; hacé clic para fijarlo (Ctrl o Cmd + \\)";
+const appBtn = $("#appMenuBtn"), appMenu = $("#appMenu");
+const PAGE_NAME = { home: "Inicio", lunar: "Luna", chart: "Carta", combine: "Combinar" };
+function setAppMenu(open, focus = false) {
+  appMenu.hidden = !open;
+  appBtn.setAttribute("aria-expanded", String(open));
+  if (open && focus) (appMenu.querySelector('[aria-current="page"]') || appMenu.querySelector("a"))?.focus();
 }
-
-function peek(on) {
-  clearTimeout(peekTimer);
-  if (on && !sideHidden()) on = false;
-  if (on) root.dataset.peek = ""; else { delete root.dataset.peek; saved.closePicker(); }
-  paintSideBtn();
-}
-const peekSoon = (on, ms) => { clearTimeout(peekTimer); peekTimer = setTimeout(() => peek(on), ms); };
-/** Para que se vea lo que se acaba de abrir (el formulario): muestra el menú si está oculto. */
-function revealSide() {
-  if (!sideHidden() || peeking()) return;
-  peek(true);
-  if (!hoverMode()) $(".side").focus({ preventScroll: true });
-}
-/** En el celular o la tableta el menú abierto tapa la carta: se cierra al elegir o al calcular. */
-function closeDrawer() {
-  if (peeking() && !hoverMode()) peek(false);
-  showResult();
-}
-/** Con el menú fijo arriba de todo (pantalla angosta), la carta queda más abajo: si no se ve, lleva la vista hasta ella. */
-function showResult() {
-  if (page !== "chart" || !matchMedia("(max-width: 820px)").matches || sideHidden()) return;
-  const t = $("#title").getBoundingClientRect();
-  if (t.top < 0 || t.top > innerHeight - 80) $("main").scrollIntoView({ block: "start" });
-}
-// no se cierra solo mientras se escribe en un campo, ni con la lista de cartas o el formulario abiertos
-const sideBusy = () => saved.pickerOpen || formOpen() || ($(".side").contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
-
-function paintSideCfg() {
-  document.querySelectorAll("#cfgSide button").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.side === "hidden") === sideHidden()));
-}
-/** hidden = true: oculto y solapable; false: fijo. `focus` mueve el foco al botón que queda a la vista. */
-function setSide(hidden, focus = true) {
-  peek(false);
-  sideChangedAt = performance.now();
-  if (hidden) root.dataset.side = "hidden"; else delete root.dataset.side;
-  try { localStorage.setItem(SIDE_KEY, hidden ? "hidden" : "shown"); } catch {}
-  paintSideCfg();
-  // el foco no puede quedar en un botón que acaba de desaparecer
-  if (focus) (hidden ? sideShowBtn : $("#sideHide")).focus();
-}
-$("#sideHide").addEventListener("click", () => setSide(true));
-sideShowBtn.addEventListener("click", () => {
-  if (peeking() && hoverMode()) { setSide(false); return; }       // flotando con el mouse: el botón es «fijar»
-  if ("nocharts" in root.dataset) { createFirst(); return; }
-  if (!hoverMode()) { revealSide(); return; }
-  setSide(false);
+appBtn.addEventListener("click", () => setAppMenu(appMenu.hidden, true));
+appBtn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); setAppMenu(true, true); } });
+appMenu.addEventListener("keydown", (e) => {
+  const links = [...appMenu.querySelectorAll("a")], i = links.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") { e.preventDefault(); (links[i + 1] || links[0]).focus(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); (links[i - 1] || links[links.length - 1]).focus(); }
+  else if (e.key === "Escape") { e.preventDefault(); setAppMenu(false); appBtn.focus(); }
 });
-document.querySelectorAll("#cfgSide button").forEach((b) => b.addEventListener("click", () => {
-  // al ocultar desde adentro del menú, el botón apretado se va con él: el foco pasa al botón de la esquina
-  if ((b.dataset.side === "hidden") !== sideHidden()) setSide(b.dataset.side === "hidden", b.dataset.side === "hidden");
-}));
-paintSideCfg();
-
-for (const el of [sideShowBtn, $("#sideEdge")]) {
-  el.addEventListener("mouseenter", () => { if (canPeek() && !peeking() && performance.now() - sideChangedAt > 350) peekSoon(true, 90); });
-  el.addEventListener("mouseleave", () => { if (hoverMode() && peeking() && !sideBusy()) peekSoon(false, 320); else clearTimeout(peekTimer); });
+document.addEventListener("pointerdown", (e) => { if (!appMenu.hidden && !e.target.closest(".tb-nav")) setAppMenu(false); }, true);
+/** El nombre de la carta abierta, al lado de «Carta» en el menú. */
+function paintNavChart() {
+  const it = saved.activeId ? saved.find(saved.activeId) : null;
+  $("#navChartName").textContent = it ? it.name : "";
 }
-// el cajón del celular no se cierra «al salir el mouse» (los toques lo simulan): solo con la cortina, Esc o la ✕
-$(".side").addEventListener("mouseenter", () => { if (peeking()) clearTimeout(peekTimer); });
-$(".side").addEventListener("mouseleave", () => { if (hoverMode() && peeking() && !sideBusy()) peekSoon(false, 320); });
-// tocar fuera del menú flotante lo cierra; Esc también
-document.addEventListener("pointerdown", (e) => {
-  if (peeking() && !e.target.closest(".side, #sideShow")) peek(false);
-});
-addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && peeking() && !document.querySelector("dialog[open]")) {
-    peek(false);
-    if ($(".side").contains(document.activeElement)) sideShowBtn.focus();
-  }
-});
-addEventListener("keydown", (e) => {
-  if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key === "\\") {
-    e.preventDefault();
-    setSide(!sideHidden());
-  }
+
+// -- configuración: un panel que entra por la derecha (en el celular, a pantalla completa), con los grupos plegados
+const cfgPanel = $("#cfgPanel"), cfgBtn = $("#cfgBtn");
+let cfgBack = null;
+function openCfg(group = null) {
+  closeCpick(false);
+  setAppMenu(false);
+  cfgBack = document.activeElement;
+  cfgPanel.hidden = false;
+  $("#cfgScrim").hidden = false;
+  cfgBtn.setAttribute("aria-expanded", "true");
+  root.toggleAttribute("data-cfg", true);
+  if (group) { const g = $("#" + group); g.open = true; requestAnimationFrame(() => g.scrollIntoView({ block: "start" })); }
+  paintCfgSums();
+  cfgPanel.focus({ preventScroll: true });
+}
+function closeCfg(focusBack = true) {
+  if (cfgPanel.hidden) return;
+  cfgPanel.hidden = true;
+  $("#cfgScrim").hidden = true;
+  cfgBtn.setAttribute("aria-expanded", "false");
+  root.toggleAttribute("data-cfg", false);
+  if (focusBack && cfgBack?.isConnected) cfgBack.focus({ preventScroll: true });
+  cfgBack = null;
+}
+cfgBtn.addEventListener("click", () => (cfgPanel.hidden ? openCfg() : closeCfg()));
+$("#cfgClose").addEventListener("click", () => closeCfg());
+$("#cfgScrim").addEventListener("click", () => closeCfg());
+cfgPanel.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !e.target.closest(".fpick-list")) { e.preventDefault(); closeCfg(); return; }
+  if (e.key !== "Tab") return;                       // el foco no sale del panel (como en una ventana)
+  const f = [...cfgPanel.querySelectorAll("button, summary, input, select, a[href]")].filter((x) => x.offsetParent !== null && !x.disabled);
+  if (!f.length) return;
+  if (e.shiftKey && (document.activeElement === f[0] || document.activeElement === cfgPanel)) { e.preventDefault(); f[f.length - 1].focus(); }
+  else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
 });
 
-// la configuración dentro del menú: siempre arranca cerrada (se abre con un toque, pero no se recuerda abierta)
-try { localStorage.removeItem("carta:cfgopen"); } catch {}      // ya no se guarda; se limpia lo que dejó una versión anterior
-$("#cfgBox").open = false;
-
-// ---------- tema ----------------------------------------------------------
+// ---------- tema: claro, oscuro o el del sistema (automático) ----------------------------------------------------------
 const themeBtn = $("#theme");
-const isDark = () => (document.documentElement.dataset.theme
-  ? document.documentElement.dataset.theme === "dark"
-  : matchMedia("(prefers-color-scheme: dark)").matches);
-const paintThemeBtn = () => { themeBtn.textContent = isDark() ? "Modo claro" : "Modo oscuro"; };
-themeBtn.addEventListener("click", () => {
-  const next = isDark() ? "light" : "dark";
-  document.documentElement.dataset.theme = next;
-  try { localStorage.setItem("carta:theme", next); } catch {}
-  paintThemeBtn();
-});
-paintThemeBtn();
+const themePref = () => { try { return localStorage.getItem("carta:theme") || "auto"; } catch { return "auto"; } };
+const isDark = () => (root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches);
+function setTheme(t) {
+  if (t === "auto") { delete root.dataset.theme; try { localStorage.removeItem("carta:theme"); } catch {} }
+  else { root.dataset.theme = t; try { localStorage.setItem("carta:theme", t); } catch {} }
+  paintTheme();
+}
+function paintTheme() {
+  const label = isDark() ? "Modo claro" : "Modo oscuro";
+  themeBtn.setAttribute("aria-label", label); themeBtn.title = label;
+  themeBtn.classList.toggle("dark", isDark());
+  const pref = themePref();
+  document.querySelectorAll("#cfgTheme button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === pref)));
+  paintCfgSums();
+}
+themeBtn.addEventListener("click", () => setTheme(isDark() ? "light" : "dark"));
+document.querySelectorAll("#cfgTheme button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeSet)));
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paintTheme);
 
 // ---------- imprimir ------------------------------------------------------
 // «Imprimir» abre un cuadro para elegir qué va en la hoja; lo demás está en print.js y en el @media print de style.css.
@@ -2435,6 +2452,8 @@ setupPrint({ root, getMode: () => mode });
 // ---------- configuración: estilo, letra, mandala --------------------------
 // Solo cambiar el estilo de los gráficos obliga a volver a dibujar; lo demás lo resuelve la CSS.
 const cfg0 = initSettings((cfg, what) => {
+  curCfg = cfg;
+  paintCfgSums();
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
   interpOn = cfg.interp;
@@ -2470,11 +2489,25 @@ const cfg0 = initSettings((cfg, what) => {
 });
 setClassic(cfg0.gfx === "classic");
 setCuspRing(cfg0.cuspRing);
-// «Restablecer» deja el menú como viene de fábrica: fijo en pantallas grandes, oculto en el celular
-$("#cfgReset").addEventListener("click", () => {
-  const hidden = matchMedia("(max-width: 820px)").matches;
-  if (sideHidden() !== hidden) setSide(hidden, false);
-});
+curCfg = cfg0;
+// las letras, con vista previa (cada una escrita con la suya)
+fontPicker($("#cfgFont"), (v) => FONT_FAMILY[v], (v) => FONT_NOTE[v] || "");
+fontPicker($("#cfgNoteFont"), (v) => NOTE_FONT_FAMILY[v]);
+// el resumen de cada grupo de Configuración (lo que se ve con el grupo plegado)
+const pctTxt = (v) => `${Math.round(v * 100)} %`;
+function paintCfgSums() {
+  const c = curCfg;
+  if (!c || !$("#cfgLookSum")) return;
+  const pref = themePref();
+  $("#cfgLookSum").textContent = `Tema ${pref === "light" ? "claro" : pref === "dark" ? "oscuro" : "automático"} · ${FONTS[c.font]} · letra ${pctTxt(c.fs)}`;
+  $("#cfgWheelGSum").textContent = `Tamaño ${pctTxt(c.wheel)} · ${c.cuspRing ? "con" : "sin"} anillo de cúspides${noteMarksOn ? " · marcas de notas" : ""}`;
+  const hs = form.elements.hsys, nAsp = Object.keys(ASPECT).length - c.aspOff.length;
+  $("#cfgAspGSum").textContent = `${hs.selectedOptions[0]?.textContent || ""} · ${nAsp === Object.keys(ASPECT).length ? "todos los aspectos" : `${nAsp} de ${Object.keys(ASPECT).length} aspectos`} a la vista`;
+  $("#cfgAdvGSum").textContent = `Planetas entre casas · Viajes de planetas${$("#cfgResetAdv").disabled ? "" : " · con cambios"}`;
+  $("#cfgDataGSum").textContent = isPublic() ? "Exportar · importar · tus cartas quedan en este navegador" : "Exportar · importar · dónde se guardan tus cartas";
+}
+form.elements.hsys.addEventListener("change", paintCfgSums);
+paintTheme();
 
 // ---------- copia de seguridad: exportar e importar las cartas guardadas --------------------------------
 // Sirve igual en la versión de escritorio (las cartas están en un archivo de tu compu) y en la alojada (están en el
@@ -2565,6 +2598,7 @@ function showChart() {
 function startChart() {
   primeChart();
   if (!formReady(readForm())) {                       // formulario vacío: nada que calcular todavía
+    if (saved.items.length) { openSaved(saved.items[0]); return; }      // hay cartas guardadas: abre la primera
     $("#intro").hidden = false;
     $(".intro-note").hidden = !isPublic();
     return;
@@ -2596,9 +2630,15 @@ function setPage(r) {
   for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }
+  $("#appMenuLabel").textContent = PAGE_NAME[page];
+  appBtn.setAttribute("aria-label", `Secciones: ${PAGE_NAME[page]}`);
+  root.dataset.page = page;
+  if (page !== "chart") root.removeAttribute("data-tbmerge");
+  setAppMenu(false);
+  closeCpick(false);
+  paintFind();
   if (prev !== page) {
     if (prev === "home") stopHome();
-    if (peeking() && !hoverMode()) peek(false);       // el menú del celular se cierra al cambiar de sección
     if (prev) scrollTo(0, 0);
   }
   if (page === "home") startHome();
@@ -2617,8 +2657,8 @@ function go(hash) {
   route();
 }
 addEventListener("hashchange", route);
-document.querySelectorAll("#sidenav a").forEach((a) => a.addEventListener("click", (e) => {
-  if (peeking() && !hoverMode()) peek(false);
+appMenu.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => {
+  setAppMenu(false);
   if (a.id === "navMoon" && page === "lunar") { e.preventDefault(); lunarTo(0, 0, true); }     // ya estás en el calendario: vuelve a este mes
 }));
 
@@ -2778,41 +2818,94 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && page === "home" && Date.now() - moon.nowAt > 120000) loadMoon();
 });
 
-/** «Continuar con …» y las demás cartas guardadas. Los nombres los escribe quien usa la app: todo con DOM. */
+/** «Tus cartas»: una tarjeta por carta (la última abierta primero) con el Sol, la Luna y el Ascendente si ya se conocen sus
+ *  posiciones (las del buscador por posición, que quedan en este navegador). Los nombres los escribe quien usa la app: todo con DOM. */
+const homeQ = { text: "" };
+const HOME_SEARCH_FROM = 7;
 function renderHomeCharts() {
+  paintHomeCards();
+  renderHomeTr();
+  renderHomeFind();
+  $("#homePrivTxt").textContent = isPublic() ? "Tus cartas se guardan solo en este navegador." : "Tus cartas se guardan en esta computadora.";
+}
+function paintHomeCards() {
   const body = $("#homeChartBody");
   const items = saved.items;
   const act = saved.activeId ? saved.find(saved.activeId) : null;
   const v = readForm();
-  const make = (tag, props, fn) => {
-    const el = Object.assign(document.createElement(tag), props);
-    if (fn) el.addEventListener("click", fn);
-    return el;
+  const el = (tag, props = {}, fn) => {
+    const e = Object.assign(document.createElement(tag), props);
+    if (fn) e.addEventListener("click", fn);
+    return e;
   };
-  const nodes = [];
-  if (act) nodes.push(make("button", { type: "button", className: "home-continue", textContent: `Continuar con ${act.name}` }, () => go("#carta")));
-  else if (formReady(v)) nodes.push(make("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
-  else if (!items.length) {
-    nodes.push(make("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
-    nodes.push(make("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
+  $("#homeChartsN").textContent = items.length ? String(items.length) : "";
+  $("#homeChartsQWrap").hidden = items.length < HOME_SEARCH_FROM;
+  if (items.length < HOME_SEARCH_FROM) homeQ.text = "";
+  if (!items.length) {
+    const nodes = [];
+    if (formReady(v)) {
+      nodes.push(el("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
+      nodes.push(el("button", { type: "button", className: "home-tr-all hc-add", textContent: "Nueva carta" }, () => openForm("new")));
+    }
+    else {
+      nodes.push(el("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
+      nodes.push(el("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
+    }
+    body.replaceChildren(...nodes);
+    return;
   }
-  const others = items.filter((it) => !act || it.id !== act.id);
-  if (items.length) {                                  // las otras cartas y, al final, «Nueva carta»
-    const row = make("div", { className: "home-chips" });
-    row.append(...others.map((it) => make("button", { type: "button", className: "home-chip", textContent: it.name, title: `Abrir la carta de ${it.name}` }, () => openSaved(it))));
-    const add = make("button", { type: "button", className: "home-chip home-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
+  const q = homeQ.text.trim().toLocaleLowerCase("es");
+  const list = [...(act ? [act] : []), ...items.filter((it) => it !== act)].filter((it) => !q || it.name.toLocaleLowerCase("es").includes(q));
+  const grid = el("div", { className: "hc-cards" });
+  for (const it of list) {
+    const card = el("button", { type: "button", className: "hc-card", title: `Abrir la carta de ${it.name}` }, () => openSaved(it));
+    if (it === act) card.classList.add("cur");
+    card.append(el("b", { className: "hc-nm", textContent: it.name }));
+    const sub = el("small", { className: "hc-sub", textContent: [it.date ? it.date.split("-").reverse().join("/") : "", it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
+    if (it === act) sub.append(" · ", el("strong", { textContent: "última abierta" }));
+    card.append(sub);
+    const pos = findReady(it) ? find.pos.get(it.id).lon : null;
+    if (pos) {
+      const trio = el("span", { className: "hc-trio" });
+      for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
+        const k = split(pos[id]).sign;
+        const t = el("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[k]}` });
+        t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(k)}</span>`;
+        t.append(SIGNS[k]);
+        trio.append(t);
+      }
+      card.append(trio);
+    }
+    grid.append(card);
+  }
+  if (!q) {
+    const add = el("button", { type: "button", className: "hc-card hc-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
     add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
-    row.append(add);
-    nodes.push(row);
+    grid.append(add);
   }
+  const nodes = [grid];
+  if (q && !list.length) nodes.unshift(el("p", { className: "home-empty", textContent: "Ninguna carta tiene ese nombre." }));
   body.replaceChildren(...nodes);
-  renderHomeTr();
-  renderHomeFind();
 }
+$("#homeChartsQ").addEventListener("input", (e) => { homeQ.text = e.target.value; paintHomeCards(); });
+$("#homePriv").addEventListener("click", () => openCfg("cfgDataG"));
 
 // -- inicio: tránsitos destacados de hoy con las cartas guardadas. Se piden al apretar el botón (cada carta es un
 // cálculo de años de recorrido), de a dos a la vez; si el servidor pide esperar (versión pública) se espera y se sigue.
-const homeTr = { on: new Set(), res: new Map(), running: false, seq: 0, done: 0, total: 0, at: null };
+const homeTr = { on: new Set(), res: new Map(), running: false, seq: 0, done: 0, total: 0, at: null, edit: false, saved: false };
+// Las cartas elegidas se recuerdan (en este navegador) después de calcular una vez: la próxima vez los tránsitos se calculan
+// solos al entrar al inicio. Hasta entonces no se calcula nada sin apretar el botón (en la versión pública los datos viajan).
+const HTR_KEY = "carta:htr";
+try {
+  const raw = JSON.parse(localStorage.getItem(HTR_KEY));
+  if (raw?.v === 1 && Array.isArray(raw.on) && raw.on.length) { homeTr.on = new Set(raw.on.filter((x) => typeof x === "string")); homeTr.saved = true; }
+} catch {}
+function htrSave() {
+  try {
+    if (homeTr.on.size) localStorage.setItem(HTR_KEY, JSON.stringify({ v: 1, on: [...homeTr.on] }));
+    else localStorage.removeItem(HTR_KEY);
+  } catch {}
+}
 /** Lo que identifica los datos de una carta: si se edita, lo que se calculó antes deja de valer. */
 const trSig = (it) => [it.date, it.time, it.lat, it.lon, it.tz, it.manual, it.offset].join("|");
 
@@ -2820,7 +2913,19 @@ function renderHomeTr() {
   const sec = $("#homeTr"), items = saved.items;
   sec.hidden = !items.length;                      // sin cartas guardadas no hay con qué calcular
   if (!items.length) return;
-  const on = items.filter((it) => homeTr.on.has(it.id));      // al abrir la app no hay ninguna elegida: se eligen a mano
+  const on = items.filter((it) => homeTr.on.has(it.id));      // la primera vez no hay ninguna elegida: se eligen a mano
+  const auto = homeTr.saved && on.length && !homeTr.edit;
+  if (auto && !homeTr.running && page === "home" && (!homeTr.at || homeTr.at.date !== nowIn(moonTz()).date || on.some((it) => homeTr.res.get(it.id)?.sig !== trSig(it)))) {
+    runHomeTr(); return;                         // se actualizan solos: al entrar, si cambió el día o alguna carta
+  }
+  $("#homeTrEdit").hidden = !!auto;
+  const autoP = $("#homeTrAuto");
+  autoP.hidden = !auto;
+  if (auto) {
+    const ch = Object.assign(document.createElement("button"), { type: "button", className: "home-tr-all", textContent: "Cambiar cartas" });
+    ch.addEventListener("click", () => { homeTr.edit = true; renderHomeTr(); $("#homeTrPick button")?.focus(); });
+    autoP.replaceChildren(`De ${on.map((it) => it.name).join(", ")} · ${homeTr.running ? `calculando ${homeTr.done} de ${homeTr.total}…` : "se actualizan solos"} · `, ch);
+  }
   $("#homeTrNote").textContent = "Elegí las cartas. Los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto cerrado con el Sol, la Luna o los planetas hasta Saturno de cada una." +
     (isPublic() ? " Al calcular, los datos de nacimiento de las cartas elegidas se envían al servidor solo para eso; no se guardan." : "");
   const pick = $("#homeTrPick");
@@ -2838,7 +2943,8 @@ function renderHomeTr() {
   }
   const go = $("#homeTrGo");
   go.disabled = homeTr.running || !on.length;
-  go.textContent = homeTr.running ? "Calculando…" : !on.length ? "Calcular" : homeTr.res.size ? "Volver a calcular" : on.length === 1 ? "Calcular con 1 carta" : `Calcular con ${on.length} cartas`;
+  go.textContent = homeTr.running ? "Calculando…" : !on.length ? (homeTr.saved ? "Listo" : "Calcular") : on.length === 1 ? "Calcular con 1 carta" : `Calcular con ${on.length} cartas`;
+  if (homeTr.saved && !on.length) go.disabled = homeTr.running;
   $("#homeTrProg").textContent = homeTr.running ? `${homeTr.done} de ${homeTr.total}`
     : !on.length ? "Elegí al menos una carta."
     : homeTr.res.size && homeTr.at ? `Calculado para el ${homeTr.at.date.split("-").reverse().join("/")} a las ${homeTr.at.time}` : "";
@@ -2880,7 +2986,10 @@ async function featuredRetry(body, at, my) {
 async function runHomeTr() {
   if (homeTr.running) return;
   const items = saved.items.filter((it) => homeTr.on.has(it.id));
-  if (!items.length) return;
+  homeTr.edit = false;
+  homeTr.saved = items.length > 0;
+  htrSave();
+  if (!items.length) { homeTr.res = new Map(); renderHomeTr(); return; }
   const tz = moonTz();
   const at = { ...nowIn(tz), tz };
   const view = readForm(), queue = items.slice(), my = ++homeTr.seq;
@@ -2980,9 +3089,12 @@ async function runFind() {
   if (my !== find.seq) return;
   find.running = false;
   findSave();
-  if (page === "home") renderHomeFind();
+  if (page === "home") { renderHomeFind(); paintHomeCards(); }
 }
 $("#findGo").addEventListener("click", runFind);
+// «Buscar por posición» va plegado; si lo abrís, queda abierto la próxima vez (en este navegador)
+try { $("#homeFind").open = localStorage.getItem("carta:findopen") === "1"; } catch {}
+$("#homeFind").addEventListener("toggle", (e) => { try { localStorage.setItem("carta:findopen", e.target.open ? "1" : "0"); } catch {} });
 
 function renderHomeFind() {
   const sec = $("#homeFind"), items = saved.items;

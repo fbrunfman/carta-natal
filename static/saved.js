@@ -1,4 +1,5 @@
-// Cartas guardadas: un botón con la carta abierta que despliega la lista (con buscador si hay muchas).
+// Cartas guardadas: la lista, la carta abierta y guardar, editar o eliminar. Opcionalmente, un botón con la carta abierta
+// que despliega la lista (con buscador si hay muchas); sin él (la app ya lo resuelve con su propia lista), solo los datos.
 // Los nombres los escribe el usuario: todo se arma con DOM, nunca con innerHTML.
 import { charts } from "./api.js";
 
@@ -32,13 +33,13 @@ try {
 } catch {}
 
 /**
- * @param list/where        <ul> de la lista y párrafo con la ruta del archivo (el aviso de «no hay cartas» lo maneja quien llama, con onChange)
- * @param picker            { root, btn, pop, q, none, count } los elementos del desplegable
+ * @param list/where        <ul> de la lista (opcional) y párrafo con la ruta del archivo (el aviso de «no hay cartas» lo maneja quien llama, con onChange)
+ * @param picker            { root, btn, pop, q, none, count } los elementos del desplegable (opcional)
  * @param onOpen            se llama con la carta elegida
  * @param onChange          se llama con la lista cada vez que se redibuja
  */
 export function createSaved({ list, where, picker, onOpen, onChange = () => {} }) {
-  const { root, btn, pop, q, none, count } = picker;
+  const { root, btn, pop, q, none, count } = picker || {};
   let items = [];
   let activeId = null;
   let armed = null;       // id de la carta cuyo "Eliminar" espera confirmación
@@ -78,6 +79,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
 
   /** El botón muestra la carta abierta; sin ninguna, invita a elegir. */
   function paintButton() {
+    if (!btn) return;
     const cur = items.find((x) => x.id === activeId);
     btn.querySelector(".pk-nm").textContent = cur ? cur.name : "Elegí una carta…";
     btn.querySelector(".pk-dt").textContent = cur ? shortDate(cur.date) : "";
@@ -86,6 +88,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
   }
 
   function render() {
+    if (!picker || !list) { onChange(items); return; }
     const sorted = [...items].sort(byName);
     root.hidden = items.length === 0;
     count.hidden = items.length === 0;
@@ -105,7 +108,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
   const focusables = () => [...(q.hidden ? [] : [q]), ...list.querySelectorAll(".chart-btn")];
 
   function open() {
-    if (isOpen || root.hidden) return;
+    if (!picker || isOpen || root.hidden) return;
     isOpen = true;
     pop.hidden = false;
     btn.setAttribute("aria-expanded", "true");
@@ -136,6 +139,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
     onOpen(it);
   }
 
+  if (picker) {
   btn.addEventListener("click", () => (isOpen ? close(true) : open()));
   btn.addEventListener("keydown", (e) => {
     if (!isOpen && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -172,6 +176,7 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
   root.addEventListener("focusout", (e) => {   // Tab hacia afuera
     if (isOpen && e.relatedTarget && !root.contains(e.relatedTarget)) close(false);
   });
+  }
 
   // ---- datos ---------------------------------------------------------------
   function arm(id) {
@@ -215,6 +220,11 @@ export function createSaved({ list, where, picker, onOpen, onChange = () => {} }
       return rec;
     },
     /** Las notas de una carta: se guardan sin tocar sus datos (ni la lista de arriba). */
+    /** Elimina una carta guardada. */
+    async remove(id) {
+      const it = items.find((x) => x.id === id);
+      if (it) await remove(it);
+    },
     async setNotes(id, notes) {
       const rec = await charts.setNotes(id, notes);
       items = items.map((x) => (x.id === id ? rec : x));

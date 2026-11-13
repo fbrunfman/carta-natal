@@ -57,7 +57,18 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 
 ## Qué hace
 
-- **Cuatro páginas**, que se cambian desde el menú lateral (Inicio · Luna · Carta · Combinar). La dirección lleva la página
+- **La barra de arriba** (no hay menú lateral): a la izquierda, un botón con el nombre de la sección en la que estás
+  («Inicio ▾»), que despliega el menú de secciones (Inicio · Luna · Carta, con el nombre de la carta abierta · Combinar;
+  con teclado: flecha abajo abre, flechas, Esc); a la derecha, **«Buscar o cambiar de carta…»** (la misma lista de la lupa
+  de la carta; no aparece en la página Carta, que tiene su lupa), el tema (luna/sol: claro u oscuro) y el **engranaje** de la
+  Configuración. **En la carta, en pantallas de 900 px o más**, el nombre de la carta, la lupa, la ⓘ, Natal / Tránsitos /
+  Sinastría y los botones de la carta pasan a esa misma fila (`app.js::paintMerge` pone `data-tbmerge` y las medidas
+  `--tb-l`, `--tb-r` y `--tb-mb`): así la rueda tiene todo el alto de la pantalla (1600 × 1000: de 840 a 863 px; 1024 × 768:
+  de 504 a 674). Por debajo de 1440 px los botones de la carta quedan solo con su ícono (el nombre está en el tooltip). Los
+  datos de nacimiento (fecha, hora, lugar, sistema de casas y la hora UTC) están detrás de la **ⓘ**, con **«Editar los datos»**.
+  **En el celular** la barra es solo el ícono de las secciones y el engranaje (se van con el scroll), y la barra de abajo de
+  la carta suma **Inicio**.
+- **Cuatro páginas** (Inicio · Luna · Carta · Combinar). La dirección lleva la página
   (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
   - **Inicio**: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
@@ -74,23 +85,29 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
     el color del elemento del signo; con las lecturas apagadas (hoy) el poema no se muestra. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
-    **En escritorio (a partir de unos 860 px de ancho de contenido, o sea una notebook con el menú abierto) el inicio es un
-    tablero**: el mapa a la izquierda, tan alto como deja la ventana, y a la derecha una columna con «Tus cartas», la Luna
-    (`app.js::placeMoon` mueve la tarjeta del rincón del mapa a `#homeMoonSlot`), «Tránsitos destacados de hoy» y «Buscar
-    por posición». En pantallas más angostas y en el celular todo va en una columna, **con «Tus cartas» arriba de todo**
-    (abrir una carta es lo que más se hace), después el mapa, la Luna, los tránsitos destacados y el buscador.
+    **Arriba de todo, «Tus cartas»**: una tarjeta por carta, con la fecha, la hora y la ciudad, y el **Sol, la Luna y el
+    Ascendente** (signo) cuando ya se conocen sus posiciones (las mismas del buscador por posición, `carta:pos`; en la
+    versión pública, después de calcularlas una vez). La **última abierta** va primera y marcada; tocar una tarjeta la abre;
+    al final, **«+ Nueva carta»**. Desde 7 cartas aparece un buscador por nombre. Sin cartas: «Crear mi primera carta».
+    **Debajo, en escritorio (a partir de unos 860 px de ancho), el mapa a la izquierda, más chico (hasta 540 px), y a la
+    derecha la Luna** (`app.js::placeMoon` mueve la tarjeta del rincón del mapa a `#homeMoonSlot`) **y los «Tránsitos
+    destacados de hoy»**. En pantallas más angostas y en el celular todo va en una columna: las cartas, el mapa, la Luna,
+    los tránsitos y el buscador. Al pie, en una línea, dónde se guardan las cartas y «Privacidad y copias» (abre la
+    Configuración en *Datos*).
     **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
-    4 px; al abrir la app no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
+    4 px; la primera vez no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
     cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
     cerrado con el Sol, la Luna o los planetas hasta Saturno. Es el mismo cálculo de los destacados de la
     pestaña Carta (`/api/featured`), un pedido por carta y de a dos a la vez; en la versión pública, si el servidor pide
     esperar se espera y se sigue. Cada carta tiene su tarjeta con los tránsitos (el planeta y el punto natal, si está en su
     punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
-    que abre esa carta con los tránsitos de ahora. No se calcula nada hasta elegir cartas y apretar el botón. Abajo: «Tus cartas»:
-    «Continuar con…» la carta que estabas viendo, atajos a las otras cartas guardadas y, al final, **«+ Nueva carta»** (abre el
-    formulario vacío; sin cartas, «Crear mi primera carta»). No se
+    que abre esa carta con los tránsitos de ahora. **Después de calcular una vez, la elección se recuerda** (`carta:htr`, en
+    este navegador) y la elección se esconde: dice «De Federico, Sebi… · se actualizan solos · Cambiar cartas», y cada vez
+    que entrás al inicio se calculan solos si cambió el día o se editó una carta. «Cambiar cartas» vuelve a mostrar la
+    elección (sin elegir ninguna y «Listo», deja de calcularse solo). Hasta esa primera vez no se manda nada. No se
     abre ninguna carta hasta entrar a **Carta**.
-    Más abajo (solo si hay cartas guardadas), **«Buscar por posición»**: se elige un planeta (Sol a Plutón, el Ascendente o
+    Más abajo (solo si hay cartas guardadas), **«Buscar por posición»**, plegado (si lo abrís, queda abierto la próxima
+    vez, `carta:findopen`): se elige un planeta (Sol a Plutón, el Ascendente o
     el Medio Cielo, o «Cualquier planeta») y un signo (o «Todos los signos»), y salen las cartas guardadas que lo tienen,
     con los grados dentro del signo (con un solo planeta y «Todos los signos» salen agrupadas por signo, en orden zodiacal;
     con «Cualquier planeta» sale cada carta con los planetas que caen en ese signo). Tocar una carta la abre. Para buscar
@@ -106,7 +123,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     para cambiar de mes (de 1800 a 2400; cambiar de mes no suma pasos al historial), hoy resaltado y un selector
     **Sur / Norte** (en el hemisferio sur la Luna creciente se ve iluminada a la izquierda; se recuerda). Las horas
     son las de la zona horaria del navegador.
-  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. **Cambiar de carta sin abrir el menú**: la lupa
+  - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. Si no hay ninguna carta abierta y hay
+    guardadas, abre la primera. **Cambiar de carta**: la lupa
     al lado del nombre abre la lista de las cartas guardadas (con su fecha y la abierta marcada) y un buscador (sin
     importar mayúsculas ni tildes; Enter abre la primera, flechas para moverse, Esc cierra), más «Nueva carta». En
     tránsitos o sinastría se queda en esa vista con la carta elegida. La lupa no agranda el renglón del título: la rueda
@@ -115,13 +133,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     se achica según el alto de la ventana y lo que tiene arriba (modos, fecha de los tránsitos, selector de viajes), sin
     bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
     pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
-    que corta se esfuma y la elegida queda a la vista. **En escritorio ancho (unos 1080 px de contenido, p. ej. con el
-    menú oculto) la rueda crece**: el encabezado va en una fila (nombre y datos a la izquierda; Natal / Tránsitos /
-    Sinastría, Entre casas, Viajes e Imprimir a la derecha, a la misma altura) y, si la leyenda entra en una columna en
+    que corta se esfuma y la elegida queda a la vista. **En escritorio la rueda crece**: el encabezado va en la barra de
+    arriba (ver «La barra de arriba») y, si la leyenda entra en una columna en
     el rincón de abajo a la izquierda sin tocar la rueda (la rueda es redonda: su esquina queda vacía; se mide con la
     rueda del tamaño que tendría), pasa ahí y la rueda usa también ese alto
-    (en una pantalla de 1904 × 1015 pasa de unos 670 a 880 px). Con el menú oculto, el nombre va a la altura del
-    botón del menú, a su derecha, en vez de dejarle una franja vacía arriba. El tope de la rueda es 1100 px (antes 920).
+    (en una pantalla de 1904 × 1015 pasa de unos 670 a 880 px). El tope de la rueda es 1100 px (antes 920).
     El panel de la derecha queda del mismo ancho. `fitWheel` pone `data-headrow` y `data-legend-side` en `<html>`.
     Test: `e2e_escritorio`.
     **Los símbolos de la rueda son ≈ 15 % más grandes** (los círculos de los planetas 27,5 en vez de 24, los signos de la
@@ -144,7 +160,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     la fecha sube una hoja con todos los controles (fecha, hora, zona horaria, paso y «Ahora»); se cierra con la ×, Esc o
     tocando afuera, y mientras está abierta los flotantes se corren. Los controles ya no ocupan lugar arriba de la rueda.
     Test: `e2e_tpill`. Al bajar, **las pestañas de las tablas quedan pegadas arriba** (dejando lugar al botón
-    del menú). La barra no está en el Inicio, la Luna ni Combinar, ni en la tableta o el escritorio. Test: `e2e_celu`.
+    de las secciones). La barra no está en el Inicio, la Luna ni Combinar, ni en la tableta o el escritorio. Test: `e2e_celu`.
   - **Combinar** (**beta, en construcción**): diez círculos despintados, uno por planeta (Sol a Plutón); al tocarlos
     se pintan con su color. Con uno o más pintados se habilita «Buscar» y sale uno al azar de lo que coincide: con
     **un** planeta, lo que es de ese planeta solo («Neptuno solo»); con dos o más, lo que tiene **todos** los
@@ -357,24 +373,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
-- **Menú lateral, fijo o solapado**: el botón de la esquina superior del menú (o Ctrl/Cmd + \) lo oculta y deja todo
-  el ancho para la rueda y las tablas. Con el menú oculto, al **pasar el mouse** por el borde izquierdo o por el botón
-  de la esquina, el menú aparece **flotando encima** del gráfico, sin moverlo, y se va solo al alejar el mouse (o con
-  Esc, o tocando afuera; si tenés el formulario abierto o estás escribiendo en un campo, queda abierto). Un **clic** en
-  ese botón (que mientras flota pasa a ser una chincheta) lo deja **fijo** de nuevo. En escritorio el menú es un poco
-  más ancho (352 px) y se recuerda si lo dejaste fijo u oculto.
-- **En el celular y la tableta** el menú arranca **oculto** y no ocupa lugar: el botón de la esquina lo abre
-  **encima** de la carta, como un cajón con una cortina oscura detrás; se cierra tocando la cortina, con Esc, con el
-  botón de ocultar, al elegir una carta o al calcular y guardar. Mientras no haya ninguna carta guardada, ese botón es
-  un **«+»**: lo tocás y se abre el menú con el formulario para crear la primera (la pantalla de bienvenida tiene el
-  mismo botón). Si querés el menú fijo en una pantalla grande o en la tableta, está en Configuración → *Menú lateral*.
-- **Crear y editar cartas**: el formulario está **oculto** y se despliega en el menú al tocar **«Nueva carta»**
-  (en blanco) o **«Editar»** (con los datos de la carta que estás viendo). Hay **un solo botón**, **«Calcular y
+- **Crear y editar cartas**: el formulario se abre en una **ventana en el centro** al tocar **«Nueva carta»** (en la
+  lista de la lupa, en «Buscar o cambiar de carta…» o en el inicio; en blanco) o **«Editar los datos»** (en la ⓘ de la
+  carta, con sus datos). Abajo de todo, con una carta guardada abierta, **«Eliminar esta carta»** (dos toques; la
+  confirmación espera 6 segundos) la borra y vuelve al inicio. Hay **un solo botón**, **«Calcular y
   guardar»** (también con Enter en cualquier campo): valida los datos, guarda la carta (hace falta un nombre), la
   calcula, cierra el formulario y la muestra. Con una carta guardada abierta dice **«Calcular y guardar cambios»** y
   actualiza esa carta; **«Guardar como carta nueva»** la duplica en vez de pisarla. Si falta algo (el nombre, la
   fecha…), no se guarda nada y el aviso queda debajo del formulario hasta que se corrija un campo. La **✕** de arriba
-  cierra el formulario sin guardar y vuelve a como estaba antes de abrirlo (los campos, la carta elegida).
+  (o Esc) cierra el formulario sin guardar y vuelve a como estaba antes de abrirlo (los campos, la carta elegida).
   El *sistema de casas* ya no está en el formulario: es una preferencia de la vista, está en
   Configuración, vale para todas las cartas y se aplica al instante, sin apretar nada.
 - **Imprimir** (botón arriba a la derecha de la carta): abre un cuadro para **elegir qué va en la hoja**: el mandala y,
@@ -386,41 +393,44 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   abrir el cuadro. Después se abre la impresión del navegador, donde también se guarda como PDF. Sale sin menú ni
   botones, y **siempre en claro**, aunque la pantalla esté en modo oscuro. La lista de Aspectos sale en dos columnas, para
   que entre aunque tenga muchos.
-- **Configuración** (el desplegable con el engranaje, en el menú lateral, debajo de las cartas; **siempre arranca
-  cerrado**, en cualquier pantalla: no recuerda si lo dejaste abierto):
-  - *Cálculo*: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros).
-    Recalcula la carta que estás viendo al elegir.
-  - *Aspectos*: qué tipos de aspecto se ven (ver «Qué aspectos se ven», arriba).
-  - *Orbes*: dos tablas para editar, con los valores de fábrica ya puestos (los de la hoja). La primera, los **orbes de
-    los aspectos** por grupo de planetas y tipo de aspecto (Sol y Luna · Mercurio, Venus y Marte · Júpiter y Saturno ·
-    Urano, Neptuno y Plutón × conjunción/oposición/cuadratura · trígono · sextil · 45°, 135° y 150°). Se aplican a la
-    carta natal, los tránsitos y la sinastría (y recalculan al instante la carta que estás viendo); los de «Tránsitos
-    destacados» y «Próximamente» son aparte, y el calendario de aspectos exactos busca el momento exacto, así que no los usa.
-    La segunda, los **orbes de los planetas en las casas** (ver «Planetas entre casas»). Cada casilla acepta de 0° a 15°
-    (más se acomoda a 15°; vacía vuelve a su valor de fábrica), las modificadas se resaltan y **«Restablecer orbes»** vuelve a
-    la tabla de fábrica. El «Restablecer» general no los toca. Se recuerdan en el navegador (`orbs` en `carta:cfg`).
-    Los «7/6» y «6/5» de la hoja (trígonos de personales y sociales) se cargan con el primer número; el «3/2» de las otras
-    casas en cúspide se cargó como un solo valor, 2,5°.
-  - *Menú lateral*: Fijo u Oculto (el mismo ajuste que los botones del menú; «Oculto» es el modo solapado).
+- **Configuración** (el engranaje de arriba a la derecha): un **panel que entra por la derecha** (en el celular, a pantalla
+  completa; se cierra con la ✕, Esc o tocando afuera; siempre arranca cerrado). Los ajustes van en **cinco grupos
+  plegados**, cada uno con una línea que resume cómo está («Tema automático · Redondeada · letra 100 %»), los textos
+  largos detrás de **«¿Cómo funciona?»** y su propio **«Restablecer»** (apagado si ya está como de fábrica):
+  - **Apariencia**: tema (Claro / Oscuro / Automático, el del sistema; el botón de la barra cambia entre claro y oscuro),
+    **letra de la app**, **letra de las notas**, tamaño de la letra (85 % a 130 %; escala todo el texto; el de la rueda sube
+    con un tope ×1,25 para que no se pise con los símbolos) y estilo de los gráficos: **Nuevo** (círculos de colores con
+    símbolos vectoriales, banda oscura de signos) o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo
+    de signos claro; al elegirlo se activa también el tinte por elemento).
+    - *Letra de la app*: un selector donde **cada opción se ve escrita con su letra** (`static/fontpick.js`, sobre un
+      `<select>`; flechas, Enter, Esc). **Del dispositivo**: Sistema (SF Pro), Redondeada, Helvetica Neue, Avenir Next, New
+      York y Monoespaciada (dependen de lo que tenga la compu: Avenir o New York solo existen en Apple). **Incluidas**, que
+      se ven igual en todos lados: sin serif Inter, Source Sans, Nunito, Atkinson Hyperlegible (muy legible) e IBM Plex Sans;
+      con serif Lora, Source Serif y EB Garamond. **De fábrica: Redondeada.**
+    - *Letra de las notas*: Kalam (de fábrica), Patrick Hand, Mali, Shantell Sans o la misma de la app.
+    - Las letras incluidas están en `static/fonts` (de `@fontsource`, licencia OFL; los textos de las licencias están al
+      lado), en versión variable cuando existe, partidas en latín y latín extendido: no se pide nada a internet.
+  - **Mandala**: tamaño (60 % a 140 %; por encima de 100 % el mandala pasa a ocupar todo el ancho, más grande que el que
+    entra en la pantalla, y las tablas bajan debajo de él), anillo exterior con las cúspides (ver arriba; **prendido de
+    fábrica**), tinte por elemento en el anillo de signos (**prendido de fábrica**) y marcar en el mandala lo que tiene notas.
+  - **Aspectos y orbes**: sistema de casas (Placidus, Koch, Porfirio, Regiomontano, Campanus, iguales o signos enteros;
+    recalcula al instante), qué tipos de aspecto se ven (ver «Qué aspectos se ven», arriba) y los **orbes de los aspectos**
+    por grupo de planetas y tipo de aspecto (Sol y Luna · Mercurio, Venus y Marte · Júpiter y Saturno · Urano, Neptuno y
+    Plutón × conjunción/oposición/cuadratura · trígono · sextil · 45°, 135° y 150°). Se aplican a la carta natal, los
+    tránsitos y la sinastría (y recalculan la carta que estás viendo); los de «Tránsitos destacados» y «Próximamente» son
+    aparte, y el calendario de aspectos exactos busca el momento exacto, así que no los usa. Cada casilla acepta de 0° a 15°
+    (más se acomoda a 15°; vacía vuelve a su valor de fábrica) y las modificadas se resaltan. Los «7/6» y «6/5» de la hoja
+    (trígonos de personales y sociales) se cargan con el primer número.
+  - **Reglas avanzadas**: los **orbes de los planetas en las casas** (ver «Planetas entre casas»; el «3/2» de las otras
+    casas en cúspide se cargó como 2,5°) y los **viajes de planetas** (ver «Viajes»).
+  - **Datos**: el zodíaco y el cálculo (en tu computadora, con Swiss Ephemeris), dónde se guardan las cartas y
+    **Exportar / Importar cartas**.
   - *Interpretación*: **ya no está** (ver «Cosas apagadas a pedido»). La app queda siempre en «solo datos»: sin la
     ventana de lectura al tocar un planeta (rueda, tablas y Elementos) ni la de los aspectos (lista, Cuadro y cuadrícula;
     ahí los aspectos dejan de ser tocables), sin los temas de las casas (profecciones y «Próximamente»), sin los textos de
     los tránsitos destacados, sin las pistas de «tocá un planeta…» y sin el poema de la Luna. Quedan las posiciones, casas,
     aspectos, orbes, fechas y horas.
-  - *Estilo de los gráficos*: **Nuevo** (círculos de colores con símbolos vectoriales, banda oscura de signos)
-    o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo de signos claro). Al elegir
-    Clásico se activa también el tinte por elemento; se puede apagar.
-  - *Tinte por elemento*: pinta cada signo de la banda con el color de su elemento (fuego, tierra, aire,
-    agua). Funciona en los dos estilos y en modo claro y oscuro. **Viene activado de fábrica.**
-  - *Tipo de letra*: Sistema (SF Pro), Helvetica Neue, Avenir Next, Redondeada, Serif (New York) o
-    Monoespaciada. Usan las fuentes que ya trae macOS. **De fábrica: Redondeada.**
-  - *Tamaño de la letra*: 85 % a 130 %. Escala todo el texto de la página; el de la rueda sube con un tope
-    (×1,25) para que no se pise con los símbolos.
-  - *Anillo exterior con las cúspides* (en «Mandala»): prendido o apagado, ver arriba. **Viene prendido de fábrica.**
-  - *Tamaño del mandala*: 60 % a 140 %. Por encima de 100 % el mandala pasa a ocupar todo el ancho y las
-    tablas bajan debajo de él.
-  - «Restablecer» vuelve a los valores de fábrica (estilo Nuevo, con tinte por elemento, letra Redondeada, tamaños al
-    100 %, anillo de cúspides prendido, todos los aspectos prendidos; los orbes tienen su propio botón). Todo se recuerda en el navegador (clave `carta:cfg`) y se aplica antes de dibujar la
+  - Todo se recuerda en el navegador (clave `carta:cfg`; el tema en `carta:theme`) y se aplica antes de dibujar la
     página, así que no hay parpadeo al abrir. Mientras nadie toque la configuración no se guarda nada y rige lo de
     fábrica. Una configuración guardada antes de este cambio (sin `v`) que seguía en los valores de entonces (letra del
     sistema, sin tinte en el estilo Nuevo) cuenta como «sin elegir» y pasa a los de ahora; lo que se haya elegido de
@@ -481,12 +491,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   un cuadro de aspectos (filas = una carta, columnas = la otra) y la superposición de casas: en qué
   casa de cada una cae cada planeta de la otra. Al ser dos fechas de nacimiento, no se calcula fase.
 - En las dos vistas el filtro de orbe (hasta 1° / hasta 3° / todos) también decide qué líneas se dibujan en la rueda.
-- **Cartas guardadas**: guardá todas las que quieras con nombre. En el menú de la izquierda hay un
-  selector que muestra la carta abierta (con su fecha); al tocarlo se despliega la lista, flotando sobre los
-  botones, y elegir una carta la abre y cierra la lista. Desde 7 cartas aparece un buscador (sin tildes
-  ni mayúsculas, también por fecha). Con teclado: flecha abajo abre, flechas se mueven, Enter elige y Esc
-  cierra. Se cierra también al tocar afuera. «Calcular y guardar cambios» actualiza la abierta y «Guardar como carta
-  nueva» la duplica. Eliminar (la × al pasar el mouse por una carta de la lista; en el celular y el iPad la × está siempre a la vista y es más grande, con lugar propio a la derecha de la fila) pide confirmación (dos toques; con el dedo, la confirmación espera 6 segundos).
+- **Cartas guardadas**: guardá todas las que quieras con nombre. Se abren desde las tarjetas del inicio, la lupa al
+  lado del nombre de la carta o «Buscar o cambiar de carta…» de la barra de arriba (una lista con buscador, sin tildes ni
+  mayúsculas). «Calcular y guardar cambios» actualiza la abierta y «Guardar como carta nueva» la duplica. Eliminar: en
+  «Editar los datos», «Eliminar esta carta» (dos toques; la confirmación espera 6 segundos).
 - En la rueda cada planeta es un círculo de color con su símbolo adentro (el Sol, con borde ondulado) y,
   debajo, grados, signo y minutos (como iPhemeris). Los signos van en una banda oscura con los símbolos en
   blanco. Cada planeta se dibuja siempre dentro de la casa a la que pertenece: si hay varios juntos se
@@ -533,9 +541,9 @@ no borra nada**:
 - Windows: `%APPDATA%\Carta natal\`
 - Linux: `~/.local/share/carta-natal/`
 
-La ruta exacta aparece al pie de la barra lateral y en la terminal al iniciar. Para usar otra carpeta:
+La ruta exacta aparece en Configuración → *Datos* y en la terminal al iniciar. Para usar otra carpeta:
 variable de entorno `CARTA_NATAL_DATA`. Para hacer copia de seguridad alcanza con copiar ese archivo, o usar
-**Exportar cartas** / **Importar cartas…** al pie del menú: bajan y suben un archivo JSON con todas las cartas
+**Exportar cartas** / **Importar cartas…** en Configuración → *Datos*: bajan y suben un archivo JSON con todas las cartas
 (`cartas-natales-AAAA-MM-DD.json`). Al importar se suman a las que ya tenés. Una carta con la **misma fecha, hora y
 ciudad** que una que ya está (el lugar con el mismo nombre, sin importar mayúsculas ni tildes, o casi las mismas
 coordenadas) es la misma aunque traiga **otro nombre**: no se duplica, y se le **suman las notas** que trae y no tiene
@@ -553,7 +561,7 @@ Es la misma app con tres diferencias:
 
 - **Las cartas guardadas viven en el navegador de cada persona**, nunca en el servidor: cada uno ve solo
   las suyas, sin cuentas ni contraseñas. Si borran los datos del sitio se pierden, por eso hay
-  *Exportar cartas* e *Importar cartas…* (un archivo JSON) al pie del menú.
+  *Exportar cartas* e *Importar cartas…* (un archivo JSON) en Configuración → *Datos*.
 - **El servidor no guarda nada**: recibe los datos de nacimiento, calcula y responde. Los datos viajan en el
   cuerpo de un pedido POST (no en la URL) y el registro del servidor solo anota «POST /api/chart → 200».
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
@@ -615,7 +623,7 @@ static/           interfaz
   wheel.js                          dibujo de la rueda
   layout.js                         planetas dentro de su casa; separación del anillo exterior
   astro-data.js                     nombres, aspectos, formato de posiciones, círculos de color de cada cuerpo
-  settings.js                       Configuración (en el menú): estilo, tinte, letra, tamaños, tipos de aspecto, orbes, «Entre casas» y viajes (se guarda y se aplica)
+  settings.js                       Configuración (el panel del engranaje): estilo, letras, tinte, letra, tamaños, tipos de aspecto, orbes, «Entre casas» y viajes (se guarda y se aplica)
   trips.js                          viajes de los planetas por las casas (por aspecto, por eje, por implicancia): cálculo, notación y explicaciones
   print.js                          el cuadro de «Imprimir»: qué va en la hoja (la hoja misma la arma el @media print de style.css)
   summary.js                        pestaña Resumen: profecciones, tránsitos destacados y próximamente
@@ -625,7 +633,9 @@ static/           interfaz
   interp.js                         junta los textos: signo, casa, dignidades, aspectos
   interp-signs.js, interp-houses.js, interp-aspects.js   los textos de interpretación (editables)
   glyphs.js                         símbolos de planetas y signos dibujados como vectores
-  saved.js, api.js                  selector de cartas guardadas (desplegable con buscador) y cliente de la API
+  saved.js, api.js                  cartas guardadas (la lista, crear, editar, borrar) y cliente de la API
+  fontpick.js                       el selector de letras con vista previa (cada opción con su letra)
+  fonts/                            letras incluidas (OFL): Inter, Source Sans, Nunito, Atkinson, IBM Plex Sans, Lora, Source Serif, EB Garamond; Kalam, Patrick Hand, Mali, Shantell Sans; Plutón (⯓)
   notes.js                          notas de la carta: vínculos, leer el texto, qué cambió (sin DOM: se prueba con node)
   local-charts.js                   cartas guardadas en el navegador (versión pública), exportar e importar
                                     (en la versión local lo hace el servidor: POST /api/charts/import)

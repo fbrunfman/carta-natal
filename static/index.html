@@ -13,12 +13,6 @@
   <link rel="stylesheet" href="style.css">
   <script>
     try { var t = localStorage.getItem("carta:theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-    // menú lateral: oculto si así se eligió; sin elección, oculto en pantallas angostas (el menú se abre encima)
-    (function () {
-      var s = null;
-      try { s = localStorage.getItem("carta:side"); } catch (e) {}
-      if (s === "hidden" || (s !== "shown" && matchMedia("(max-width: 820px)").matches)) document.documentElement.dataset.side = "hidden";
-    })();
     // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo.
     // Sin configuración guardada: letra redondeada y tinte por elemento (los valores de fábrica).
     try {
@@ -33,6 +27,8 @@
       if (!INTERP_ENABLED || c.interp === false) d.dataset.nointerp = "";
       var f = typeof c.font === "string" && /^[a-z]+$/.test(c.font) ? c.font : "rounded";
       if (f !== "system") d.dataset.font = f;
+      var nf = typeof c.noteFont === "string" && /^[a-z]+$/.test(c.noteFont) ? c.noteFont : "kalam";
+      d.dataset.nfont = nf;
       if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
       if (+c.wheel > 0 && +c.wheel !== 1) {
         var w = Math.min(1.4, Math.max(0.6, +c.wheel));
@@ -44,236 +40,41 @@
 </head>
 <body>
 <div class="shell">
-
-  <aside class="side" id="side" aria-label="Menú" tabindex="-1">
-    <div class="brand">
-      <h1>Carta natal</h1>
-      <div class="brand-tools">
-        <button id="theme" type="button" class="ghost">Modo oscuro</button>
-        <button id="sideHide" type="button" class="iconbtn" aria-label="Ocultar el menú" title="Ocultar el menú: después aparece al pasar el mouse por el borde izquierdo (Ctrl o Cmd + \)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M16 9.5 13.5 12l2.5 2.5"/></svg>
-        </button>
-      </div>
+  <!-- arriba: las secciones (un menú), buscar o cambiar de carta, el tema y la configuración. En la carta, en pantallas
+       anchas, el nombre, los modos y los botones de la carta van en esta misma fila (style.css, data-tbmerge) -->
+  <header class="topbar" id="topbar">
+    <div class="tb-nav">
+      <button type="button" id="appMenuBtn" class="tb-app" aria-haspopup="true" aria-expanded="false" aria-controls="appMenu" aria-label="Secciones: Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span id="appMenuLabel">Inicio</span><svg class="tb-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+      <nav class="tb-menu" id="appMenu" aria-label="Secciones" hidden>
+        <a href="#inicio" id="navHome">Inicio</a>
+        <a href="#luna" id="navMoon">Luna</a>
+        <a href="#carta" id="navChart">Carta<small id="navChartName"></small></a>
+        <a href="#combinar" id="navCombine" title="Combinar planetas (beta, en construcción)">Combinar<small>beta</small></a>
+      </nav>
     </div>
-
-    <nav class="sidenav" id="sidenav" aria-label="Secciones">
-      <a href="#inicio" id="navHome">Inicio</a>
-      <a href="#luna" id="navMoon">Luna</a>
-      <a href="#carta" id="navChart">Carta</a>
-      <a href="#combinar" id="navCombine" title="Combinar planetas (beta, en construcción)">Combinar</a>
-    </nav>
-
-    <section id="savedSec" class="saved" aria-labelledby="savedTitle">
-      <div class="saved-head">
-        <h2 id="savedTitle">Cartas guardadas<span id="savedCount" class="saved-count" hidden></span></h2>
-      </div>
-      <div id="picker" class="picker" hidden>
-        <button id="pickBtn" type="button" class="picker-btn" aria-expanded="false" aria-controls="pickPop" aria-label="Elegir una carta guardada">
-          <span id="pickLabel" class="pk-label"><span class="pk-nm"></span><span class="pk-dt"></span></span>
-          <svg class="pk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-        </button>
-        <div id="pickPop" class="picker-pop" hidden>
-          <input id="pickQ" type="search" class="picker-q" placeholder="Buscar carta…" aria-label="Buscar entre las cartas guardadas" autocomplete="off" spellcheck="false" hidden>
-          <ul id="savedList" class="saved-list"></ul>
-          <p id="pickNone" class="picker-none" hidden>Ninguna carta coincide.</p>
-        </div>
-      </div>
-      <div id="savedEmpty" class="first-run">
-        <p class="hint">Todavía no guardaste ninguna carta.</p>
-        <button id="first" type="button" class="primary with-ic">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Crear mi primera carta
-        </button>
-      </div>
-      <div id="chartActions" class="chart-actions">
-        <button id="edit" type="button" class="secondary compact with-ic" title="Cambiar los datos de la carta abierta">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>Editar
-        </button>
-        <button id="new" type="button" class="secondary compact with-ic" title="Cargar los datos de otra persona">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta
-        </button>
-      </div>
-    </section>
-
-    <section id="formPanel" class="formpanel" aria-labelledby="formTitle" hidden>
-      <div class="fp-head">
-        <h2 id="formTitle">Nueva carta</h2>
-        <button id="formClose" type="button" class="iconbtn plain" aria-label="Cerrar sin cambios" title="Cerrar sin cambios">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <form id="form" autocomplete="off" novalidate>
-        <label class="field">
-          <span>Nombre</span>
-          <input name="name" type="text" placeholder="Para encontrarla después" required>
-        </label>
-
-        <div class="row2 when">
-          <label class="field">
-            <span>Fecha</span>
-            <input name="date" type="date" required min="1800-01-01" max="2400-12-31">
-          </label>
-          <label class="field">
-            <span>Hora local</span>
-            <input name="time" type="time" required>
-          </label>
-        </div>
-
-        <label class="field">
-          <span>Lugar</span>
-          <input name="place" type="text" list="places" placeholder="Ciudad, país">
-        </label>
-        <datalist id="places"></datalist>
-
-        <div class="row2">
-          <label class="field">
-            <span>Latitud</span>
-            <input name="lat" type="number" step="any" min="-90" max="90" required inputmode="decimal">
-          </label>
-          <label class="field">
-            <span>Longitud</span>
-            <input name="lon" type="number" step="any" min="-180" max="180" required inputmode="decimal">
-          </label>
-        </div>
-        <p class="hint">Sur y oeste van en negativo. Si tu lugar no está en la lista, escribí las coordenadas.</p>
-
-        <label class="field">
-          <span>Zona horaria</span>
-          <input name="tz" type="text" list="tzs" placeholder="America/Argentina/Buenos_Aires" spellcheck="false">
-        </label>
-        <datalist id="tzs"></datalist>
-
-        <label class="check">
-          <input type="checkbox" id="manual">
-          <span>Fijar el offset UTC a mano</span>
-        </label>
-        <label class="field" id="offsetField" hidden>
-          <span>Offset en horas (por ejemplo −3)</span>
-          <input name="offset" type="number" step="0.25" min="-14" max="14" inputmode="decimal">
-        </label>
-
-        <div class="actions">
-          <button class="primary" type="submit" id="go">Calcular y guardar</button>
-        </div>
-        <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
-      </form>
-    </section>
-    <p class="status" id="saveNote" role="status"></p>
-
-    <details class="cfgbox" id="cfgBox">
-      <summary>
-        <svg class="cfg-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6"/></svg>
-        <span>Configuración</span>
-        <svg class="cfg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-      </summary>
-      <div class="cfg" id="cfg">
-        <h3 class="sub">Cálculo</h3>
-        <div class="row2">
-          <label class="field">
-            <span>Sistema de casas</span>
-            <select name="hsys" form="form">
-              <option value="P">Placidus</option>
-              <option value="K">Koch</option>
-              <option value="O">Porfirio</option>
-              <option value="R">Regiomontano</option>
-              <option value="C">Campanus</option>
-              <option value="E">Casas iguales</option>
-              <option value="W">Signos enteros</option>
-            </select>
-          </label>
-          <!-- Nodo lunar: oculto a pedido (el nodo no se calcula; ver SHOW_NODE en astro.py). Para volver a ponerlo, sacar `hidden`. -->
-          <label class="field" hidden>
-            <span>Nodo lunar</span>
-            <select name="node" form="form">
-              <option value="true">Verdadero</option>
-              <option value="mean">Medio</option>
-            </select>
-          </label>
-        </div>
-        <p class="fine" id="cfgCalcNote">El sistema de casas vale para todas las cartas y se aplica al instante.</p>
-
-        <h3 class="sub">Aspectos</h3>
-        <div class="asp-toggles" id="cfgAsp" role="group" aria-label="Aspectos que se muestran"></div>
-        <p class="fine">Tocá un aspecto para sacarlo o volver a ponerlo. Los apagados no se ven en la rueda, las listas, el cuadro ni el calendario.</p>
-
-        <h3 class="sub">Orbes</h3>
-        <p class="fine">Hasta cuántos grados de distancia cuenta cada aspecto. Entre dos planetas de grupos distintos manda el orbe mayor (el Sol con Neptuno usa el del Sol). Valen para la carta natal, los tránsitos y la sinastría; los tránsitos destacados del inicio tienen sus propios orbes.</p>
-        <div class="orb-wrap"><table class="orb-table" id="cfgOrbAsp"></table></div>
-        <h3 class="sub">Planetas en las casas</h3>
-        <p class="fine">Para el botón «Entre casas» de la carta natal. Se cuenta siempre hacia adelante: lo que importa es cuántos grados le faltan al planeta para la cúspide de la casa que sigue (cúspide angular: la de las casas 1, 4, 7 y 10). <strong>En cúspide</strong>: si le faltan hasta esos grados, el planeta cuenta en la casa que sigue y ya no en la suya. <strong>En las 2 casas</strong>: si le faltan más que eso y hasta estos grados, cuenta en las dos. Un planeta que ya pasó la cúspide es de esa casa y nada más.</p>
-        <div class="orb-wrap"><table class="orb-table" id="cfgOrbHouse"></table></div>
-        <button type="button" class="secondary compact" id="cfgOrbReset">Restablecer orbes</button>
-
-        <h3 class="sub">Viajes de planetas</h3>
-        <p class="fine">Para la sección «Viajes» y el botón «Viajes» de la carta natal. Un planeta viaja a otra casa en tres casos, todos con aspectos duros. <strong>Por aspecto</strong>: dos planetas en aspecto duro se intercambian de casa. <strong>Por eje</strong>: un planeta pegado a una cúspide viaja a la casa opuesta. <strong>Por implicancia</strong>: un planeta en aspecto duro con otro viaja a las casas cuya cúspide está en un signo que rige ese otro. Los aspectos usan los orbes de arriba, estén o no a la vista en la rueda. Los regentes son los modernos (Escorpio, de Plutón; Acuario, de Urano; Piscis, de Neptuno).</p>
-        <p class="fine"><strong>Aspectos duros</strong> (los apagados no generan viajes)</p>
-        <div class="asp-toggles" id="cfgTripAsp" role="group" aria-label="Aspectos duros para los viajes"></div>
-        <p class="fine"><strong>Pegado a la cúspide</strong> (viaje por eje): hasta cuántos grados de la cúspide, antes o después. Cúspide angular: la de las casas 1, 4, 7 y 10.</p>
-        <div class="orb-wrap"><table class="orb-table" id="cfgTripOrb"></table></div>
-        <button type="button" class="secondary compact" id="cfgTripReset">Restablecer viajes</button>
-
-        <h3 class="sub">Menú lateral</h3>
-        <div class="seg" id="cfgSide" role="group" aria-label="Menú lateral">
-          <button type="button" data-side="shown" aria-pressed="true">Fijo</button>
-          <button type="button" data-side="hidden" aria-pressed="false">Oculto</button>
-        </div>
-        <p class="fine">Oculto: el mandala usa todo el ancho y el menú aparece encima al pasar el mouse por el borde izquierdo o al tocar el botón de la esquina. Con un clic en ese botón queda fijo. En el celular arranca oculto.</p>
-
-        <!-- Interpretación: oculta a pedido (la app queda siempre en «solo datos»; ver INTERP_ENABLED en settings.js).
-             Para volver a ponerla, sacar `hidden` de estos tres elementos y poner INTERP_ENABLED = true (acá abajo y en settings.js). -->
-        <h3 class="sub" hidden>Interpretación</h3>
-        <div class="seg" id="cfgInterp" role="group" aria-label="Interpretación" hidden>
-          <button type="button" data-interp="on" aria-pressed="true">Con lecturas</button>
-          <button type="button" data-interp="off" aria-pressed="false">Solo datos</button>
-        </div>
-        <p class="fine" hidden>Solo datos: se ocultan todas las lecturas (la ventana al tocar un planeta, los temas de las casas y las descripciones de los tránsitos). Quedan posiciones, aspectos, orbes, fechas y horas.</p>
-
-        <h3 class="sub">Estilo de los gráficos</h3>
-        <div class="seg" id="cfgGfx" role="group" aria-label="Estilo de los gráficos">
-          <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
-          <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
-        </div>
-        <p class="fine">Nuevo: planetas en círculos de color y signos blancos sobre una banda oscura. Clásico: símbolos simples de la fuente del sistema y anillo teñido por elemento, como antes.</p>
-        <label class="check"><input type="checkbox" id="cfgTint"><span>Tinte por elemento en el anillo de signos</span></label>
-
-        <h3 class="sub">Letra</h3>
-        <label class="field"><span>Tipo de letra</span><select id="cfgFont"></select></label>
-        <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
-
-        <h3 class="sub">Mandala</h3>
-        <label class="check"><input type="checkbox" id="cfgCusp"><span>Anillo exterior con las cúspides de las casas</span></label>
-        <p class="fine">Prendido: un anillo por afuera del zodíaco con los grados, el signo y los minutos de cada cúspide, y los bordes de las casas llegan hasta él. Apagado: los grados van sueltos afuera del zodíaco, sin el signo, y el mandala se ve un poco más grande.</p>
-        <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
-        <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
-
-        <button type="button" class="secondary compact" id="cfgReset">Restablecer</button>
-      </div>
-    </details>
-
-    <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato a internet.</p>
-    <p class="where" id="savedWhere"></p>
-    <div class="backup" id="backup" hidden>
-      <button type="button" class="ghost" id="exportCharts">Exportar cartas</button>
-      <button type="button" class="ghost" id="importCharts">Importar cartas…</button>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
-      <p class="status" id="backupNote" role="status"></p>
-    </div>
-  </aside>
-
-  <div id="scrim" class="scrim" aria-hidden="true"></div>
+    <span class="tb-brand">Carta natal</span>
+    <span class="tb-sp"></span>
+    <button type="button" id="tbFind" class="tb-find" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><span>Buscar o cambiar de carta…</span></button>
+    <button type="button" id="theme" class="tb-ic" aria-label="Modo oscuro" title="Modo oscuro"><svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14.5A8 8 0 0 1 9.5 5a8 8 0 1 0 9.5 9.5Z"/></svg><svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></button>
+    <button type="button" id="cfgBtn" class="tb-ic" aria-label="Configuración" title="Configuración" aria-haspopup="dialog" aria-expanded="false" aria-controls="cfgPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  </header>
 
   <main id="main">
-    <div id="sideEdge" class="side-edge" aria-hidden="true"></div>
-    <button id="sideShow" type="button" class="iconbtn side-show" aria-label="Mostrar el menú" title="Pasá el mouse para ver el menú encima; hacé clic para fijarlo (Ctrl o Cmd + \)">
-      <svg class="ic-show" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M14 9.5 16.5 12 14 14.5"/></svg>
-      <svg class="ic-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5.2 3 3.3V14H7v-1.5l3-3.3L9 4Z"/><path d="M12 14v6"/></svg>
-      <svg class="ic-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
     <!-- Inicio: el cielo de ahora visto desde la Tierra; la Luna abajo a la izquierda y, al tocarla, un poema -->
     <section id="home" class="page" aria-labelledby="homeTitle" hidden>
       <header class="head">
         <h2 id="homeTitle">Inicio</h2>
         <p id="homeSub"></p>
       </header>
+      <!-- tus cartas, como tarjetas: la última que abriste primero; tocar una la abre -->
+      <section class="home-charts hc" id="homeCharts" aria-labelledby="homeChartsTitle">
+        <div class="hc-head">
+          <h3 id="homeChartsTitle">Tus cartas <span class="hc-n" id="homeChartsN"></span></h3>
+          <label class="hc-q" id="homeChartsQWrap" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="homeChartsQ" placeholder="Buscar…" autocomplete="off" spellcheck="false" aria-label="Buscar entre tus cartas"></label>
+        </div>
+        <div id="homeChartBody"></div>
+      </section>
+      <!-- el cielo de ahora a la izquierda (más chico); a la derecha la Luna y los tránsitos destacados -->
       <div class="home-grid">
         <div class="home-main">
           <div class="sky-wrap" id="skyWrap">
@@ -291,33 +92,35 @@
           <div class="home-moon-slot" id="homeMoonSlot"></div>
           <section class="home-charts home-tr" id="homeTr" aria-labelledby="homeTrTitle" hidden>
             <h3 id="homeTrTitle">Tránsitos destacados de hoy</h3>
-            <p class="home-tr-note" id="homeTrNote"></p>
-            <div class="home-chips home-tr-pick" id="homeTrPick" role="group" aria-label="Cartas que se incluyen"></div>
-            <div class="home-tr-act">
-              <button type="button" class="home-continue" id="homeTrGo"></button>
-              <span class="home-tr-prog" id="homeTrProg" role="status" aria-live="polite"></span>
+            <p class="home-tr-auto" id="homeTrAuto" hidden></p>
+            <div id="homeTrEdit">
+              <p class="home-tr-note" id="homeTrNote"></p>
+              <div class="home-chips home-tr-pick" id="homeTrPick" role="group" aria-label="Cartas que se incluyen"></div>
+              <div class="home-tr-act">
+                <button type="button" class="home-continue" id="homeTrGo"></button>
+                <span class="home-tr-prog" id="homeTrProg" role="status" aria-live="polite"></span>
+              </div>
             </div>
             <div class="htr-cards" id="homeTrBody"></div>
           </section>
-          <section class="home-charts" id="homeCharts" aria-labelledby="homeChartsTitle">
-            <h3 id="homeChartsTitle">Tus cartas</h3>
-            <div id="homeChartBody"></div>
-          </section>
-          <section class="home-charts home-find" id="homeFind" aria-labelledby="homeFindTitle" hidden>
-            <h3 id="homeFindTitle">Buscar por posición</h3>
-            <p class="home-tr-note" id="homeFindNote"></p>
-            <div class="find-row">
-              <label class="find-f" for="findBody"><span>Planeta o punto</span><select id="findBody"></select></label>
-              <label class="find-f" for="findSign"><span>En el signo</span><select id="findSign"></select></label>
-            </div>
-            <div class="home-tr-act">
-              <button type="button" class="home-continue" id="findGo" hidden></button>
-              <span class="home-tr-prog" id="findProg" role="status" aria-live="polite"></span>
-            </div>
-            <div class="find-out" id="findOut" aria-live="polite"></div>
-          </section>
         </div>
       </div>
+      <details class="home-fold home-find" id="homeFind" hidden>
+        <summary><span class="hf-t" id="homeFindTitle">Buscar por posición</span><small>¿Qué cartas tienen la Luna en Cáncer?</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="hf-b">
+          <p class="home-tr-note" id="homeFindNote"></p>
+          <div class="find-row">
+            <label class="find-f" for="findBody"><span>Planeta o punto</span><select id="findBody"></select></label>
+            <label class="find-f" for="findSign"><span>En el signo</span><select id="findSign"></select></label>
+          </div>
+          <div class="home-tr-act">
+            <button type="button" class="home-continue" id="findGo" hidden></button>
+            <span class="home-tr-prog" id="findProg" role="status" aria-live="polite"></span>
+          </div>
+          <div class="find-out" id="findOut" aria-live="polite"></div>
+        </div>
+      </details>
+      <p class="home-priv"><span id="homePrivTxt"></span> <button type="button" class="home-priv-link" id="homePriv">Privacidad y copias</button></p>
     </section>
 
     <section id="lunar" class="page" aria-labelledby="lunarTitle" hidden>
@@ -362,14 +165,8 @@
     <div id="chartPage">
     <header class="head">
       <h2><span id="title">Carta natal</span><span class="title-acts"><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button><button type="button" id="titleInfo" class="iconbtn title-pick title-info" aria-label="Datos de nacimiento" title="Datos de nacimiento" aria-haspopup="dialog" aria-expanded="false" aria-controls="cinfo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg></button></span></h2>
-      <!-- cambiar de carta sin abrir el menú: la lista de las guardadas, con buscador -->
-      <div class="cpick" id="cpick" role="dialog" aria-label="Cambiar de carta" hidden>
-        <input type="search" id="cpickQ" placeholder="Buscar carta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta">
-        <ul class="cpick-list" id="cpickList" aria-label="Cartas guardadas"></ul>
-        <button type="button" class="cpick-new" id="cpickNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
-      </div>
       <!-- celular: los datos de nacimiento (el subtítulo y la hora UTC) van acá, detrás del ícono de info -->
-      <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden></div>
+      <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden><div id="cinfoText"></div><button type="button" class="secondary compact with-ic" id="edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>Editar los datos</button></div>
       <p id="sub"></p>
     </header>
 
@@ -630,6 +427,9 @@
       <button type="button" class="tp-step" id="tpNext" aria-label="Avanzar">›</button>
     </div>
     <nav class="mbar" id="mbar" aria-label="Vistas de la carta">
+      <button type="button" data-v="inicio" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1Z"/></svg><span>Inicio</span>
+      </button>
       <button type="button" data-v="carta" aria-pressed="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/></svg><span>Carta</span>
       </button>
@@ -742,5 +542,208 @@
 
 <script type="module" src="app.js"></script>
 <script type="module" src="presence.js"></script>
+<!-- cambiar de carta: la lista de las guardadas, con buscador (la abren la lupa del nombre o el buscador de arriba) -->
+<div class="cpick" id="cpick" role="dialog" aria-label="Cambiar de carta" hidden>
+<input type="search" id="cpickQ" placeholder="Buscar carta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta">
+<ul class="cpick-list" id="cpickList" aria-label="Cartas guardadas"></ul>
+<button type="button" class="cpick-new" id="cpickNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
+</div>
+<!-- una carta nueva o editar la abierta: una ventana en el centro -->
+<dialog id="formDlg" class="pdlg formdlg" aria-labelledby="formTitle">
+    <section id="formPanel" class="formpanel" aria-labelledby="formTitle">
+      <div class="fp-head">
+        <h2 id="formTitle">Nueva carta</h2>
+        <button id="formClose" type="button" class="iconbtn plain" aria-label="Cerrar sin cambios" title="Cerrar sin cambios">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <form id="form" autocomplete="off" novalidate>
+        <label class="field">
+          <span>Nombre</span>
+          <input name="name" type="text" placeholder="Para encontrarla después" required>
+        </label>
+
+        <div class="row2 when">
+          <label class="field">
+            <span>Fecha</span>
+            <input name="date" type="date" required min="1800-01-01" max="2400-12-31">
+          </label>
+          <label class="field">
+            <span>Hora local</span>
+            <input name="time" type="time" required>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Lugar</span>
+          <input name="place" type="text" list="places" placeholder="Ciudad, país">
+        </label>
+        <datalist id="places"></datalist>
+
+        <div class="row2">
+          <label class="field">
+            <span>Latitud</span>
+            <input name="lat" type="number" step="any" min="-90" max="90" required inputmode="decimal">
+          </label>
+          <label class="field">
+            <span>Longitud</span>
+            <input name="lon" type="number" step="any" min="-180" max="180" required inputmode="decimal">
+          </label>
+        </div>
+        <p class="hint">Sur y oeste van en negativo. Si tu lugar no está en la lista, escribí las coordenadas.</p>
+
+        <label class="field">
+          <span>Zona horaria</span>
+          <input name="tz" type="text" list="tzs" placeholder="America/Argentina/Buenos_Aires" spellcheck="false">
+        </label>
+        <datalist id="tzs"></datalist>
+
+        <label class="check">
+          <input type="checkbox" id="manual">
+          <span>Fijar el offset UTC a mano</span>
+        </label>
+        <label class="field" id="offsetField" hidden>
+          <span>Offset en horas (por ejemplo −3)</span>
+          <input name="offset" type="number" step="0.25" min="-14" max="14" inputmode="decimal">
+        </label>
+
+        <div class="actions">
+          <button class="primary" type="submit" id="go">Calcular y guardar</button>
+        </div>
+        <button type="button" class="ghost" id="saveAs" hidden>Guardar como carta nueva</button>
+      </form>
+    </section>
+  <div class="fd-foot">
+    <p class="status" id="saveNote" role="status"></p>
+    <button type="button" class="fd-del" id="formDel" hidden>Eliminar esta carta</button>
+  </div>
+</dialog>
+<!-- configuración: un panel que entra por la derecha (en el celular, a pantalla completa) -->
+<div class="cfgp-scrim" id="cfgScrim" hidden></div>
+<aside class="cfgp" id="cfgPanel" role="dialog" aria-modal="true" aria-labelledby="cfgTitle" tabindex="-1" hidden>
+  <div class="cfgp-head"><h2 id="cfgTitle">Configuración</h2>
+    <button type="button" class="pdl-icon" id="cfgClose" aria-label="Cerrar la configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="cfgp-body" id="cfg">
+      <details class="cfgg" id="cfgLook">
+        <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 7.5a4.5 4.5 0 0 1 0 9"/></svg></span><span class="cfgg-t"><b>Apariencia</b><small class="cfgg-sum" id="cfgLookSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="cfgg-b">
+          <div class="cfg-row"><span class="cfg-lab" id="cfgThemeLab">Tema</span>
+            <div class="seg" id="cfgTheme" role="group" aria-labelledby="cfgThemeLab">
+              <button type="button" data-theme-set="light" aria-pressed="false">Claro</button>
+              <button type="button" data-theme-set="dark" aria-pressed="false">Oscuro</button>
+              <button type="button" data-theme-set="auto" aria-pressed="true">Automático</button>
+            </div></div>
+          <div class="cfg-row"><span class="cfg-lab" id="cfgFontLab">Letra de la app</span>
+            <div class="fpick" data-for="cfgFont"><select id="cfgFont" aria-labelledby="cfgFontLab"></select></div></div>
+          <div class="cfg-row"><span class="cfg-lab" id="cfgNoteFontLab">Letra de las notas</span>
+            <div class="fpick" data-for="cfgNoteFont"><select id="cfgNoteFont" aria-labelledby="cfgNoteFontLab"></select></div></div>
+          <label class="field slider"><span>Tamaño de letra <output id="cfgFsV"></output></span><input type="range" id="cfgFs" step="5" aria-label="Tamaño de letra"></label>
+          <div class="cfg-row"><span class="cfg-lab" id="cfgGfxLab">Estilo de los gráficos</span>
+            <div class="seg" id="cfgGfx" role="group" aria-labelledby="cfgGfxLab">
+            <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
+            <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
+            </div>
+          </div>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Nuevo: planetas en círculos de color y signos blancos sobre una banda oscura. Clásico: símbolos simples de la fuente del sistema y anillo teñido por elemento, como antes.</p>
+          </details>
+          <!-- Interpretación: oculta a pedido (la app queda siempre en «solo datos»; ver INTERP_ENABLED en settings.js).
+          Para volver a ponerla, sacar `hidden` de estos tres elementos y poner INTERP_ENABLED = true (acá abajo y en settings.js). -->
+          <h3 class="sub" hidden>Interpretación</h3>
+          <div class="seg" id="cfgInterp" role="group" aria-label="Interpretación" hidden>
+          <button type="button" data-interp="on" aria-pressed="true">Con lecturas</button>
+          <button type="button" data-interp="off" aria-pressed="false">Solo datos</button>
+          </div>
+          <p class="fine" hidden>Solo datos: se ocultan todas las lecturas (la ventana al tocar un planeta, los temas de las casas y las descripciones de los tránsitos). Quedan posiciones, aspectos, orbes, fechas y horas.</p>
+          <button type="button" class="cfg-reset" id="cfgResetLook">Restablecer apariencia</button>
+        </div>
+      </details>
+      <details class="cfgg" id="cfgWheelG">
+        <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/></svg></span><span class="cfgg-t"><b>Mandala</b><small class="cfgg-sum" id="cfgWheelGSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="cfgg-b">
+          <label class="field slider"><span>Tamaño del mandala <output id="cfgWheelV"></output></span><input type="range" id="cfgWheel" step="5" aria-label="Tamaño del mandala"></label>
+          <p class="fine" id="cfgBig" hidden>Con más de 100 % el mandala se agranda y las tablas pasan debajo.</p>
+          <label class="check"><input type="checkbox" id="cfgCusp"><span>Anillo exterior con las cúspides de las casas</span></label>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Prendido: un anillo por afuera del zodíaco con los grados, el signo y los minutos de cada cúspide, y los bordes de las casas llegan hasta él. Apagado: los grados van sueltos afuera del zodíaco, sin el signo, y el mandala se ve un poco más grande.</p>
+          </details>
+          <label class="check"><input type="checkbox" id="cfgTint"><span>Tinte por elemento en el anillo de signos</span></label>
+          <label class="check"><input type="checkbox" id="cfgMarks"><span>Marcar en el mandala lo que tiene notas</span></label>
+          <button type="button" class="cfg-reset" id="cfgResetWheel">Restablecer mandala</button>
+        </div>
+      </details>
+      <details class="cfgg" id="cfgAspG">
+        <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4.5 20 19H4Z"/></svg></span><span class="cfgg-t"><b>Aspectos y orbes</b><small class="cfgg-sum" id="cfgAspGSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="cfgg-b">
+          <div class="row2">
+          <label class="field">
+          <span>Sistema de casas</span>
+          <select name="hsys" form="form">
+          <option value="P">Placidus</option>
+          <option value="K">Koch</option>
+          <option value="O">Porfirio</option>
+          <option value="R">Regiomontano</option>
+          <option value="C">Campanus</option>
+          <option value="E">Casas iguales</option>
+          <option value="W">Signos enteros</option>
+          </select>
+          </label>
+          <!-- Nodo lunar: oculto a pedido (el nodo no se calcula; ver SHOW_NODE en astro.py). Para volver a ponerlo, sacar `hidden`. -->
+          <label class="field" hidden>
+          <span>Nodo lunar</span>
+          <select name="node" form="form">
+          <option value="true">Verdadero</option>
+          <option value="mean">Medio</option>
+          </select>
+          </label>
+          </div>
+          <p class="fine" id="cfgCalcNote">El sistema de casas vale para todas las cartas y se aplica al instante.</p>
+          <div class="cfg-head"><h3 class="sub">Aspectos que se muestran</h3></div>
+          <div class="asp-toggles" id="cfgAsp" role="group" aria-label="Aspectos que se muestran"></div>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Tocá un aspecto para sacarlo o volver a ponerlo. Los apagados no se ven en la rueda, las listas, el cuadro ni el calendario.</p>
+          </details>
+          <div class="cfg-head"><h3 class="sub">Orbes</h3></div>
+          <div class="orb-wrap"><table class="orb-table" id="cfgOrbAsp"></table></div>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Hasta cuántos grados de distancia cuenta cada aspecto. Entre dos planetas de grupos distintos manda el orbe mayor (el Sol con Neptuno usa el del Sol). Valen para la carta natal, los tránsitos y la sinastría; los tránsitos destacados del inicio tienen sus propios orbes.</p>
+          </details>
+          <button type="button" class="cfg-reset" id="cfgResetAsp">Restablecer aspectos y orbes</button>
+        </div>
+      </details>
+      <details class="cfgg" id="cfgAdvG">
+        <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 12h3M12 12h7M5 17h11M20 17h-1"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg></span><span class="cfgg-t"><b>Reglas avanzadas</b><small class="cfgg-sum" id="cfgAdvGSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="cfgg-b">
+          <div class="cfg-head"><h3 class="sub">Planetas entre casas</h3></div>
+          <div class="orb-wrap"><table class="orb-table" id="cfgOrbHouse"></table></div>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Para el botón «Entre casas» de la carta natal. Se cuenta siempre hacia adelante: lo que importa es cuántos grados le faltan al planeta para la cúspide de la casa que sigue (cúspide angular: la de las casas 1, 4, 7 y 10). <strong>En cúspide</strong>: si le faltan hasta esos grados, el planeta cuenta en la casa que sigue y ya no en la suya. <strong>En las 2 casas</strong>: si le faltan más que eso y hasta estos grados, cuenta en las dos. Un planeta que ya pasó la cúspide es de esa casa y nada más.</p>
+          </details>
+          <div class="cfg-head"><h3 class="sub">Viajes de planetas</h3></div>
+          <p class="fine"><strong>Aspectos duros</strong> (los apagados no generan viajes)</p>
+          <div class="asp-toggles" id="cfgTripAsp" role="group" aria-label="Aspectos duros para los viajes"></div>
+          <p class="fine"><strong>Pegado a la cúspide</strong> (viaje por eje): hasta cuántos grados de la cúspide, antes o después. Cúspide angular: la de las casas 1, 4, 7 y 10.</p>
+          <div class="orb-wrap"><table class="orb-table" id="cfgTripOrb"></table></div>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Para la sección «Viajes» y el botón «Viajes» de la carta natal. Un planeta viaja a otra casa en tres casos, todos con aspectos duros. <strong>Por aspecto</strong>: dos planetas en aspecto duro se intercambian de casa. <strong>Por eje</strong>: un planeta pegado a una cúspide viaja a la casa opuesta. <strong>Por implicancia</strong>: un planeta en aspecto duro con otro viaja a las casas cuya cúspide está en un signo que rige ese otro. Los aspectos usan los orbes de arriba, estén o no a la vista en la rueda. Los regentes son los modernos (Escorpio, de Plutón; Acuario, de Urano; Piscis, de Neptuno).</p>
+          </details>
+          <button type="button" class="cfg-reset" id="cfgResetAdv">Restablecer reglas avanzadas</button>
+        </div>
+      </details>
+      <details class="cfgg" id="cfgDataG">
+        <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10.5l4 4 4-4M5 19.5h14"/></svg></span><span class="cfgg-t"><b>Datos</b><small class="cfgg-sum" id="cfgDataGSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="cfgg-b">
+          <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato a internet.</p>
+          <p class="where" id="savedWhere"></p>
+          <div class="backup" id="backup" hidden>
+          <button type="button" class="ghost" id="exportCharts">Exportar cartas</button>
+          <button type="button" class="ghost" id="importCharts">Importar cartas…</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+          <p class="status" id="backupNote" role="status"></p>
+          </div>
+        </div>
+      </details>
+  </div>
+</aside>
 </body>
 </html>

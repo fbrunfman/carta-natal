@@ -57,6 +57,7 @@ export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
   tint: true,        // tinte por elemento en el anillo de signos
   font: "rounded",   // ver FONTS
+  noteFont: "kalam", // la letra de las notas: ver NOTE_FONTS
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
   aspOff: [],        // tipos de aspecto apagados (claves de ASPECT: "square", "sextile"…); [] = se muestran todos
@@ -68,13 +69,41 @@ export const DEFAULTS = Object.freeze({
   interp: INTERP_ENABLED,   // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
 });
 
+// Tipos de letra de la app. Los «del dispositivo» dependen de lo que tenga la compu o el celular (Avenir o New York solo
+// existen en Apple); los «incluidos» vienen con la app (static/fonts, licencia OFL) y se ven igual en todos lados.
+// La familia de cada una (para la vista previa del selector) es la misma que pone la CSS en :root[data-font=…].
 export const FONTS = {
-  system: "Sistema (SF Pro)",
-  helvetica: "Helvetica Neue",
-  avenir: "Avenir Next",
-  rounded: "Redondeada",
-  serif: "Serif (New York)",
-  mono: "Monoespaciada",
+  system: "Sistema", helvetica: "Helvetica Neue", avenir: "Avenir Next", rounded: "Redondeada", serif: "New York", mono: "Monoespaciada",
+  inter: "Inter", sourcesans: "Source Sans", nunito: "Nunito", atkinson: "Atkinson Hyperlegible", plex: "IBM Plex Sans",
+  lora: "Lora", sourceserif: "Source Serif", garamond: "EB Garamond",
+};
+export const FONT_GROUPS = [
+  ["Del dispositivo", ["system", "rounded", "helvetica", "avenir", "serif", "mono"]],
+  ["Incluidas · sin serif", ["inter", "sourcesans", "nunito", "atkinson", "plex"]],
+  ["Incluidas · con serif", ["lora", "sourceserif", "garamond"]],
+];
+export const FONT_NOTE = { nunito: "redondeada", atkinson: "muy legible", garamond: "clásica", mono: "de máquina" };
+export const FONT_FAMILY = {
+  system: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif',
+  helvetica: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+  avenir: '"Avenir Next", Avenir, "Helvetica Neue", sans-serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif',
+  serif: 'ui-serif, "New York", "Iowan Old Style", Georgia, serif',
+  mono: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  inter: '"Inter", system-ui, sans-serif',
+  sourcesans: '"Source Sans 3", system-ui, sans-serif',
+  nunito: '"Nunito", system-ui, sans-serif',
+  atkinson: '"Atkinson Hyperlegible Next", system-ui, sans-serif',
+  plex: '"IBM Plex Sans", system-ui, sans-serif',
+  lora: '"Lora", Georgia, serif',
+  sourceserif: '"Source Serif 4", Georgia, serif',
+  garamond: '"EB Garamond", Georgia, serif',
+};
+// La letra de las notas (manuscritas, incluidas en la app), o la misma de la app.
+export const NOTE_FONTS = { kalam: "Kalam", patrick: "Patrick Hand", mali: "Mali", shantell: "Shantell Sans", app: "La misma de la app" };
+export const NOTE_FONT_FAMILY = {
+  kalam: '"Kalam", system-ui, sans-serif', patrick: '"Patrick Hand", system-ui, sans-serif', mali: '"Mali", system-ui, sans-serif',
+  shantell: '"Shantell Sans", system-ui, sans-serif', app: "var(--sans)",
 };
 
 export const LIMITS = { fs: [0.85, 1.3], wheel: [0.6, 1.4] };
@@ -101,6 +130,7 @@ export function load() {
     gfx: raw.gfx === "classic" ? "classic" : "new",
     tint: typeof raw.tint === "boolean" ? raw.tint : DEFAULTS.tint,
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
+    noteFont: Object.hasOwn(NOTE_FONTS, raw.noteFont) ? raw.noteFont : DEFAULTS.noteFont,
     fs: clamp(raw.fs ?? DEFAULTS.fs, LIMITS.fs, DEFAULTS.fs),
     wheel: clamp(raw.wheel ?? DEFAULTS.wheel, LIMITS.wheel, DEFAULTS.wheel),
     cuspRing: typeof raw.cuspRing === "boolean" ? raw.cuspRing : DEFAULTS.cuspRing,
@@ -122,6 +152,7 @@ export function apply(cfg, root = document.documentElement) {
   root.dataset.gfx = cfg.gfx;
   if (cfg.tint) root.dataset.tint = "on"; else delete root.dataset.tint;
   if (cfg.font !== "system") root.dataset.font = cfg.font; else delete root.dataset.font;
+  root.dataset.nfont = cfg.noteFont;
   if (cfg.fs !== 1) root.style.setProperty("--fs", cfg.fs); else root.style.removeProperty("--fs");
   if (cfg.wheel !== 1) root.style.setProperty("--wheel", cfg.wheel); else root.style.removeProperty("--wheel");
   // más de 100 %: el mandala crece y las tablas pasan debajo
@@ -140,15 +171,15 @@ export function initSettings(onChange) {
   const $ = (s) => document.querySelector(s);
   const el = {
     gfx: [...document.querySelectorAll("#cfgGfx button")],
-    tint: $("#cfgTint"), font: $("#cfgFont"),
+    tint: $("#cfgTint"), font: $("#cfgFont"), noteFont: $("#cfgNoteFont"),
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
-    big: $("#cfgBig"), reset: $("#cfgReset"), cusp: $("#cfgCusp"),
+    big: $("#cfgBig"), cusp: $("#cfgCusp"),
+    resetLook: $("#cfgResetLook"), resetWheel: $("#cfgResetWheel"), resetAsp: $("#cfgResetAsp"), resetAdv: $("#cfgResetAdv"),
     interp: [...document.querySelectorAll("#cfgInterp button")],
     asp: $("#cfgAsp"),
     spill: $("#spillBtn"),
-    orbAsp: $("#cfgOrbAsp"), orbHouse: $("#cfgOrbHouse"), orbReset: $("#cfgOrbReset"),
+    orbAsp: $("#cfgOrbAsp"), orbHouse: $("#cfgOrbHouse"),
     tripBtn: $("#tripBtn"), tripAsp: $("#cfgTripAsp"), tripOrb: $("#cfgTripOrb"),
-    tripReset: $("#cfgTripReset"),
   };
   // un botón por tipo de aspecto: encendido se muestra, apagado se oculta en la rueda, las listas, el cuadro y el calendario
   el.asp.replaceChildren(...Object.entries(ASPECT).map(([type, A]) => {
@@ -201,7 +232,13 @@ export function initSettings(onChange) {
     cusp: tripInputs.map((inp) => (inp.value === "" ? NaN : Number(inp.value))),
   });
 
-  el.font.replaceChildren(...Object.entries(FONTS).map(([v, label]) =>
+  // las letras, en grupos (el selector con vista previa lo arma fontpick.js sobre este <select>)
+  el.font.replaceChildren(...FONT_GROUPS.map(([label, keys]) => {
+    const g = Object.assign(document.createElement("optgroup"), { label });
+    g.append(...keys.map((v) => Object.assign(document.createElement("option"), { value: v, textContent: FONTS[v] })));
+    return g;
+  }));
+  el.noteFont.replaceChildren(...Object.entries(NOTE_FONTS).map(([v, label]) =>
     Object.assign(document.createElement("option"), { value: v, textContent: label })));
   el.fs.min = Math.round(LIMITS.fs[0] * 100); el.fs.max = Math.round(LIMITS.fs[1] * 100);
   el.wheel.min = Math.round(LIMITS.wheel[0] * 100); el.wheel.max = Math.round(LIMITS.wheel[1] * 100);
@@ -212,6 +249,9 @@ export function initSettings(onChange) {
     el.cusp.checked = cfg.cuspRing;
     if (el.spill) el.spill.setAttribute("aria-pressed", cfg.spill);
     el.font.value = cfg.font;
+    el.noteFont.value = cfg.noteFont;
+    el.font.dispatchEvent(new Event("fpick:sync"));
+    el.noteFont.dispatchEvent(new Event("fpick:sync"));
     el.fs.value = Math.round(cfg.fs * 100); el.fsV.textContent = pct(cfg.fs);
     el.wheel.value = Math.round(cfg.wheel * 100); el.wheelV.textContent = pct(cfg.wheel);
     el.big.hidden = !(cfg.wheel > 1);
@@ -222,7 +262,7 @@ export function initSettings(onChange) {
       const d = orbGet(ORB_DEFAULTS, inp.dataset.orb, +inp.dataset.i);
       inp.classList.toggle("edited", orbGet(cfg.orbs, inp.dataset.orb, +inp.dataset.i) !== d);
     }
-    el.orbReset.disabled = sameOrbs(cfg.orbs, ORB_DEFAULTS);
+
     if (el.tripBtn) el.tripBtn.setAttribute("aria-pressed", cfg.tripsOn);
     for (const b of el.tripAsp.children) b.setAttribute("aria-pressed", cfg.trips.asp.includes(b.dataset.tripAsp));
     for (const inp of tripInputs) {
@@ -230,7 +270,12 @@ export function initSettings(onChange) {
       if (document.activeElement !== inp) inp.value = cfg.trips.cusp[i];
       inp.classList.toggle("edited", cfg.trips.cusp[i] !== TRIP_DEFAULTS.cusp[i]);
     }
-    el.tripReset.disabled = sameTrips(cfg.trips, TRIP_DEFAULTS);
+    // cada grupo de Configuración tiene su «Restablecer»: apagado si ya está como viene de fábrica
+    const D = DEFAULTS, O = ORB_DEFAULTS;
+    el.resetLook.disabled = cfg.gfx === D.gfx && cfg.font === D.font && cfg.noteFont === D.noteFont && cfg.fs === D.fs;
+    el.resetWheel.disabled = cfg.wheel === D.wheel && cfg.cuspRing === D.cuspRing && cfg.tint === D.tint;
+    el.resetAsp.disabled = !cfg.aspOff.length && JSON.stringify(cfg.orbs.asp) === JSON.stringify(cleanOrbs(null).asp);
+    el.resetAdv.disabled = sameTrips(cfg.trips, TRIP_DEFAULTS) && cfg.orbs.cusp.join() === O.cusp.join() && cfg.orbs.span.join() === O.span.join();
   }
   function change(patch, what) {
     cfg = { ...cfg, ...patch };
@@ -256,6 +301,7 @@ export function initSettings(onChange) {
   el.cusp.addEventListener("change", () => change({ cuspRing: el.cusp.checked }, "cusp"));
   el.spill?.addEventListener("click", () => change({ spill: !cfg.spill }, "spill"));
   el.font.addEventListener("change", () => change({ font: el.font.value }, "font"));
+  el.noteFont.addEventListener("change", () => change({ noteFont: el.noteFont.value }, "noteFont"));
   el.fs.addEventListener("input", () => change({ fs: clamp(el.fs.value / 100, LIMITS.fs, 1) }, "fs"));
   el.wheel.addEventListener("input", () => change({ wheel: clamp(el.wheel.value / 100, LIMITS.wheel, 1) }, "wheel"));
   for (const inp of orbInputs) inp.addEventListener("change", () => {
@@ -263,8 +309,6 @@ export function initSettings(onChange) {
     inp.value = orbGet(next, inp.dataset.orb, +inp.dataset.i);     // lo que se acomodó (tope, vacío) se ve al instante
     if (!sameOrbs(next, cfg.orbs)) change({ orbs: next }, "orbs");
   });
-  el.orbReset.addEventListener("click", () => change({ orbs: cleanOrbs(null) }, "orbs"));
-  // «Restablecer» general no toca los orbes (tienen el suyo): cambiarlos obliga a recalcular las cartas
   el.tripBtn?.addEventListener("click", () => change({ tripsOn: !cfg.tripsOn }, "tripsOn"));
   el.tripAsp.addEventListener("click", (e) => {
     const b = e.target.closest("[data-trip-asp]");
@@ -277,10 +321,24 @@ export function initSettings(onChange) {
     inp.value = next.cusp[+inp.dataset.tripCusp];          // lo que se acomodó (tope, vacío) se ve al instante
     if (!sameTrips(next, cfg.trips)) change({ trips: next }, "trips");
   });
-  el.tripReset.addEventListener("click", () => change({ trips: cleanTrips(null) }, "trips"));
-  el.reset.addEventListener("click", () => { const { orbs, ...rest } = DEFAULTS; change(rest, "gfx"); });
+  // «Restablecer» de cada grupo: lo de ese grupo vuelve a como viene de fábrica (los orbes obligan a recalcular las cartas)
+  el.resetLook.addEventListener("click", () => change({ gfx: DEFAULTS.gfx, font: DEFAULTS.font, noteFont: DEFAULTS.noteFont, fs: DEFAULTS.fs }, "gfx"));
+  el.resetWheel.addEventListener("click", () => change({ wheel: DEFAULTS.wheel, cuspRing: DEFAULTS.cuspRing, tint: DEFAULTS.tint }, "cusp"));
+  el.resetAsp.addEventListener("click", () => {
+    const orbs = { ...cfg.orbs, asp: cleanOrbs(null).asp };
+    const orbsChanged = !sameOrbs(orbs, cfg.orbs);
+    change({ aspOff: [] }, "asp");
+    if (orbsChanged) change({ orbs }, "orbs");
+  });
+  el.resetAdv.addEventListener("click", () => {
+    const orbs = { ...cfg.orbs, cusp: [...ORB_DEFAULTS.cusp], span: [...ORB_DEFAULTS.span] };
+    const orbsChanged = !sameOrbs(orbs, cfg.orbs);
+    change({ trips: cleanTrips(null) }, "trips");
+    if (orbsChanged) change({ orbs }, "orbs");
+  });
 
   apply(cfg);
   paint();
   return cfg;
 }
+export const getCfg = () => load();
