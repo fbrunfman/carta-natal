@@ -109,7 +109,10 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
       de fábrica conjunción, oposición y cuadratura), o uno en particular (también semicuadratura y sesquicuadratura). Los
       aspectos usan los orbes de Configuración y las casas, el sistema de casas elegido. Todo se combina (nombre, inicial y
       las dos búsquedas por posición), y cada tarjeta dice lo que encontró (por ejemplo «☉ □ ♂ cuadratura con Marte 7°46′»).
-      «Limpiar la búsqueda» vuelve a todas. Esta parte arranca **plegada** (dice «Búsqueda activa» si hay una).
+      «Limpiar la búsqueda» vuelve a todas.
+    - **Editar y eliminar** desde cada tarjeta (el lápiz y el tacho, arriba a la derecha): «Editar» abre el formulario con
+      esa carta sin abrirla y, al guardar, te quedás en Mis cartas (la carta que tenías abierta sigue siendo la misma);
+      «Eliminar» pide confirmar con un segundo toque (se desarma solo a los 6 segundos). Esta parte arranca **plegada** (dice «Búsqueda activa» si hay una).
     Para buscar por posición hace falta calcular cada carta una vez (`/api/chart`, de a dos a la vez; en la versión pública,
     esperando si el servidor lo pide). Queda en este navegador (`carta:pos`, sin el nombre): las longitudes, la casa de cada
     planeta y sus aspectos duros, con la firma de los datos de nacimiento (si se edita la carta, se recalcula) y del sistema

@@ -1939,6 +1939,25 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
   .tb-logo svg { width: 30px; height: 30px; }
 }
 
+/* Mis cartas: editar y eliminar en cada tarjeta */
+.hc-item { position: relative; min-width: 0; display: flex; }
+.hc-item > .hc-card { flex: 1 1 auto; min-width: 0; }
+.hc-item .hc-nm { padding-right: 70px; }
+.hc-item .hc-card:has(.hc-pin) .hc-nm { padding-right: 92px; }
+.hc-item .hc-pin { right: 78px; }
+.hc-acts { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; }
+.hc-act {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; min-width: 30px; padding: 0 6px; justify-content: center;
+  border: 1px solid transparent; border-radius: 8px; background: none; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); font-weight: 600;
+}
+.hc-act svg { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.hc-act:hover { background: var(--hover); color: var(--ink); border-color: var(--line); }
+.hc-del:hover { color: var(--hard); }
+.hc-del[data-arm="1"] { background: var(--hard); border-color: var(--hard); color: #fff; }
+@media (hover: hover) {
+  .hc-item:not(:hover):not(:focus-within) .hc-act:not([data-arm="1"]) { opacity: .45; }
+}
+
 @media print {
   @page { margin: 12mm; }
   :root { --fs: 1 !important; --ui: 1 !important; --wheel: 1 !important; }

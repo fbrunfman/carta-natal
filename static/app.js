@@ -320,12 +320,22 @@ async function persist(asNew) {
   try {
     const updating = saved.activeId && !asNew;
     const rec = updating ? await saved.update(saved.activeId, birthData) : await saved.create(birthData);
+    const back = editing?.list ? editing : null;        // editada desde Mis cartas: se queda ahí
     saved.setActive(rec.id);
-    touchRecent(rec.id);
+    if (!back) touchRecent(rec.id);
     saving = false;
     syncSaveButtons();
     closeForm(false);
     note(updating ? "Cambios guardados." : "Carta guardada.");
+    if (back) {
+      if (back.active && back.active !== rec.id && saved.find(back.active)) {   // la carta abierta era otra: sigue esa
+        saved.setActive(back.active);
+        fillForm(back.values);
+      } else chartStarted = false;                         // era la abierta: al volver a Carta se calcula de nuevo
+      syncSaveButtons();
+      renderMyCharts();
+      return;
+    }
     showChart();
     await calculate();                  // lo que se ve es lo que se guardó
   } catch (err) {
@@ -354,8 +364,10 @@ function syncActions() {
 }
 
 /** kind: "new" (en blanco) o "edit" (los datos de la carta que se está viendo). */
-function openForm(kind) {
-  if (!formOpen()) { editing = { values: readForm(), active: saved.activeId }; formBack = document.activeElement; }
+/** item: editar esa carta guardada sin abrirla (desde Mis cartas); al guardar o cancelar, todo vuelve a la carta de antes. */
+function openForm(kind, item = null) {
+  if (!formOpen()) { editing = { values: readForm(), active: saved.activeId, list: !!item }; formBack = document.activeElement; }
+  if (item) { saved.setActive(item.id); fillForm(item); }
   closeCpick(false);
   closeCinfo(false);
   closeCfg(false);
@@ -409,19 +421,34 @@ $("#formDel").addEventListener("click", async () => {
   if (!id) return;
   if ($("#formDel").dataset.arm !== "1") { delArmChart(true); return; }
   delArmChart(false);
+  const back = editing?.list ? editing : null;
   try {
-    await saved.remove(id);
+    await deleteChart(id, back);
   } catch (err) { note(err.message, true); return; }
   editing = null;
   if (formDlg.open) formDlg.close();
-  fillForm(BLANK);
-  chart = null; birth = null;
-  chartStarted = false;
-  $("#stage").hidden = true;
+  if (!back) go("#inicio");
+});
+/** Borra una carta guardada. Si era la abierta, la carta se vacía; si no (desde Mis cartas), sigue la que estaba. */
+async function deleteChart(id, back = null) {
+  const shown = back ? back.active : saved.activeId;
+  await saved.remove(id);
+  if (isPinned(id)) setPinned(id, false);
+  recentIds = recentIds.filter((x) => x !== id);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch {}
+  if (shown && shown !== id && saved.find(shown)) {
+    if (back) { saved.setActive(shown); fillForm(back.values); }
+  } else {
+    if (saved.activeId === id) saved.setActive(null);
+    fillForm(BLANK);
+    chart = null; birth = null;
+    chartStarted = false;
+    $("#stage").hidden = true;
+  }
   syncSaveButtons();
   syncActions();
-  go("#inicio");
-});
+  if (page === "charts") renderMyCharts();
+}
 
 // ---------- sinastría: elegir la otra carta -------------------------------
 const partnerSel = $("#partner");
@@ -3086,6 +3113,37 @@ function posHits(it) {
   }
   return hits;
 }
+// En Mis cartas cada tarjeta lleva «Editar» y «Eliminar» (este, con dos toques: el primero pide confirmar).
+const PENCIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>`;
+const TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/></svg>`;
+let mcArm = { id: null, timer: 0 };
+function listItem(it, hits) {
+  const wrap = elx("div", { className: "hc-item" });
+  const acts = elx("div", { className: "hc-acts" });
+  const ed = elx("button", { type: "button", className: "hc-act", title: "Editar los datos" }, () => openForm("edit", it));
+  ed.innerHTML = PENCIL;
+  ed.setAttribute("aria-label", `Editar ${it.name}`);
+  const del = elx("button", { type: "button", className: "hc-act hc-del", title: "Eliminar" });
+  del.setAttribute("aria-label", `Eliminar ${it.name}`);
+  const armed = mcArm.id === it.id;
+  del.innerHTML = TRASH + (armed ? "<span>¿Eliminar?</span>" : "");
+  if (armed) { del.dataset.arm = "1"; del.title = "Tocá de nuevo para eliminar"; del.setAttribute("aria-label", `¿Eliminar ${it.name}? Tocá de nuevo`); }
+  del.addEventListener("click", async () => {
+    clearTimeout(mcArm.timer);
+    if (mcArm.id !== it.id) {                       // primer toque: pide confirmar (se desarma a los 6 s)
+      mcArm = { id: it.id, timer: setTimeout(() => { mcArm = { id: null, timer: 0 }; renderMyCharts(); }, 6000) };
+      renderMyCharts();
+      $(`#mcList .hc-del[data-arm="1"]`)?.focus();
+      return;
+    }
+    mcArm = { id: null, timer: 0 };
+    try { await deleteChart(it.id, { active: saved.activeId, values: readForm() }); }
+    catch (err) { $("#mcCount").textContent = `No se pudo eliminar: ${err.message}`; }
+  });
+  acts.append(ed, del);
+  wrap.append(chartCard(it, { hits }), acts);
+  return wrap;
+}
 function renderMyCharts() {
   const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
   $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta" : "cartas"}, en orden alfabético.` : "";
@@ -3143,7 +3201,7 @@ function renderMyCharts() {
   else if (!list.length) count.textContent = posOn && missing.length === items.length ? "Para buscar por posición hace falta calcular las posiciones." : "Ninguna carta cumple la búsqueda.";
   else count.textContent = (anyFilter ? `${list.length} de ${items.length} ${items.length === 1 ? "carta" : "cartas"}` : `${list.length} ${list.length === 1 ? "carta" : "cartas"}`) +
     (pages > 1 ? ` · página ${mc.page} de ${pages}` : "") + (posOn && missing.length && !find.running ? ` · faltan calcular ${missing.length}` : "");
-  $("#mcList").replaceChildren(...shown.map((it) => chartCard(it, { hits: hitsOf.get(it.id) || [] })));
+  $("#mcList").replaceChildren(...shown.map((it) => listItem(it, hitsOf.get(it.id) || [])));
   if (failed.length && !find.running) {
     count.textContent += ` · No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
   }
