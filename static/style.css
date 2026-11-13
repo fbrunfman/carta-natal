@@ -1990,12 +1990,21 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .ccol-in span { font: 500 calc(12px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-2); }
 .ccol td.edited .ccol-in span { color: var(--accent-2); font-weight: 700; }
 
-/* las notas en una ventana (iPad y celular) */
-.notesdlg { width: min(640px, calc(100vw - 24px)); min-height: min(50vh, 420px); }
-.notesdlg .pdl-body { flex: 1 1 auto; padding-top: 10px; }
+/* las notas (iPad y celular): un panel que entra por la derecha, como la Configuración; en el celular, a pantalla completa */
+.notesdlg {
+  position: fixed; inset: 0 0 0 auto; margin: 0; width: min(460px, 88vw); height: 100vh; height: 100dvh; max-height: none; max-width: none;
+  border-width: 0 0 0 1px; border-radius: 0; box-shadow: -18px 0 50px rgba(0, 0, 0, .28);
+}
+.notesdlg::backdrop { background: rgba(7, 13, 19, .42); }
+@media (prefers-reduced-motion: no-preference) {
+  .notesdlg[open] { animation: ndrawer-in .22s ease-out; }
+  @keyframes ndrawer-in { from { transform: translateX(40px); opacity: 0; } }
+}
+.notesdlg .pdl-head { padding-top: calc(16px + env(safe-area-inset-top)); }
+.notesdlg .pdl-body { flex: 1 1 auto; padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 .notesdlg #panel-notas .nlist { margin-top: 10px; }
 @media (max-width: 640px) {
-  .notesdlg { width: calc(100vw - 12px); max-height: calc(100dvh - 24px); }
+  .notesdlg { width: 100vw; border-left: 0; box-shadow: none; }
 }
 
 @media print {
