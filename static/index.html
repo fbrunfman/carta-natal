@@ -43,12 +43,14 @@
   <!-- arriba: las secciones (un menú), buscar o cambiar de carta, el tema y la configuración. En la carta, en pantallas
        anchas, el nombre, los modos y los botones de la carta van en esta misma fila (style.css, data-tbmerge) -->
   <header class="topbar" id="topbar">
+    <a class="tb-logo" href="#inicio" aria-label="Carta natal: ir al inicio" title="Inicio"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="logoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DCC8FF"/><stop offset=".55" stop-color="#9A6CF0"/><stop offset="1" stop-color="#5B2DB8"/></linearGradient></defs><path fill="url(#logoG)" transform="rotate(45 16 16)" d="M16 4.5C16.15 13.4 18.6 15.85 27.5 16 18.6 16.15 16.15 18.6 16 27.5 15.85 18.6 13.4 16.15 4.5 16 13.4 15.85 15.85 13.4 16 4.5Z"/><path fill="url(#logoG)" d="M16 .5C16.45 10.6 21.4 15.55 31.5 16 21.4 16.45 16.45 21.4 16 31.5 15.55 21.4 10.6 16.45 .5 16 10.6 15.55 15.55 10.6 16 .5Z"/></svg></a>
     <div class="tb-nav">
       <button type="button" id="appMenuBtn" class="tb-app" aria-haspopup="true" aria-expanded="false" aria-controls="appMenu" aria-label="Secciones: Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span id="appMenuLabel">Inicio</span><svg class="tb-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
       <nav class="tb-menu" id="appMenu" aria-label="Secciones" hidden>
         <a href="#inicio" id="navHome">Inicio</a>
         <a href="#luna" id="navMoon">Luna</a>
         <a href="#carta" id="navChart">Carta<small id="navChartName"></small></a>
+        <a href="#cartas" id="navCharts">Mis cartas<small id="navChartsN"></small></a>
         <a href="#combinar" id="navCombine" title="Combinar planetas (beta, en construcción)">Combinar<small>beta</small></a>
       </nav>
     </div>
@@ -66,15 +68,15 @@
         <h2 id="homeTitle">Inicio</h2>
         <p id="homeSub"></p>
       </header>
-      <!-- tus cartas, como tarjetas: la última que abriste primero; tocar una la abre -->
+      <!-- tus cartas: las 6 últimas que abriste, como tarjetas; «Ver todas» lleva a Mis cartas -->
       <section class="home-charts hc" id="homeCharts" aria-labelledby="homeChartsTitle">
         <div class="hc-head">
-          <h3 id="homeChartsTitle">Tus cartas <span class="hc-n" id="homeChartsN"></span></h3>
-          <label class="hc-q" id="homeChartsQWrap" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="homeChartsQ" placeholder="Buscar…" autocomplete="off" spellcheck="false" aria-label="Buscar entre tus cartas"></label>
+          <h3 id="homeChartsTitle">Últimas cartas</h3>
+          <a class="hc-all" id="homeAll" href="#cartas" hidden>Ver todas <span id="homeAllN"></span> <span aria-hidden="true">›</span></a>
         </div>
         <div id="homeChartBody"></div>
       </section>
-      <!-- el cielo de ahora a la izquierda (más chico); a la derecha la Luna y los tránsitos destacados -->
+      <!-- el cielo de ahora, con la Luna en su rincón (en el celular, debajo) -->
       <div class="home-grid">
         <div class="home-main">
           <div class="sky-wrap" id="skyWrap">
@@ -90,36 +92,8 @@
         <div class="home-side">
           <!-- en el tablero de escritorio la Luna del rincón pasa a esta columna (app.js la mueve) -->
           <div class="home-moon-slot" id="homeMoonSlot"></div>
-          <section class="home-charts home-tr" id="homeTr" aria-labelledby="homeTrTitle" hidden>
-            <h3 id="homeTrTitle">Tránsitos destacados de hoy</h3>
-            <p class="home-tr-auto" id="homeTrAuto" hidden></p>
-            <div id="homeTrEdit">
-              <p class="home-tr-note" id="homeTrNote"></p>
-              <div class="home-chips home-tr-pick" id="homeTrPick" role="group" aria-label="Cartas que se incluyen"></div>
-              <div class="home-tr-act">
-                <button type="button" class="home-continue" id="homeTrGo"></button>
-                <span class="home-tr-prog" id="homeTrProg" role="status" aria-live="polite"></span>
-              </div>
-            </div>
-            <div class="htr-cards" id="homeTrBody"></div>
-          </section>
         </div>
       </div>
-      <details class="home-fold home-find" id="homeFind" hidden>
-        <summary><span class="hf-t" id="homeFindTitle">Buscar por posición</span><small>¿Qué cartas tienen la Luna en Cáncer?</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
-        <div class="hf-b">
-          <p class="home-tr-note" id="homeFindNote"></p>
-          <div class="find-row">
-            <label class="find-f" for="findBody"><span>Planeta o punto</span><select id="findBody"></select></label>
-            <label class="find-f" for="findSign"><span>En el signo</span><select id="findSign"></select></label>
-          </div>
-          <div class="home-tr-act">
-            <button type="button" class="home-continue" id="findGo" hidden></button>
-            <span class="home-tr-prog" id="findProg" role="status" aria-live="polite"></span>
-          </div>
-          <div class="find-out" id="findOut" aria-live="polite"></div>
-        </div>
-      </details>
       <p class="home-priv"><span id="homePrivTxt"></span> <button type="button" class="home-priv-link" id="homePriv">Privacidad y copias</button></p>
     </section>
 
@@ -146,6 +120,48 @@
     </section>
 
     <!-- Combinar (beta): se pintan uno o más planetas y sale algo que los junta (texto, biografía, película o canción) -->
+    <!-- Mis cartas: todas, en orden alfabético, de a páginas; se buscan por nombre, por inicial y por posiciones -->
+    <section id="charts" class="page" aria-labelledby="chartsTitle" hidden>
+      <header class="head">
+        <h2 id="chartsTitle">Mis cartas</h2>
+        <p id="chartsSub"></p>
+      </header>
+      <div class="mc-top">
+        <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="mcQ" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></label>
+        <button type="button" class="primary-pill with-ic" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
+      </div>
+      <nav class="mc-az" id="mcAz" aria-label="Por inicial"></nav>
+      <details class="mc-filters" id="mcFilters">
+        <summary><span class="mc-ft" id="mcFiltersTitle">Buscar por posición</span><small class="mc-fsum" id="mcFiltersSum">Planeta en signo o casa · planeta en aspecto duro</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="mc-fb">
+        <div class="mc-frow" role="group" aria-label="Planeta en signo o en casa">
+          <span class="mc-flab">Planeta en signo / casa</span>
+          <select id="mcPl" aria-label="Planeta"></select>
+          <span class="mc-w">en</span>
+          <select id="mcSign" aria-label="Signo"></select>
+          <span class="mc-w">y</span>
+          <select id="mcHouse" aria-label="Casa"></select>
+        </div>
+        <div class="mc-frow" role="group" aria-label="Planeta en aspecto duro con otro">
+          <span class="mc-flab">Planeta en aspecto duro</span>
+          <select id="mcA" aria-label="Planeta"></select>
+          <select id="mcAsp" aria-label="Aspecto"></select>
+          <span class="mc-w">con</span>
+          <select id="mcB" aria-label="Otro planeta"></select>
+        </div>
+        <div class="mc-fact">
+          <button type="button" class="home-continue" id="mcCalc" hidden></button>
+          <span class="home-tr-prog" id="mcProg" role="status" aria-live="polite"></span>
+          <button type="button" class="home-tr-all" id="mcClear" hidden>Limpiar la búsqueda</button>
+        </div>
+        <p class="home-tr-note" id="mcNote"></p>
+        </div>
+      </details>
+      <p class="mc-count" id="mcCount" role="status" aria-live="polite"></p>
+      <div class="hc-cards mc-list" id="mcList"></div>
+      <nav class="mc-pages" id="mcPages" aria-label="Páginas"></nav>
+    </section>
+
     <section id="combine" class="page" aria-labelledby="combineTitle" hidden>
       <header class="head">
         <h2 id="combineTitle">Combinar planetas <span class="beta-pill">Beta</span></h2>
@@ -164,7 +180,7 @@
 
     <div id="chartPage">
     <header class="head">
-      <h2><span id="title">Carta natal</span><span class="title-acts"><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button><button type="button" id="titleInfo" class="iconbtn title-pick title-info" aria-label="Datos de nacimiento" title="Datos de nacimiento" aria-haspopup="dialog" aria-expanded="false" aria-controls="cinfo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg></button></span></h2>
+      <h2><span id="title">Carta natal</span><span class="title-acts"><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button><button type="button" id="titlePin" class="iconbtn title-pick title-pin" aria-pressed="false" aria-label="Fijar en el inicio" title="Fijar en el inicio" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg></button><button type="button" id="titleInfo" class="iconbtn title-pick title-info" aria-label="Datos de nacimiento" title="Datos de nacimiento" aria-haspopup="dialog" aria-expanded="false" aria-controls="cinfo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg></button></span></h2>
       <!-- celular: los datos de nacimiento (el subtítulo y la hora UTC) van acá, detrás del ícono de info -->
       <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden><div id="cinfoText"></div><button type="button" class="secondary compact with-ic" id="edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>Editar los datos</button></div>
       <p id="sub"></p>
@@ -175,9 +191,9 @@
 
     <div class="modebar">
       <div class="seg modes" id="modes" role="group" aria-label="Vista">
-        <button type="button" data-mode="natal" aria-pressed="true">Natal</button>
-        <button type="button" data-mode="transit" aria-pressed="false">Tránsitos</button>
-        <button type="button" data-mode="syn" aria-pressed="false">Sinastría</button>
+        <button type="button" data-mode="natal" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4"/></svg>Natal</button>
+        <button type="button" data-mode="transit" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg>Tránsitos</button>
+        <button type="button" data-mode="syn" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg>Sinastría</button>
       </div>
       <div class="modeacts">
         <button type="button" id="spillBtn" class="secondary compact with-ic" aria-pressed="false" hidden title="Marcar los planetas que pasan a la casa que sigue o que están en las dos (los orbes se cambian en Configuración)">

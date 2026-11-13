@@ -57,19 +57,24 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 
 ## Qué hace
 
-- **La barra de arriba** (no hay menú lateral): a la izquierda, un botón con el nombre de la sección en la que estás
+- **Colores**: tinta sobre lavanda de día (`--bg` #F6F3FA) y sobre azul profundo de noche (#0E0E24); **lo elegido va en
+  violeta** (`--accent`, `--accent-2`: modos, pestañas, filtros, botones principales, la tarjeta abierta). Los colores
+  de «Entre casas» y «Viajes» prendidos no cambiaron (`--reach`, `--trip`). El **logo** es una estrella violeta de cuatro
+  puntas (arriba a la izquierda, lleva al inicio; también es el ícono de la pestaña, `static/icon.svg`; el ícono de
+  `Carta natal.app` sigue siendo el de antes).
+- **La barra de arriba** (no hay menú lateral): a la izquierda, el logo y un botón con el nombre de la sección en la que estás
   («Inicio ▾»), que despliega el menú de secciones (Inicio · Luna · Carta, con el nombre de la carta abierta · Combinar;
   con teclado: flecha abajo abre, flechas, Esc); a la derecha, **«Buscar o cambiar de carta…»** (la misma lista de la lupa
   de la carta; no aparece en la página Carta, que tiene su lupa), el tema (luna/sol: claro u oscuro) y el **engranaje** de la
   Configuración. **En la carta, en pantallas de 900 px o más**, el nombre de la carta, la lupa, la ⓘ, Natal / Tránsitos /
-  Sinastría y los botones de la carta pasan a esa misma fila (`app.js::paintMerge` pone `data-tbmerge` y las medidas
+  Sinastría (con su ícono, desde 1440 px) y los botones de la carta pasan a esa misma fila (`app.js::paintMerge` pone `data-tbmerge` y las medidas
   `--tb-l`, `--tb-r` y `--tb-mb`): así la rueda tiene todo el alto de la pantalla (1600 × 1000: de 840 a 863 px; 1024 × 768:
   de 504 a 674). Por debajo de 1440 px los botones de la carta quedan solo con su ícono (el nombre está en el tooltip). Los
   datos de nacimiento (fecha, hora, lugar, sistema de casas y la hora UTC) están detrás de la **ⓘ**, con **«Editar los datos»**.
   **En el celular** la barra es solo el ícono de las secciones y el engranaje (se van con el scroll), y la barra de abajo de
   la carta suma **Inicio**.
-- **Cuatro páginas** (Inicio · Luna · Carta · Combinar). La dirección lleva la página
-  (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
+- **Cinco páginas** (Inicio · Luna · Carta · Mis cartas · Combinar). La dirección lleva la página
+  (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#cartas`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
   - **Inicio**: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
     la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol,
@@ -78,45 +83,40 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     cambiar el ángulo (y si en un grupo muy apretado no hay lugar, los círculos se achican un poco); el nombre va del lado
     donde hay lugar. **La Luna** también está en una tarjeta con lo de ahora: signo y grado, fase y porcentaje
     iluminado (en pantallas medianas, chica, abajo a la izquierda del mapa y arriba del rótulo de Escorpio; en el celular,
-    debajo del mapa; en el tablero de escritorio, en la columna de la derecha); el enlace «Calendario lunar ›» (debajo del
-    mapa, o en la tarjeta en el celular y en el tablero) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
+    debajo del mapa); el enlace «Calendario lunar ›» (debajo del
+    mapa, o en la tarjeta en el celular) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
     cuadro con **un poema para la Luna en ese signo**, con el nombre del autor y la obra, entero, más desde cuándo está en
     el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase. Sale uno al azar entre los de ese signo (cada vez que
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
     el color del elemento del signo; con las lecturas apagadas (hoy) el poema no se muestra. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
-    **Arriba de todo, «Tus cartas»**: una tarjeta por carta, con la fecha, la hora y la ciudad, y el **Sol, la Luna y el
-    Ascendente** (signo) cuando ya se conocen sus posiciones (las mismas del buscador por posición, `carta:pos`; en la
-    versión pública, después de calcularlas una vez). La **última abierta** va primera y marcada; tocar una tarjeta la abre;
-    al final, **«+ Nueva carta»**. Desde 7 cartas aparece un buscador por nombre. Sin cartas: «Crear mi primera carta».
-    **Debajo, en escritorio (a partir de unos 860 px de ancho), el mapa a la izquierda, más chico (hasta 540 px), y a la
-    derecha la Luna** (`app.js::placeMoon` mueve la tarjeta del rincón del mapa a `#homeMoonSlot`) **y los «Tránsitos
-    destacados de hoy»**. En pantallas más angostas y en el celular todo va en una columna: las cartas, el mapa, la Luna,
-    los tránsitos y el buscador. Al pie, en una línea, dónde se guardan las cartas y «Privacidad y copias» (abre la
-    Configuración en *Datos*).
-    **Tránsitos destacados de hoy**: con al menos una carta guardada aparecen los nombres de las cartas (insignias de
-    4 px; la primera vez no hay ninguna elegida, se tocan para elegirlas o con «Elegir todas») y un botón que calcula, para
-    cada carta elegida, los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto
-    cerrado con el Sol, la Luna o los planetas hasta Saturno. Es el mismo cálculo de los destacados de la
-    pestaña Carta (`/api/featured`), un pedido por carta y de a dos a la vez; en la versión pública, si el servidor pide
-    esperar se espera y se sigue. Cada carta tiene su tarjeta con los tránsitos (el planeta y el punto natal, si está en su
-    punto máximo, se acerca o se aleja, el orbe, hasta cuándo dura y el próximo momento exacto) y «Abrir en Tránsitos ›»,
-    que abre esa carta con los tránsitos de ahora. **Después de calcular una vez, la elección se recuerda** (`carta:htr`, en
-    este navegador) y la elección se esconde: dice «De Federico, Sebi… · se actualizan solos · Cambiar cartas», y cada vez
-    que entrás al inicio se calculan solos si cambió el día o se editó una carta. «Cambiar cartas» vuelve a mostrar la
-    elección (sin elegir ninguna y «Listo», deja de calcularse solo). Hasta esa primera vez no se manda nada. No se
-    abre ninguna carta hasta entrar a **Carta**.
-    Más abajo (solo si hay cartas guardadas), **«Buscar por posición»**, plegado (si lo abrís, queda abierto la próxima
-    vez, `carta:findopen`): se elige un planeta (Sol a Plutón, el Ascendente o
-    el Medio Cielo, o «Cualquier planeta») y un signo (o «Todos los signos»), y salen las cartas guardadas que lo tienen,
-    con los grados dentro del signo (con un solo planeta y «Todos los signos» salen agrupadas por signo, en orden zodiacal;
-    con «Cualquier planeta» sale cada carta con los planetas que caen en ese signo). Tocar una carta la abre. Para buscar
-    hace falta la posición de cada carta: se calcula **una vez** con `/api/chart` (de a dos a la vez; en la versión
-    pública, esperando si el servidor lo pide) y se guarda en el navegador (`carta:pos`: por carta, sus 12 longitudes y la firma
-    de sus datos de nacimiento para saber si cambió; sin el nombre; si la carta se edita se vuelve a calcular, y las de una carta borrada se ignoran y se limpian en el próximo cálculo). **Servidor propio:** se calcula solo
-    al entrar. **Versión pública:** los datos de nacimiento viajan al servidor, así que no se manda nada hasta apretar
-    «Calcular posiciones» (se avisa ahí mismo); después solo se recalculan las cartas nuevas o editadas. Si una carta falla se
-    dice cuál y hay «Reintentar», y se busca igual en las demás. Test: `e2e_buscador`.
+    **Arriba de todo, «Últimas cartas»**: las **6 últimas que abriste** (la que tenés abierta primero, marcada «última
+    abierta»; las que nunca abriste van después, las más nuevas primero; se recuerda en este navegador, `carta:recent`), como
+    tarjetas con la fecha, la hora y la ciudad, y el **Sol, la Luna y el Ascendente**. **Las cartas fijadas van primero**
+    (con el marcador; si fijás más de 6, se ven todas): se fijan con el **marcador** al lado del nombre de la carta, que se
+    vuelve a tocar para soltarla (`carta:pins`, en este navegador). El Sol, la Luna y el Ascendente aparecen cuando ya se conocen sus posiciones
+    (en la versión local se calculan solas; en la pública, después de calcularlas en Mis cartas). Tocar una la abre; al
+    final, **«+ Nueva carta»**, y con más de 6, **«Ver todas (N) ›»**, que lleva a **Mis cartas**. Sin cartas: «Crear mi
+    primera carta». Debajo, el mapa con la Luna en su rincón (en el celular, debajo), y al pie, en una línea, dónde se
+    guardan las cartas y «Privacidad y copias» (abre la Configuración en *Datos*). No se abre ninguna carta hasta entrar
+    a **Carta**. (Los «Tránsitos destacados de hoy» y «Buscar por posición» ya no están en el inicio.)
+  - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›). Se buscan:
+    - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
+    - **por inicial**: una fila de letras (las que no tienen cartas no se pueden tocar; «Ágata» va en la A);
+    - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
+      signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo) y *planeta en aspecto duro* con otro
+      (o con cualquiera): «cualquier aspecto duro» son los de los viajes de planetas (Configuración → *Reglas avanzadas*;
+      de fábrica conjunción, oposición y cuadratura), o uno en particular (también semicuadratura y sesquicuadratura). Los
+      aspectos usan los orbes de Configuración y las casas, el sistema de casas elegido. Todo se combina (nombre, inicial y
+      las dos búsquedas por posición), y cada tarjeta dice lo que encontró (por ejemplo «☉ □ ♂ cuadratura con Marte 7°46′»).
+      «Limpiar la búsqueda» vuelve a todas. Esta parte arranca **plegada** (dice «Búsqueda activa» si hay una).
+    Para buscar por posición hace falta calcular cada carta una vez (`/api/chart`, de a dos a la vez; en la versión pública,
+    esperando si el servidor lo pide). Queda en este navegador (`carta:pos`, sin el nombre): las longitudes, la casa de cada
+    planeta y sus aspectos duros, con la firma de los datos de nacimiento (si se edita la carta, se recalcula) y del sistema
+    de casas y los orbes (si cambian, se recalculan las casas y aspectos). **Servidor propio:** se calcula solo. **Versión
+    pública:** los datos de nacimiento viajan al servidor, así que no se manda nada hasta apretar «Calcular posiciones»;
+    después solo las cartas nuevas, editadas o con otra configuración. Si una falla se dice cuál y hay «Reintentar».
+    Test: `e2e_miscartas`.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
     principales del mes (nueva, cuarto creciente, llena, cuarto menguante) con día, hora y signo. Flechas y «Hoy»
@@ -567,8 +567,8 @@ Es la misma app con tres diferencias:
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
   repositorio y que la versión pública no sirve (devuelve 404).
   El mapa del inicio y el calendario lunar no mandan ningún dato personal: solo la zona horaria del navegador (y el mes).
-  Los «Tránsitos destacados de hoy» del inicio sí mandan los datos de nacimiento de las cartas elegidas, recién al apretar
-  el botón y solo para calcular (como al abrir una carta).
+  «Buscar por posición» en Mis cartas sí manda los datos de nacimiento de las cartas, recién al apretar «Calcular
+  posiciones» y solo para calcular (como al abrir una carta).
 - **Límites**: hasta 60 pedidos seguidos por persona y después 2 por segundo (el calendario de tránsitos cuesta
   20 pedidos; los destacados, 6; lo que viene, 8; el calendario lunar, 3; la Luna y los planetas de hoy, 1), 3 de esos cálculos pesados a la vez y 20 pedidos por segundo entre todos. Si se pasan, responde 429 o 503 con
   un mensaje. No hay `/api/charts` ni `/api/presence`, y `/healthz` responde `ok` para el hosting.

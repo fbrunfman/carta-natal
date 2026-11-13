@@ -9,7 +9,7 @@ import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrb
 import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
-import { profection, profectionHTML, featuredHTML, featuredRowsHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
+import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
 import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
@@ -163,7 +163,7 @@ form.addEventListener("submit", (e) => {
 const saved = createSaved({
   where: $("#savedWhere"),
   onOpen: openSaved,
-  onChange: () => { syncPartners(); syncActions(); paintTitlePick(); paintNavChart(); if (page === "home") renderHomeCharts(); },
+  onChange: (items) => { syncPartners(); syncActions(); paintTitlePick(); paintNavChart(); $("#navChartsN").textContent = items?.length ? String(items.length) : ""; if (page === "home") renderHomeCharts(); else if (page === "charts") renderMyCharts(); },
 });
 
 let noteTimer = 0;
@@ -198,6 +198,7 @@ async function openSaved(item) {
   showChart();
   closeForm(false);
   saved.setActive(item.id);
+  touchRecent(item.id);
   fillForm(item);
   note("");
   syncSaveButtons();
@@ -211,6 +212,7 @@ const dmy = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d.split("-").reverse()
 function paintTitlePick() {                                  // (se llama también desde onChange de las guardadas: sin las constantes de acá)
   const b = $("#titlePick");
   b.hidden = false;                                           // aunque no haya guardadas: ahí está «Nueva carta»
+  paintPin();
   paintFind();
 }
 function fillCpick() {
@@ -319,6 +321,7 @@ async function persist(asNew) {
     const updating = saved.activeId && !asNew;
     const rec = updating ? await saved.update(saved.activeId, birthData) : await saved.create(birthData);
     saved.setActive(rec.id);
+    touchRecent(rec.id);
     saving = false;
     syncSaveButtons();
     closeForm(false);
@@ -2367,7 +2370,7 @@ document.querySelectorAll(".seg.orb button").forEach((b) => b.addEventListener("
 // tiene todo el alto. En el celular la barra es solo el botón del menú y el de la configuración.
 const root = document.documentElement;
 const appBtn = $("#appMenuBtn"), appMenu = $("#appMenu");
-const PAGE_NAME = { home: "Inicio", lunar: "Luna", chart: "Carta", combine: "Combinar" };
+const PAGE_NAME = { home: "Inicio", lunar: "Luna", chart: "Carta", charts: "Mis cartas", combine: "Combinar" };
 function setAppMenu(open, focus = false) {
   appMenu.hidden = !open;
   appBtn.setAttribute("aria-expanded", String(open));
@@ -2454,6 +2457,7 @@ setupPrint({ root, getMode: () => mode });
 const cfg0 = initSettings((cfg, what) => {
   curCfg = cfg;
   paintCfgSums();
+  if (page === "charts") queueMicrotask(renderMyCharts);      // otros orbes o aspectos duros: la búsqueda cambia
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
   interpOn = cfg.interp;
@@ -2506,7 +2510,7 @@ function paintCfgSums() {
   $("#cfgAdvGSum").textContent = `Planetas entre casas · Viajes de planetas${$("#cfgResetAdv").disabled ? "" : " · con cambios"}`;
   $("#cfgDataGSum").textContent = isPublic() ? "Exportar · importar · tus cartas quedan en este navegador" : "Exportar · importar · dónde se guardan tus cartas";
 }
-form.elements.hsys.addEventListener("change", paintCfgSums);
+form.elements.hsys.addEventListener("change", () => { paintCfgSums(); if (page === "charts") renderMyCharts(); });
 paintTheme();
 
 // ---------- copia de seguridad: exportar e importar las cartas guardadas --------------------------------
@@ -2610,6 +2614,7 @@ function parseRoute() {
   const h = location.hash.replace(/^#\/?/, "");
   if (h === "carta") return { page: "chart" };
   if (h === "combinar") return { page: "combine" };
+  if (h === "cartas") return { page: "charts" };
   const m = /^luna(?:\/(.*))?$/.exec(h);
   if (m) {                                            // #luna/AAAA-M; con cualquier otra cosa, el mes actual
     const ym = /^(\d{4})-(\d{1,2})$/.exec(m[1] || "");
@@ -2624,10 +2629,11 @@ function setPage(r) {
   $("#home").hidden = page !== "home";
   $("#lunar").hidden = page !== "lunar";
   $("#combine").hidden = page !== "combine";
+  $("#charts").hidden = page !== "charts";
   $("#chartPage").hidden = page !== "chart";
   paintBar();
   if (page !== "chart") hideFicha();
-  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCombine", "combine"]]) {
+  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCharts", "charts"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }
   $("#appMenuLabel").textContent = PAGE_NAME[page];
@@ -2644,6 +2650,7 @@ function setPage(r) {
   if (page === "home") startHome();
   else if (page === "lunar") showLunar(r.y, r.m);
   else if (page === "combine") showCombine();
+  else if (page === "charts") renderMyCharts();
   else if (!chartStarted) startChart();
 }
 
@@ -2818,216 +2825,150 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && page === "home" && Date.now() - moon.nowAt > 120000) loadMoon();
 });
 
-/** «Tus cartas»: una tarjeta por carta (la última abierta primero) con el Sol, la Luna y el Ascendente si ya se conocen sus
- *  posiciones (las del buscador por posición, que quedan en este navegador). Los nombres los escribe quien usa la app: todo con DOM. */
-const homeQ = { text: "" };
-const HOME_SEARCH_FROM = 7;
+// ---------- las cartas guardadas: las últimas abiertas (inicio) y todas (Mis cartas) ----------------------------------
+// Qué cartas abriste último: una lista de ids en este navegador (las que nunca abriste van después, las más nuevas primero).
+const RECENT_KEY = "carta:recent";
+let recentIds = [];
+try { const r = JSON.parse(localStorage.getItem(RECENT_KEY)); if (Array.isArray(r)) recentIds = r.filter((x) => typeof x === "string"); } catch {}
+function touchRecent(id) {
+  if (!id) return;
+  recentIds = [id, ...recentIds.filter((x) => x !== id)].slice(0, 60);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch {}
+}
+function byRecent(items) {
+  const at = new Map(recentIds.map((id, i) => [id, i]));
+  const when = (it) => it.updated || it.created || "";
+  return [...items].sort((a, b) => (at.has(a.id) ? at.get(a.id) : 1e6) - (at.has(b.id) ? at.get(b.id) : 1e6)
+    || when(b).localeCompare(when(a)) || a.name.localeCompare(b.name, "es"));
+}
+const HOME_CARDS = 6;
+// Cartas fijadas en el inicio (el marcador al lado del nombre de la carta): van primero, en el orden en que se fijaron.
+const PIN_KEY = "carta:pins";
+let pinIds = [];
+try { const r = JSON.parse(localStorage.getItem(PIN_KEY)); if (Array.isArray(r)) pinIds = r.filter((x) => typeof x === "string"); } catch {}
+const isPinned = (id) => pinIds.includes(id);
+function setPinned(id, on) {
+  pinIds = on ? [...pinIds.filter((x) => x !== id), id] : pinIds.filter((x) => x !== id);
+  try { localStorage.setItem(PIN_KEY, JSON.stringify(pinIds)); } catch {}
+  paintPin();
+  if (page === "home") paintHomeCards();
+}
+function paintPin() {
+  const b = $("#titlePin"), id = saved.activeId;
+  b.hidden = !id || !saved.find(id);
+  if (b.hidden) return;
+  const on = isPinned(id);
+  b.setAttribute("aria-pressed", String(on));
+  const t = on ? "Quitar del inicio" : "Fijar en el inicio";
+  b.setAttribute("aria-label", t); b.title = t;
+}
+$("#titlePin").addEventListener("click", () => { const id = saved.activeId; if (id) setPinned(id, !isPinned(id)); });
+const elx = (tag, props = {}, fn) => {
+  const e = Object.assign(document.createElement(tag), props);
+  if (fn) e.addEventListener("click", fn);
+  return e;
+};
+const dmyOf = (d) => (d ? d.split("-").reverse().join("/") : "");
+
+/** Una tarjeta de carta: nombre, fecha · hora · ciudad, y el Sol, la Luna y el Ascendente si ya se conocen sus posiciones.
+ *  `hits`: lo que encontró la búsqueda por posición (va resaltado). Los nombres los escribe quien usa la app: todo con DOM. */
+function chartCard(it, { cur = false, hits = [] } = {}) {
+  const card = elx("button", { type: "button", className: "hc-card", title: `Abrir la carta de ${it.name}` }, () => openSaved(it));
+  if (cur) card.classList.add("cur");
+  card.append(elx("b", { className: "hc-nm", textContent: it.name }));
+  if (isPinned(it.id)) {
+    const pin = elx("span", { className: "hc-pin", title: "Fijada en el inicio" });
+    pin.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg><span class="sr">(fijada)</span>`;
+    card.append(pin);
+  }
+  const sub = elx("small", { className: "hc-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
+  if (cur) sub.append(" · ", elx("strong", { textContent: "última abierta" }));
+  card.append(sub);
+  const pos = posReady(it) ? find.pos.get(it.id).lon : null;
+  if (pos && !hits.length) {
+    const trio = elx("span", { className: "hc-trio" });
+    for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
+      const k = split(pos[id]).sign;
+      const t = elx("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[k]}` });
+      t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(k)}</span>`;
+      t.append(SIGNS[k]);
+      trio.append(t);
+    }
+    card.append(trio);
+  }
+  if (hits.length) {
+    const box = elx("span", { className: "hc-trio hc-hits" });
+    for (const h of hits) { const t = elx("span", { className: "hc-pos hc-hit" }); t.innerHTML = h; box.append(t); }
+    card.append(box);
+  }
+  return card;
+}
+
 function renderHomeCharts() {
   paintHomeCards();
-  renderHomeTr();
-  renderHomeFind();
   $("#homePrivTxt").textContent = isPublic() ? "Tus cartas se guardan solo en este navegador." : "Tus cartas se guardan en esta computadora.";
 }
+/** Inicio: las 6 últimas cartas que abriste, «+ Nueva carta» y «Ver todas» (a Mis cartas). */
 function paintHomeCards() {
   const body = $("#homeChartBody");
   const items = saved.items;
   const act = saved.activeId ? saved.find(saved.activeId) : null;
   const v = readForm();
-  const el = (tag, props = {}, fn) => {
-    const e = Object.assign(document.createElement(tag), props);
-    if (fn) e.addEventListener("click", fn);
-    return e;
-  };
-  $("#homeChartsN").textContent = items.length ? String(items.length) : "";
-  $("#homeChartsQWrap").hidden = items.length < HOME_SEARCH_FROM;
-  if (items.length < HOME_SEARCH_FROM) homeQ.text = "";
+  const pinned = pinIds.map((id) => saved.find(id)).filter(Boolean);
+  const nShow = Math.max(HOME_CARDS, pinned.length);
+  $("#homeAll").hidden = items.length <= nShow;
+  $("#homeAllN").textContent = `(${items.length})`;
   if (!items.length) {
     const nodes = [];
     if (formReady(v)) {
-      nodes.push(el("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
-      nodes.push(el("button", { type: "button", className: "home-tr-all hc-add", textContent: "Nueva carta" }, () => openForm("new")));
-    }
-    else {
-      nodes.push(el("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
-      nodes.push(el("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
+      nodes.push(elx("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
+      nodes.push(elx("button", { type: "button", className: "home-tr-all hc-add", textContent: "Nueva carta" }, () => openForm("new")));
+    } else {
+      nodes.push(elx("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
+      nodes.push(elx("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
     }
     body.replaceChildren(...nodes);
     return;
   }
-  const q = homeQ.text.trim().toLocaleLowerCase("es");
-  const list = [...(act ? [act] : []), ...items.filter((it) => it !== act)].filter((it) => !q || it.name.toLocaleLowerCase("es").includes(q));
-  const grid = el("div", { className: "hc-cards" });
-  for (const it of list) {
-    const card = el("button", { type: "button", className: "hc-card", title: `Abrir la carta de ${it.name}` }, () => openSaved(it));
-    if (it === act) card.classList.add("cur");
-    card.append(el("b", { className: "hc-nm", textContent: it.name }));
-    const sub = el("small", { className: "hc-sub", textContent: [it.date ? it.date.split("-").reverse().join("/") : "", it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
-    if (it === act) sub.append(" · ", el("strong", { textContent: "última abierta" }));
-    card.append(sub);
-    const pos = findReady(it) ? find.pos.get(it.id).lon : null;
-    if (pos) {
-      const trio = el("span", { className: "hc-trio" });
-      for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
-        const k = split(pos[id]).sign;
-        const t = el("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[k]}` });
-        t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(k)}</span>`;
-        t.append(SIGNS[k]);
-        trio.append(t);
-      }
-      card.append(trio);
-    }
-    grid.append(card);
-  }
-  if (!q) {
-    const add = el("button", { type: "button", className: "hc-card hc-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
-    add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
-    grid.append(add);
-  }
-  const nodes = [grid];
-  if (q && !list.length) nodes.unshift(el("p", { className: "home-empty", textContent: "Ninguna carta tiene ese nombre." }));
-  body.replaceChildren(...nodes);
+  // primero las fijadas, después la abierta y después las últimas que abriste
+  const rest = byRecent(items).filter((it) => !pinned.includes(it));
+  const list = [...pinned, ...(act && !pinned.includes(act) ? [act] : []), ...rest.filter((it) => it !== act)];
+  const grid = elx("div", { className: "hc-cards" });
+  grid.append(...list.slice(0, nShow).map((it) => chartCard(it, { cur: it === act })));
+  const add = elx("button", { type: "button", className: "hc-card hc-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
+  add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
+  grid.append(add);
+  body.replaceChildren(grid);
+  // en la versión local las posiciones (para el Sol, la Luna y el Ascendente) se calculan solas
+  if (!isPublic() && !find.running && list.slice(0, nShow).some((it) => !posReady(it))) runFind(false);
 }
-$("#homeChartsQ").addEventListener("input", (e) => { homeQ.text = e.target.value; paintHomeCards(); });
 $("#homePriv").addEventListener("click", () => openCfg("cfgDataG"));
 
-// -- inicio: tránsitos destacados de hoy con las cartas guardadas. Se piden al apretar el botón (cada carta es un
-// cálculo de años de recorrido), de a dos a la vez; si el servidor pide esperar (versión pública) se espera y se sigue.
-const homeTr = { on: new Set(), res: new Map(), running: false, seq: 0, done: 0, total: 0, at: null, edit: false, saved: false };
-// Las cartas elegidas se recuerdan (en este navegador) después de calcular una vez: la próxima vez los tránsitos se calculan
-// solos al entrar al inicio. Hasta entonces no se calcula nada sin apretar el botón (en la versión pública los datos viajan).
-const HTR_KEY = "carta:htr";
-try {
-  const raw = JSON.parse(localStorage.getItem(HTR_KEY));
-  if (raw?.v === 1 && Array.isArray(raw.on) && raw.on.length) { homeTr.on = new Set(raw.on.filter((x) => typeof x === "string")); homeTr.saved = true; }
-} catch {}
-function htrSave() {
-  try {
-    if (homeTr.on.size) localStorage.setItem(HTR_KEY, JSON.stringify({ v: 1, on: [...homeTr.on] }));
-    else localStorage.removeItem(HTR_KEY);
-  } catch {}
-}
-/** Lo que identifica los datos de una carta: si se edita, lo que se calculó antes deja de valer. */
-const trSig = (it) => [it.date, it.time, it.lat, it.lon, it.tz, it.manual, it.offset].join("|");
-
-function renderHomeTr() {
-  const sec = $("#homeTr"), items = saved.items;
-  sec.hidden = !items.length;                      // sin cartas guardadas no hay con qué calcular
-  if (!items.length) return;
-  const on = items.filter((it) => homeTr.on.has(it.id));      // la primera vez no hay ninguna elegida: se eligen a mano
-  const auto = homeTr.saved && on.length && !homeTr.edit;
-  if (auto && !homeTr.running && page === "home" && (!homeTr.at || homeTr.at.date !== nowIn(moonTz()).date || on.some((it) => homeTr.res.get(it.id)?.sig !== trSig(it)))) {
-    runHomeTr(); return;                         // se actualizan solos: al entrar, si cambió el día o alguna carta
-  }
-  $("#homeTrEdit").hidden = !!auto;
-  const autoP = $("#homeTrAuto");
-  autoP.hidden = !auto;
-  if (auto) {
-    const ch = Object.assign(document.createElement("button"), { type: "button", className: "home-tr-all", textContent: "Cambiar cartas" });
-    ch.addEventListener("click", () => { homeTr.edit = true; renderHomeTr(); $("#homeTrPick button")?.focus(); });
-    autoP.replaceChildren(`De ${on.map((it) => it.name).join(", ")} · ${homeTr.running ? `calculando ${homeTr.done} de ${homeTr.total}…` : "se actualizan solos"} · `, ch);
-  }
-  $("#homeTrNote").textContent = "Elegí las cartas. Los planetas lentos (de Júpiter a Plutón) que hoy forman un aspecto cerrado con el Sol, la Luna o los planetas hasta Saturno de cada una." +
-    (isPublic() ? " Al calcular, los datos de nacimiento de las cartas elegidas se envían al servidor solo para eso; no se guardan." : "");
-  const pick = $("#homeTrPick");
-  pick.replaceChildren(...items.map((it) => {
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "home-chip", textContent: it.name, title: "Incluir o sacar esta carta del cálculo" });
-    b.setAttribute("aria-pressed", String(homeTr.on.has(it.id)));
-    b.addEventListener("click", () => { if (homeTr.on.has(it.id)) homeTr.on.delete(it.id); else homeTr.on.add(it.id); renderHomeTr(); });
-    return b;
-  }));
-  if (items.length > 1) {                          // con muchas cartas, elegirlas una por una es un rato largo
-    const all = on.length === items.length;
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "home-tr-all", textContent: all ? "Quitar todas" : "Elegir todas" });
-    b.addEventListener("click", () => { homeTr.on = new Set(all ? [] : items.map((it) => it.id)); renderHomeTr(); });
-    pick.append(b);
-  }
-  const go = $("#homeTrGo");
-  go.disabled = homeTr.running || !on.length;
-  go.textContent = homeTr.running ? "Calculando…" : !on.length ? (homeTr.saved ? "Listo" : "Calcular") : on.length === 1 ? "Calcular con 1 carta" : `Calcular con ${on.length} cartas`;
-  if (homeTr.saved && !on.length) go.disabled = homeTr.running;
-  $("#homeTrProg").textContent = homeTr.running ? `${homeTr.done} de ${homeTr.total}`
-    : !on.length ? "Elegí al menos una carta."
-    : homeTr.res.size && homeTr.at ? `Calculado para el ${homeTr.at.date.split("-").reverse().join("/")} a las ${homeTr.at.time}` : "";
-  const cards = [];
-  for (const it of on) {
-    const r = homeTr.res.get(it.id);
-    if (!r || r.sig !== trSig(it)) continue;
-    const card = Object.assign(document.createElement("article"), { className: "htr-card" });
-    const head = Object.assign(document.createElement("div"), { className: "htr-head" });
-    head.append(Object.assign(document.createElement("h4"), { textContent: it.name }));
-    const open = Object.assign(document.createElement("button"), { type: "button", className: "htr-open", textContent: "Abrir en Tránsitos ›", title: `Abrir la carta de ${it.name} con los tránsitos de hoy` });
-    open.addEventListener("click", () => openSavedInTransit(it));
-    head.append(open);
-    const body = document.createElement("div");
-    if (r.err) {
-      body.className = "htr-err";
-      body.textContent = r.err instanceof TypeError ? "No se pudo conectar con el servidor." : sumError(r.err);
-    } else {
-      body.innerHTML = featuredRowsHTML(r.data);
-    }
-    card.append(head, body);
-    cards.push(card);
-  }
-  $("#homeTrBody").replaceChildren(...cards);
-}
-
-async function featuredRetry(body, at, my) {
-  for (let i = 0; ; i++) {
-    try {
-      return await compute.featured(body, at);
-    } catch (err) {
-      const busy = err.status === 429 || err.status === 503;
-      if (!busy || i >= 4 || my !== homeTr.seq) throw err;
-      await new Promise((ok) => setTimeout(ok, Math.min(15, Math.max(1, err.retryAfter || 2)) * 1000));
-    }
-  }
-}
-
-async function runHomeTr() {
-  if (homeTr.running) return;
-  const items = saved.items.filter((it) => homeTr.on.has(it.id));
-  homeTr.edit = false;
-  homeTr.saved = items.length > 0;
-  htrSave();
-  if (!items.length) { homeTr.res = new Map(); renderHomeTr(); return; }
-  const tz = moonTz();
-  const at = { ...nowIn(tz), tz };
-  const view = readForm(), queue = items.slice(), my = ++homeTr.seq;
-  Object.assign(homeTr, { running: true, res: new Map(), done: 0, total: items.length, at });
-  renderHomeTr();
-  const worker = async () => {
-    while (queue.length && my === homeTr.seq) {
-      const it = queue.shift();
-      let r;
-      const sig = trSig(it);
-      try { r = { sig, data: await featuredRetry(partnerBody(it, view), at, my) }; } catch (err) { r = { sig, err }; }
-      if (my !== homeTr.seq) return;
-      homeTr.res.set(it.id, r);
-      homeTr.done++;
-      if (page === "home") renderHomeTr();
-    }
-  };
-  await Promise.all([worker(), worker()]);
-  if (my !== homeTr.seq) return;
-  homeTr.running = false;
-  if (page === "home") renderHomeTr();
-}
-$("#homeTrGo").addEventListener("click", runHomeTr);
-
-// -- inicio: buscar entre las cartas guardadas las que tienen un planeta (o el Ascendente) en un signo.
-// Hace falta la posición de cada carta: se calcula una vez (en la versión pública, al apretar el botón, porque los datos de
-// nacimiento viajan al servidor) y queda en este navegador junto con lo que identifica los datos de la carta; si una carta
-// se edita, se vuelve a calcular solo esa.
+// -- las posiciones de cada carta guardada: para las tarjetas (Sol, Luna, Ascendente) y para buscar en Mis cartas.
+// Se calcula una vez por carta con /api/chart (de a dos a la vez; en la versión pública, esperando si el servidor lo pide)
+// y queda en este navegador (`carta:pos`, sin el nombre): las 12 longitudes, la casa de cada planeta y sus aspectos duros.
+// `sig` dice con qué datos de nacimiento se calculó (si se edita la carta, se recalcula); `csig`, con qué sistema de casas y
+// orbes (las casas y los aspectos dependen de eso; los signos no). En la versión pública los datos de nacimiento viajan al
+// servidor: no se manda nada hasta apretar el botón.
 const FIND_KEY = "carta:pos";
 const FIND_BODIES = [...TRIP_PLANETS, "asc", "mc"];
-const find = { pos: new Map(), running: false, seq: 0, done: 0, total: 0, errs: new Map(), body: "moon", sign: "all" };
-const FIND_ART = { sun: "el Sol", moon: "la Luna", asc: "el Ascendente", mc: "el Medio Cielo" };
-const degTxt = (lon) => { const s = split(lon); return `${s.deg}°${String(s.min).padStart(2, "0")}′`; };
+const HARD = ["conjunction", "opposition", "square", "semisquare", "sesquiquadrate"];
+const find = { pos: new Map(), running: false, seq: 0, done: 0, total: 0, errs: new Map() };
+/** Lo que identifica los datos de una carta: si se edita, lo que se calculó antes deja de valer. */
+const trSig = (it) => [it.date, it.time, it.lat, it.lon, it.tz, it.manual, it.offset].join("|");
+const cfgSig = () => `${readForm().hsys}|${JSON.stringify(orbs)}`;
 try {
   const raw = JSON.parse(localStorage.getItem(FIND_KEY));
-  if (raw?.v === 1 && raw.items && typeof raw.items === "object") {
+  if ((raw?.v === 1 || raw?.v === 2) && raw.items && typeof raw.items === "object") {
     for (const [id, r] of Object.entries(raw.items)) {
-      if (r && typeof r.sig === "string" && r.lon && FIND_BODIES.every((b) => Number.isFinite(r.lon[b]))) find.pos.set(id, { sig: r.sig, lon: Object.fromEntries(FIND_BODIES.map((b) => [b, r.lon[b]])) });
+      if (!r || typeof r.sig !== "string" || !r.lon || !FIND_BODIES.every((b) => Number.isFinite(r.lon[b]))) continue;
+      const e = { sig: r.sig, lon: Object.fromEntries(FIND_BODIES.map((b) => [b, r.lon[b]])) };
+      if (typeof r.csig === "string" && r.house && TRIP_PLANETS.every((b) => r.house[b] >= 1 && r.house[b] <= 12) && Array.isArray(r.asp)) {
+        e.csig = r.csig;
+        e.house = Object.fromEntries(TRIP_PLANETS.map((b) => [b, r.house[b]]));
+        e.asp = r.asp.filter((x) => Array.isArray(x) && TRIP_PLANETS.includes(x[0]) && TRIP_PLANETS.includes(x[1]) && HARD.includes(x[2]));
+      }
+      find.pos.set(id, e);
     }
   }
 } catch {}
@@ -3035,20 +2976,11 @@ function findSave() {
   try {
     const items = {};
     for (const it of saved.items) { const r = find.pos.get(it.id); if (r && r.sig === trSig(it)) items[it.id] = r; }
-    localStorage.setItem(FIND_KEY, JSON.stringify({ v: 1, items }));
+    localStorage.setItem(FIND_KEY, JSON.stringify({ v: 2, items }));
   } catch {}
 }
-const findReady = (it) => find.pos.get(it.id)?.sig === trSig(it);
-
-(() => {
-  const opt = (v, t) => Object.assign(document.createElement("option"), { value: v, textContent: t });
-  $("#findBody").replaceChildren(opt("any", "Cualquier planeta"), ...FIND_BODIES.map((b) => opt(b, BODY[b].name)));
-  $("#findBody").value = find.body;
-  $("#findSign").replaceChildren(opt("all", "Todos los signos"), ...SIGNS.map((s, i) => opt(String(i), s)));
-  $("#findSign").value = find.sign;
-  $("#findBody").addEventListener("change", (e) => { find.body = e.target.value; renderHomeFind(); });
-  $("#findSign").addEventListener("change", (e) => { find.sign = e.target.value; renderHomeFind(); });
-})();
+const posReady = (it) => find.pos.get(it.id)?.sig === trSig(it);                       // los signos
+const fullReady = (it) => posReady(it) && find.pos.get(it.id).csig === cfgSig();       // también las casas y los aspectos
 
 async function retryBusy(call, alive) {
   for (let i = 0; ; i++) {
@@ -3061,118 +2993,179 @@ async function retryBusy(call, alive) {
     }
   }
 }
-
-async function runFind() {
+/** Calcula las posiciones que faltan (full: también las de las cartas a las que solo les faltan las casas y aspectos). */
+async function runFind(full = true) {
   if (find.running) return;
-  const todo = saved.items.filter((it) => !findReady(it));
+  const todo = saved.items.filter((it) => !(full ? fullReady(it) : posReady(it)));
   if (!todo.length) return;
-  const view = readForm(), queue = todo.slice(), my = ++find.seq;
+  const view = readForm(), csig = cfgSig(), queue = todo.slice(), my = ++find.seq;
   Object.assign(find, { running: true, done: 0, total: todo.length, errs: new Map() });
-  renderHomeFind();
+  paintFindState();
   const worker = async () => {
     while (queue.length && my === find.seq) {
       const it = queue.shift(), sig = trSig(it);
       try {
         const c = await retryBusy(() => compute.chart(partnerBody(it, view)), () => my === find.seq);
-        const lon = Object.fromEntries([...c.bodies.filter((b) => TRIP_PLANETS.includes(b.id)).map((b) => [b.id, b.lon]), ["asc", c.angles.asc], ["mc", c.angles.mc]]);
+        const pl = c.bodies.filter((b) => TRIP_PLANETS.includes(b.id));
+        const lon = Object.fromEntries([...pl.map((b) => [b.id, b.lon]), ["asc", c.angles.asc], ["mc", c.angles.mc]]);
         if (!FIND_BODIES.every((b) => Number.isFinite(lon[b]))) throw new Error("Respuesta incompleta.");
-        find.pos.set(it.id, { sig, lon });
+        const house = Object.fromEntries(pl.map((b) => [b.id, b.house]));
+        const asp = (c.aspects || []).filter((x) => TRIP_PLANETS.includes(x.a) && TRIP_PLANETS.includes(x.b) && HARD.includes(x.type))
+          .map((x) => [x.a, x.b, x.type, Math.round(x.orb * 100) / 100]);
+        find.pos.set(it.id, { sig, lon, csig, house, asp });
       } catch (err) {
         find.errs.set(it.id, err);
       }
       if (my !== find.seq) return;
       find.done++;
-      if (page === "home") renderHomeFind();
+      paintFindState();
     }
   };
   await Promise.all([worker(), worker()]);
   if (my !== find.seq) return;
   find.running = false;
   findSave();
-  if (page === "home") { renderHomeFind(); paintHomeCards(); }
+  if (page === "home") paintHomeCards();
+  paintFindState();
 }
-$("#findGo").addEventListener("click", runFind);
-// «Buscar por posición» va plegado; si lo abrís, queda abierto la próxima vez (en este navegador)
-try { $("#homeFind").open = localStorage.getItem("carta:findopen") === "1"; } catch {}
-$("#homeFind").addEventListener("toggle", (e) => { try { localStorage.setItem("carta:findopen", e.target.open ? "1" : "0"); } catch {} });
+function paintFindState() {
+  if (page === "charts") renderMyCharts();
+}
 
-function renderHomeFind() {
-  const sec = $("#homeFind"), items = saved.items;
-  sec.hidden = !items.length;
-  if (!items.length) return;
-  const missing = items.filter((it) => !findReady(it));
-  const failed = missing.filter((it) => find.errs.has(it.id));
-  // en el servidor propio de la app se calcula solo; en la versión pública, al apretar el botón
-  if (missing.length && !find.running && !failed.length && !isPublic()) { runFind(); return; }
-  $("#homeFindNote").textContent = "Elegí un planeta (o el Ascendente o el Medio Cielo) y un signo, y salen las cartas guardadas que lo tienen." +
-    (isPublic() ? " Las posiciones se calculan una vez con los datos de nacimiento de tus cartas, que se envían al servidor solo para eso y no se guardan; quedan en este navegador." : "");
-  const go = $("#findGo");
-  go.hidden = find.running || !missing.length;
-  go.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
-  $("#findProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
-
-  const out = $("#findOut"), nodes = [];
-  const have = items.filter(findReady);
-  const el = (tag, props = {}) => Object.assign(document.createElement(tag), props);
-  const sign = find.sign === "all" ? -1 : +find.sign;
-  const bodies = find.body === "any" ? TRIP_PLANETS : [find.body];
-  const what = find.body === "any" ? "algún planeta" : FIND_ART[find.body] || BODY[find.body].name;
-  const title = find.body === "any" ? "Algún planeta" : BODY[find.body].name;
-  const hits = (it) => bodies.map((id) => ({ id, lon: find.pos.get(it.id).lon[id] })).filter((p) => sign < 0 || split(p.lon).sign === sign);
-  const chip = (it, ps, withGlyph) => {
-    const b = el("button", { type: "button", className: "home-chip find-hit", title: `Abrir la carta de ${it.name}` });
-    b.append(el("span", { className: "find-nm", textContent: it.name }));
-    for (const p of ps) {
-      const s = el("span", { className: "find-pos" });
-      if (withGlyph) s.innerHTML = mark(p.id) + " ";
-      s.append(document.createTextNode(degTxt(p.lon)));
-      b.append(s);
+// -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
+// un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
+const MC_PAGE = 24;
+const mc = { q: "", letter: "", pl: "", sign: "all", house: "all", a: "", asp: "hard", b: "any", page: 1 };
+const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
+(() => {
+  const opt = (v, t) => Object.assign(document.createElement("option"), { value: v, textContent: t });
+  $("#mcPl").replaceChildren(opt("", "Elegí un planeta"), opt("any", "Cualquier planeta"), ...FIND_BODIES.map((b) => opt(b, BODY[b].name)));
+  $("#mcSign").replaceChildren(opt("all", "cualquier signo"), ...SIGNS.map((s, i) => opt(String(i), s)));
+  $("#mcHouse").replaceChildren(opt("all", "cualquier casa"), ...Array.from({ length: 12 }, (_, i) => opt(String(i + 1), `casa ${roman(i + 1)}`)));
+  $("#mcA").replaceChildren(opt("", "Elegí un planeta"), ...TRIP_PLANETS.map((b) => opt(b, BODY[b].name)));
+  $("#mcAsp").replaceChildren(opt("hard", "cualquier aspecto duro"), ...HARD.map((t) => opt(t, ASPECT[t].name.toLowerCase())));
+  $("#mcB").replaceChildren(opt("any", "cualquier planeta"), ...TRIP_PLANETS.map((b) => opt(b, BODY[b].name)));
+  for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) {
+    $(sel).addEventListener("change", (e) => { mc[key] = e.target.value; mc.page = 1; renderMyCharts(); });
+  }
+  $("#mcQ").addEventListener("input", (e) => { mc.q = e.target.value; mc.page = 1; renderMyCharts(); });
+  $("#mcNew").addEventListener("click", () => openForm("new"));
+  $("#mcCalc").addEventListener("click", () => runFind(true));
+  $("#mcClear").addEventListener("click", () => {
+    Object.assign(mc, { q: "", letter: "", pl: "", sign: "all", house: "all", a: "", asp: "hard", b: "any", page: 1 });
+    $("#mcQ").value = "";
+    for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) $(sel).value = mc[key];
+    renderMyCharts();
+  });
+})();
+const plTxt = (id) => `${mark(id)} ${esc(BODY[id].name)}`;
+const signTxt = (lon) => { const s = split(lon); return `<span class="g" aria-hidden="true">${signHTML(s.sign)}</span>${SIGNS[s.sign]} ${s.deg}°${String(s.min).padStart(2, "0")}′`; };
+/** ¿La carta cumple la búsqueda por posición? Devuelve lo encontrado (para mostrarlo en la tarjeta) o null. */
+function posHits(it) {
+  const hits = [];
+  const P = find.pos.get(it.id);
+  if (mc.pl) {
+    const needHouse = mc.house !== "all" && mc.pl !== "asc" && mc.pl !== "mc";
+    const bodies = mc.pl === "any" ? TRIP_PLANETS : [mc.pl];
+    const ok = bodies.filter((id) => (mc.sign === "all" || split(P.lon[id]).sign === +mc.sign)
+      && (mc.house === "all" || (needHouse || mc.pl === "any" ? P.house?.[id] === +mc.house : true)));
+    if (!ok.length) return null;
+    if (mc.sign !== "all" || mc.house !== "all") {
+      for (const id of ok) hits.push(`${plTxt(id)} · ${signTxt(P.lon[id])}${P.house?.[id] && !["asc", "mc"].includes(id) ? ` · casa ${roman(P.house[id])}` : ""}`);
     }
-    b.addEventListener("click", () => openSaved(it));
+  }
+  if (mc.a) {
+    const types = mc.asp === "hard" ? curCfg?.trips?.asp?.length ? curCfg.trips.asp : ["conjunction", "opposition", "square"] : [mc.asp];
+    const ok = (P.asp || []).filter(([a, b, t]) => types.includes(t) && (a === mc.a || b === mc.a) && (mc.b === "any" || a === mc.b || b === mc.b));
+    if (!ok.length) return null;
+    for (const [a, b, t, orb] of ok) {
+      const o = a === mc.a ? b : a, A = ASPECT[t];
+      hits.push(`${mark(mc.a)}<span class="a-ic ${A.cls}" aria-hidden="true">${A.icon}</span>${mark(o)} ${esc(A.name.toLowerCase())} con ${esc(BODY[o].name)} <span class="hc-orb">${fmtOrb(orb)}</span>`);
+    }
+  }
+  return hits;
+}
+function renderMyCharts() {
+  const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+  $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta" : "cartas"}, en orden alfabético.` : "";
+  $("#navChartsN").textContent = items.length ? String(items.length) : "";
+  // por inicial: las letras que tienen alguna carta se pueden tocar
+  const have = new Set(items.map((it) => initialOf(it.name)));
+  const letters = ["", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), ...(have.has("#") ? ["#"] : [])];
+  if (mc.letter && !have.has(mc.letter)) mc.letter = "";
+  $("#mcAz").replaceChildren(...letters.map((l) => {
+    const b = elx("button", { type: "button", textContent: l || "Todas", disabled: !!l && !have.has(l) }, () => { mc.letter = l; mc.page = 1; renderMyCharts(); });
+    b.setAttribute("aria-pressed", String(mc.letter === l));
+    if (l) b.setAttribute("aria-label", `Cartas que empiezan con ${l === "#" ? "otro carácter" : l}`);
     return b;
-  };
-  if (have.length) {
-    if (find.body === "any" && sign < 0) {
-      nodes.push(el("p", { className: "find-hint", textContent: "Elegí un signo para ver qué cartas tienen algún planeta ahí." }));
-    } else if (sign < 0) {                          // un planeta en todos los signos: las cartas agrupadas por signo
-      nodes.push(el("p", { className: "find-sum", textContent: `${title} de ${have.length} ${have.length === 1 ? "carta" : "cartas"}, por signo.` }));
-      for (let k = 0; k < 12; k++) {
-        const g = have.map((it) => [it, hits(it).filter((p) => split(p.lon).sign === k)]).filter(([, ps]) => ps.length);
-        if (!g.length) continue;
-        const grp = el("div", { className: "find-grp" });
-        const h = el("h4");
-        h.innerHTML = `<span class="g" aria-hidden="true">${signHTML(k)}</span> `;
-        h.append(document.createTextNode(`${SIGNS[k]} `), el("span", { className: "find-n", textContent: String(g.length) }));
-        grp.append(h, Object.assign(el("div", { className: "home-chips" }), {}));
-        grp.lastChild.append(...g.map(([it, ps]) => chip(it, ps, false)));
-        nodes.push(grp);
-      }
-    } else {
-      const g = have.map((it) => [it, hits(it)]).filter(([, ps]) => ps.length);
-      if (g.length) {
-        nodes.push(el("p", { className: "find-sum" }));
-        nodes[0].append(el("strong", { textContent: `${title} en ${SIGNS[sign]}` }), document.createTextNode(` · ${g.length} de ${have.length} ${have.length === 1 ? "carta" : "cartas"}`));
-        const row = el("div", { className: "home-chips" });
-        row.append(...g.map(([it, ps]) => chip(it, ps, find.body === "any")));
-        nodes.push(row);
-      } else {
-        nodes.push(el("p", { className: "find-none", textContent: have.length === 1 ? `Tu carta no tiene ${what} en ${SIGNS[sign]}.` : `Ninguna de tus ${have.length} cartas tiene ${what} en ${SIGNS[sign]}.` }));
-      }
-    }
-  }
-  if (failed.length && !find.running) {
-    nodes.push(el("p", { className: "find-err", textContent: `No se pudo calcular la posición de ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? ": no hay conexión con el servidor" : ""}.` }));
-  } else if (have.length && have.length < items.length && !find.running && missing.length) {
-    nodes.push(el("p", { className: "find-hint", textContent: `Faltan ${missing.length} ${missing.length === 1 ? "carta" : "cartas"} por calcular; se buscó en las otras.` }));
-  }
-  out.replaceChildren(...nodes);
-}
+  }));
+  $("#mcFilters").hidden = !items.length;
+  $("#mcAz").hidden = items.length < 2;
+  // casa y signo no se combinan con el Ascendente y el Medio Cielo (siempre están en la I y la X)
+  const angle = mc.pl === "asc" || mc.pl === "mc";
+  $("#mcHouse").disabled = angle;
+  if (angle && mc.house !== "all") { mc.house = "all"; $("#mcHouse").value = "all"; }
+  const posOn = !!mc.pl && (mc.sign !== "all" || mc.house !== "all") || !!mc.a;
+  const needFull = (!!mc.pl && mc.house !== "all") || !!mc.a;
+  const ready = needFull ? fullReady : posReady;
+  const missing = posOn ? items.filter((it) => !ready(it)) : [];
+  const failed = missing.filter((it) => find.errs.has(it.id));
+  if (posOn && missing.length && !find.running && !failed.length && !isPublic()) runFind(needFull);
+  const calc = $("#mcCalc");
+  calc.hidden = !posOn || find.running || !missing.length;
+  calc.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
+  $("#mcProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
+  $("#mcNote").textContent = "Los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
+    (isPublic() ? " Cada carta se calcula una vez: los datos de nacimiento se envían al servidor solo para eso; las posiciones quedan en este navegador." : "");
+  const anyFilter = !!(mc.q.trim() || mc.letter || mc.pl || mc.a);
+  $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "Planeta en signo o casa · planeta en aspecto duro";
+  $("#mcFilters").classList.toggle("on", posOn);
+  $("#mcClear").hidden = !anyFilter;
 
-/** «Abrir en Tránsitos»: la carta, en el modo de tránsitos y en este momento. */
-async function openSavedInTransit(item) {
-  if (mode !== "transit") { mode = "transit"; rememberView(); paintMode(); }
-  setNow();
-  await openSaved(item);
+  // filtrar
+  const q = fold(mc.q.trim());
+  let list = items.filter((it) => (!q || fold(it.name).includes(q)) && (!mc.letter || initialOf(it.name) === mc.letter));
+  const hitsOf = new Map();
+  if (posOn) {
+    list = list.filter((it) => {
+      if (!ready(it)) return false;
+      const h = posHits(it);
+      if (h) hitsOf.set(it.id, h);
+      return !!h;
+    });
+  }
+  const pages = Math.max(1, Math.ceil(list.length / MC_PAGE));
+  mc.page = Math.min(Math.max(1, mc.page), pages);
+  const shown = list.slice((mc.page - 1) * MC_PAGE, mc.page * MC_PAGE);
+  const count = $("#mcCount");
+  if (!items.length) count.textContent = "Todavía no guardaste ninguna carta.";
+  else if (!list.length) count.textContent = posOn && missing.length === items.length ? "Para buscar por posición hace falta calcular las posiciones." : "Ninguna carta cumple la búsqueda.";
+  else count.textContent = (anyFilter ? `${list.length} de ${items.length} ${items.length === 1 ? "carta" : "cartas"}` : `${list.length} ${list.length === 1 ? "carta" : "cartas"}`) +
+    (pages > 1 ? ` · página ${mc.page} de ${pages}` : "") + (posOn && missing.length && !find.running ? ` · faltan calcular ${missing.length}` : "");
+  $("#mcList").replaceChildren(...shown.map((it) => chartCard(it, { hits: hitsOf.get(it.id) || [] })));
+  if (failed.length && !find.running) {
+    count.textContent += ` · No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
+  }
+  // páginas: ‹ 1 2 … 9 ›
+  const nav = $("#mcPages");
+  nav.hidden = pages < 2;
+  if (pages >= 2) {
+    const nums = [...new Set([1, mc.page - 1, mc.page, mc.page + 1, pages].filter((n) => n >= 1 && n <= pages))].sort((a, b) => a - b);
+    const btn = (label, n, cur = false, aria = "") => {
+      const b = elx("button", { type: "button", textContent: label, disabled: n < 1 || n > pages || cur }, () => { mc.page = n; renderMyCharts(); $("#charts").scrollIntoView({ block: "start" }); });
+      if (cur) b.setAttribute("aria-current", "page");
+      if (aria) b.setAttribute("aria-label", aria);
+      return b;
+    };
+    const parts = [btn("‹", mc.page - 1, false, "Página anterior")];
+    nums.forEach((n, i) => {
+      if (i && n - nums[i - 1] > 1) parts.push(elx("span", { className: "mc-gap", textContent: "…" }));
+      parts.push(btn(String(n), n, n === mc.page, `Página ${n}`));
+    });
+    parts.push(btn("›", mc.page + 1, false, "Página siguiente"));
+    nav.replaceChildren(...parts);
+  } else nav.replaceChildren();
 }
 
 // -- calendario lunar
