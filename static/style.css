@@ -468,6 +468,7 @@ td .g { margin-right: 4px; }
 .a-ic { line-height: 0; }
 .pair .a-ic { vertical-align: -.2em; }
 .a-ic.hard { color: var(--hard); }
+.a-ic.neutral { color: var(--hard); }          /* la conjunción, en rojo como los aspectos duros */
 .a-ic.soft { color: var(--soft); }
 .a-ic.minor { color: var(--minor); }
 
