@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="style.css">
   <script>
     try { var t = localStorage.getItem("carta:theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    // colores propios (Configuración → Apariencia → Colores): settings.js deja la hoja armada en carta:colorcss
+    try { var cc = localStorage.getItem("carta:colorcss"); if (cc) { var st = document.createElement("style"); st.id = "userColors"; st.textContent = cc; document.head.appendChild(st); } } catch (e) {}
     // configuración (ver settings.js): se aplica antes de pintar para que no haya parpadeo.
     // Sin configuración guardada: letra redondeada y tinte por elemento (los valores de fábrica).
     try {
@@ -43,7 +45,7 @@
   <!-- arriba: las secciones (un menú), buscar o cambiar de carta, el tema y la configuración. En la carta, en pantallas
        anchas, el nombre, los modos y los botones de la carta van en esta misma fila (style.css, data-tbmerge) -->
   <header class="topbar" id="topbar">
-    <a class="tb-logo" href="#inicio" aria-label="Carta natal: ir al inicio" title="Inicio"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="logoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DCC8FF"/><stop offset=".55" stop-color="#9A6CF0"/><stop offset="1" stop-color="#5B2DB8"/></linearGradient></defs><path fill="url(#logoG)" transform="rotate(45 16 16)" d="M16 4.5C16.15 13.4 18.6 15.85 27.5 16 18.6 16.15 16.15 18.6 16 27.5 15.85 18.6 13.4 16.15 4.5 16 13.4 15.85 15.85 13.4 16 4.5Z"/><path fill="url(#logoG)" d="M16 .5C16.45 10.6 21.4 15.55 31.5 16 21.4 16.45 16.45 21.4 16 31.5 15.55 21.4 10.6 16.45 .5 16 10.6 15.55 15.55 10.6 16 .5Z"/></svg></a>
+    <a class="tb-logo" href="#inicio" aria-label="Carta natal: ir al inicio" title="Inicio"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="logoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="lg1"/><stop offset=".55" class="lg2"/><stop offset="1" class="lg3"/></linearGradient></defs><path fill="url(#logoG)" transform="rotate(45 16 16)" d="M16 4.5C16.15 13.4 18.6 15.85 27.5 16 18.6 16.15 16.15 18.6 16 27.5 15.85 18.6 13.4 16.15 4.5 16 13.4 15.85 15.85 13.4 16 4.5Z"/><path fill="url(#logoG)" d="M16 .5C16.45 10.6 21.4 15.55 31.5 16 21.4 16.45 16.45 21.4 16 31.5 15.55 21.4 10.6 16.45 .5 16 10.6 15.55 15.55 10.6 16 .5Z"/></svg></a>
     <div class="tb-nav">
       <button type="button" id="appMenuBtn" class="tb-app" aria-haspopup="true" aria-expanded="false" aria-controls="appMenu" aria-label="Secciones: Inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span id="appMenuLabel">Inicio</span><svg class="tb-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
       <nav class="tb-menu" id="appMenu" aria-label="Secciones" hidden>
@@ -649,6 +651,14 @@
               <button type="button" data-theme-set="dark" aria-pressed="false">Oscuro</button>
               <button type="button" data-theme-set="auto" aria-pressed="true">Automático</button>
             </div></div>
+          <div class="cfg-head"><h3 class="sub">Colores</h3></div>
+          <div class="cpal" id="cfgPal" role="group" aria-label="Paletas de colores"></div>
+          <table class="ccol" id="cfgColors"></table>
+          <details class="how"><summary>¿Cómo funciona?</summary>
+            <p class="fine">Elegí una paleta o un color para cada cosa, por separado para el modo claro y el oscuro. <strong>Botones</strong>: los botones principales y todo lo elegido (los modos, las pestañas, los filtros). <strong>Fondo</strong>: el de la página; las tarjetas y paneles salen de él. <strong>Líneas</strong>: los bordes y separadores. Los colores de la rueda (signos, planetas y aspectos) no cambian.</p>
+          </details>
+          <button type="button" class="cfg-reset" id="cfgResetColors">Restablecer colores</button>
+          <div class="cfg-head"><h3 class="sub">Letra</h3></div>
           <div class="cfg-row"><span class="cfg-lab" id="cfgFontLab">Letra de la app</span>
             <div class="fpick" data-for="cfgFont"><select id="cfgFont" aria-labelledby="cfgFontLab"></select></div></div>
           <div class="cfg-row"><span class="cfg-lab" id="cfgNoteFontLab">Letra de las notas</span>

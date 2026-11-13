@@ -57,10 +57,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 
 ## Qué hace
 
-- **Colores**: tinta sobre lavanda de día (`--bg` #F6F3FA) y sobre azul profundo de noche (#0E0E24); **lo elegido va en
-  violeta** (`--accent`, `--accent-2`: modos, pestañas, filtros, botones principales, la tarjeta abierta). Los colores
-  de «Entre casas» y «Viajes» prendidos no cambiaron (`--reach`, `--trip`). El **logo** es una estrella violeta de cuatro
-  puntas (arriba a la izquierda, lleva al inicio; también es el ícono de la pestaña, `static/icon.svg`; el ícono de
+- **Colores** (de fábrica, la paleta «Océano»): tinta sobre celeste muy claro de día (`--bg` #F1F6FA) y sobre azul marino de
+  noche (#0B1622); **lo elegido va en azul** (`--accent`, `--accent-2`: modos, pestañas, filtros, botones principales, la
+  tarjeta abierta). Se cambian en Configuración → Apariencia → Colores. Los colores
+  de «Entre casas» y «Viajes» prendidos no cambiaron (`--reach`, `--trip`). El **logo** es una estrella de cuatro
+  puntas que toma el color de los botones (cambia con la paleta; arriba a la izquierda, lleva al inicio; también es el ícono de la pestaña, `static/icon.svg`; el ícono de
   `Carta natal.app` sigue siendo el de antes).
 - **La barra de arriba** (no hay menú lateral): a la izquierda, el logo y un botón con el nombre de la sección en la que estás
   («Inicio ▾»), que despliega el menú de secciones (Inicio · Luna · Carta, con el nombre de la carta abierta · Combinar;
@@ -401,6 +402,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   plegados**, cada uno con una línea que resume cómo está («Tema automático · Redondeada · letra 100 %»), los textos
   largos detrás de **«¿Cómo funciona?»** y su propio **«Restablecer»** (apagado si ya está como de fábrica):
   - **Apariencia**: tema (Claro / Oscuro / Automático, el del sistema; el botón de la barra cambia entre claro y oscuro),
+    **colores** (paletas Océano —la de fábrica—, Violeta, Bosque, Ámbar y Mineral, o un color a mano para los **botones** —y
+    todo lo elegido—, el **fondo** —las tarjetas y paneles salen de él— y las **líneas**, por separado para el modo claro y
+    el oscuro; si el fondo elegido es claro en el modo oscuro, o al revés, el texto se acomoda solo; la rueda no cambia y
+    la hoja impresa sale con los de fábrica; `colors` en `carta:cfg` y la hoja armada en `carta:colorcss`, que el `<head>`
+    pone antes de pintar),
     **letra de la app**, **letra de las notas**, tamaño de la letra (85 % a 130 %; escala todo el texto; el de la rueda sube
     con un tope ×1,25 para que no se pise con los símbolos) y estilo de los gráficos: **Nuevo** (círculos de colores con
     símbolos vectoriales, banda oscura de signos) o **Clásico** (los símbolos de texto de antes, sin círculos y con el anillo

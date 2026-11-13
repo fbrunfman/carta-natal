@@ -2530,7 +2530,8 @@ function paintCfgSums() {
   const c = curCfg;
   if (!c || !$("#cfgLookSum")) return;
   const pref = themePref();
-  $("#cfgLookSum").textContent = `Tema ${pref === "light" ? "claro" : pref === "dark" ? "oscuro" : "automático"} · ${FONTS[c.font]} · letra ${pctTxt(c.fs)}`;
+  const own = c.colors && ["light", "dark"].some((m) => Object.values(c.colors[m]).some(Boolean));
+  $("#cfgLookSum").textContent = `Tema ${pref === "light" ? "claro" : pref === "dark" ? "oscuro" : "automático"}${own ? " · colores propios" : ""} · ${FONTS[c.font]} · letra ${pctTxt(c.fs)}`;
   $("#cfgWheelGSum").textContent = `Tamaño ${pctTxt(c.wheel)} · ${c.cuspRing ? "con" : "sin"} anillo de cúspides${noteMarksOn ? " · marcas de notas" : ""}`;
   const hs = form.elements.hsys, nAsp = Object.keys(ASPECT).length - c.aspOff.length;
   $("#cfgAspGSum").textContent = `${hs.selectedOptions[0]?.textContent || ""} · ${nAsp === Object.keys(ASPECT).length ? "todos los aspectos" : `${nAsp} de ${Object.keys(ASPECT).length} aspectos`} a la vista`;

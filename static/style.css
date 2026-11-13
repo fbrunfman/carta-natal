@@ -1,19 +1,20 @@
-/* Carta natal — tinta sobre lavanda; de noche, sobre azul profundo. El violeta es el color de lo elegido. */
+/* Carta natal — paleta «Océano»: tinta sobre celeste muy claro; de noche, sobre azul marino. El azul es el color de lo
+   elegido. Las otras paletas (Violeta, Bosque, Ámbar, Mineral) y los colores a mano están en Configuración (settings.js). */
 
 :root {
-  --bg: #F6F3FA;
-  --surface: #FCFBFE;
+  --bg: #F1F6FA;
+  --surface: #FAFCFE;
   --field: #FFFFFF;
-  --ink: #1D1830;
-  --ink-2: #5E5775;
-  --line: #E2DBEE;
-  --line-strong: #BCB0D3;
-  --hover: rgba(91, 51, 168, .07);
-  --focus: #7C4DDB;
-  --accent: #4B2A93;            /* lo elegido: modos, pestañas, filtros */
-  --accent-2: #7A4FD3;          /* botones principales */
+  --ink: #142433;
+  --ink-2: #4E6274;
+  --line: #D5E2EC;
+  --line-strong: #A9BDCD;
+  --hover: rgba(31, 111, 178, .07);
+  --focus: #1F6FB2;
+  --accent: #164F80;            /* lo elegido: modos, pestañas, filtros */
+  --accent-2: #1F6FB2;          /* botones principales */
   --accent-ink: #FFFFFF;
-  --accent-soft: #EADFFB;
+  --accent-soft: #DCEAF6;
 
   --hard: #B83A2B;
   --soft: #2E6FB7;
@@ -48,19 +49,19 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #0E0E24;
-  --surface: #16162F;
-  --field: #111129;
-  --ink: #F0EDFA;
-  --ink-2: #A9A4C6;
-  --line: #2A2A4C;
-  --line-strong: #4A4874;
-  --hover: rgba(183, 148, 246, .09);
-  --focus: #B794F6;
-  --accent: #B794F6;
-  --accent-2: #B794F6;
-  --accent-ink: #1A1036;
-  --accent-soft: rgba(183, 148, 246, .18);
+  --bg: #0B1622;
+  --surface: #111F2D;
+  --field: #08121C;
+  --ink: #E8F0F7;
+  --ink-2: #9FB3C6;
+  --line: #22364A;
+  --line-strong: #3E5770;
+  --hover: rgba(108, 180, 240, .09);
+  --focus: #6CB4F0;
+  --accent: #6CB4F0;
+  --accent-2: #6CB4F0;
+  --accent-ink: #06223A;
+  --accent-soft: rgba(108, 180, 240, .18);
 
   --hard: #FF8873;
   --soft: #78B4FF;
@@ -85,10 +86,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg: #0E0E24; --surface: #16162F; --field: #111129;
-    --ink: #F0EDFA; --ink-2: #A9A4C6; --line: #2A2A4C; --line-strong: #4A4874;
-    --hover: rgba(183, 148, 246, .09); --focus: #B794F6;
-    --accent: #B794F6; --accent-2: #B794F6; --accent-ink: #1A1036; --accent-soft: rgba(183, 148, 246, .18);
+    --bg: #0B1622; --surface: #111F2D; --field: #08121C;
+    --ink: #E8F0F7; --ink-2: #9FB3C6; --line: #22364A; --line-strong: #3E5770;
+    --hover: rgba(108, 180, 240, .09); --focus: #6CB4F0;
+    --accent: #6CB4F0; --accent-2: #6CB4F0; --accent-ink: #06223A; --accent-soft: rgba(108, 180, 240, .18);
     --hard: #FF8873; --soft: #78B4FF; --minor: #E3BC52; --out: #FFB066; --reach: #C9A2FF; --trip: #5FD3BC;
     --fire: rgba(255, 128, 100, .17); --earth: rgba(150, 196, 110, .15);
     --air: rgba(236, 192, 78, .16); --water: rgba(104, 170, 226, .17);
@@ -1900,7 +1901,11 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 
 /* ---------- el logo, fijar una carta, íconos de los modos, Mis cartas plegado ---------- */
 .tb-logo { flex: none; display: grid; place-items: center; width: 38px; height: 38px; margin-right: -2px; border-radius: 10px; }
-.tb-logo svg { width: 34px; height: 34px; filter: drop-shadow(0 0 6px rgba(154, 108, 240, .35)); }
+/* el logo toma el color de los botones (cambia con la paleta) */
+.tb-logo svg { width: 34px; height: 34px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-2) 40%, transparent)); }
+.tb-logo .lg1 { stop-color: color-mix(in srgb, var(--accent-2) 30%, #fff); }
+.tb-logo .lg2 { stop-color: color-mix(in srgb, var(--accent-2) 80%, #fff); }
+.tb-logo .lg3 { stop-color: color-mix(in srgb, var(--accent-2) 80%, #000); }
 .tb-logo svg path { fill: url(#logoG); stroke: none; }
 .tb-logo:hover svg { transform: rotate(12deg); transition: transform .3s; }
 .title-pin svg { fill: none; }
@@ -1958,6 +1963,29 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 @media (hover: hover) {
   .hc-item:not(:hover):not(:focus-within) .hc-act:not([data-arm="1"]) { opacity: .45; }
 }
+
+/* Configuración → Colores: paletas y un selector por cosa y por modo */
+.cpal { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.cpal-b {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 8px; border: 1px solid var(--line-strong);
+  border-radius: 999px; background: var(--field); color: var(--ink); font-size: calc(13px * var(--fs)); font-weight: 600;
+}
+.cpal-b:hover { background: var(--hover); }
+.cpal-b[aria-pressed="true"] { border-color: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-2); }
+.cpal-sw { display: inline-flex; }
+.cpal-sw i { width: 14px; height: 14px; margin-left: -4px; border-radius: 50%; border: 1.5px solid var(--field); box-shadow: 0 0 0 1px var(--line); }
+.cpal-sw i:first-child { margin-left: 0; }
+.ccol { border-collapse: collapse; margin: 0 0 6px; font-size: calc(13.5px * var(--fs)); }
+.ccol th { padding: 4px 12px 4px 0; text-align: left; font-weight: 600; color: var(--ink); }
+.ccol thead th { font-size: calc(12px * var(--fs)); font-weight: 500; color: var(--ink-2); }
+.ccol td { padding: 4px 14px 4px 0; }
+.ccol-in { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.ccol-in input { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line-strong); border-radius: 7px; background: none; cursor: pointer; }
+.ccol-in input::-webkit-color-swatch-wrapper { padding: 3px; }
+.ccol-in input::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.ccol-in input::-moz-color-swatch { border: 0; border-radius: 4px; }
+.ccol-in span { font: 500 calc(12px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-2); }
+.ccol td.edited .ccol-in span { color: var(--accent-2); font-weight: 700; }
 
 @media print {
   @page { margin: 12mm; }

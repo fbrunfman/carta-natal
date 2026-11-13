@@ -53,6 +53,65 @@ export function cleanOrbs(raw) {
 }
 export const sameOrbs = (a, b) => JSON.stringify(cleanOrbs(a)) === JSON.stringify(cleanOrbs(b));
 
+// Colores propios: botones (y todo lo elegido), fondo y líneas, por separado para el modo claro y el oscuro. null = el de fábrica.
+// Se aplican con una hoja de estilo chica (id="userColors") que también queda guardada armada en `carta:colorcss`, para que el
+// <script> del <head> la ponga antes de pintar.
+export const COLOR_KEYS = [["accent", "Botones"], ["bg", "Fondo"], ["line", "Líneas"]];
+// Los de fábrica son los de la paleta «Océano» (los de :root en style.css).
+export const COLOR_BASE = Object.freeze({
+  light: Object.freeze({ accent: "#1F6FB2", bg: "#F1F6FA", line: "#D5E2EC" }),
+  dark: Object.freeze({ accent: "#6CB4F0", bg: "#0B1622", line: "#22364A" }),
+});
+export const PALETTES = [
+  ["oceano", "Océano", { light: {}, dark: {} }],
+  ["violeta", "Violeta", { light: { accent: "#7A4FD3", bg: "#F6F3FA", line: "#E2DBEE" }, dark: { accent: "#B794F6", bg: "#0E0E24", line: "#2A2A4C" } }],
+  ["bosque", "Bosque", { light: { accent: "#2F7D5B", bg: "#F3F7F2", line: "#D7E4D5" }, dark: { accent: "#7CCB9E", bg: "#0E1712", line: "#24382C" } }],
+  ["ambar", "Ámbar", { light: { accent: "#B4561F", bg: "#FAF5EF", line: "#EADCCB" }, dark: { accent: "#F0A25A", bg: "#17110C", line: "#3A2C20" } }],
+  ["mineral", "Mineral", { light: { accent: "#12202B", bg: "#E9EDF0", line: "#CBD3DA" }, dark: { accent: "#E8EEF2", bg: "#0D161C", line: "#243541" } }],
+];
+const HEX = /^#[0-9a-f]{6}$/i;
+export function cleanColors(raw) {
+  const r = raw && typeof raw === "object" ? raw : {};
+  const one = (m, base) => Object.fromEntries(COLOR_KEYS.map(([k]) => {
+    const v = typeof m?.[k] === "string" && HEX.test(m[k]) ? m[k].toUpperCase() : null;
+    return [k, v === base[k] ? null : v];                 // igual al de fábrica = sin elegir
+  }));
+  return { light: one(r.light, COLOR_BASE.light), dark: one(r.dark, COLOR_BASE.dark) };
+}
+const noColors = (c) => COLOR_KEYS.every(([k]) => !c.light[k] && !c.dark[k]);
+const lum = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => { const v = parseInt(hex.slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** La hoja de estilo de los colores propios ("" si no hay). El fondo trae la superficie y, si es claro en el modo oscuro (o al
+ *  revés), también la tinta, para que el texto se lea; el color de los botones trae su versión para lo elegido y el texto encima. */
+export function colorCSS(colors) {
+  const c = cleanColors(colors);
+  if (noColors(c)) return "";
+  const vars = (m, dark) => {
+    let v = "";
+    if (m.accent) {
+      v += `--accent-2:${m.accent};--accent:${dark ? m.accent : `color-mix(in srgb, ${m.accent} 72%, #000)`};` +
+        `--accent-ink:${lum(m.accent) > 0.45 ? "#1A1036" : "#FFFFFF"};--accent-soft:color-mix(in srgb, ${m.accent} 18%, transparent);` +
+        `--focus:${m.accent};--hover:color-mix(in srgb, ${m.accent} 8%, transparent);`;
+    }
+    if (m.bg) {
+      const light = lum(m.bg) > 0.4;
+      v += `--bg:${m.bg};--surface:color-mix(in srgb, ${m.bg} ${light ? 45 : 93}%, #fff);` +
+        `--field:${light ? "#FFFFFF" : `color-mix(in srgb, ${m.bg} 82%, #000)`};`;
+      if (light === dark) v += light ? "--ink:#1D1830;--ink-2:#5E5775;color-scheme:light;" : "--ink:#F0EDFA;--ink-2:#A9A4C6;color-scheme:dark;";
+    }
+    if (m.line) v += `--line:${m.line};--line-strong:color-mix(in srgb, ${m.line} 72%, ${lum(m.line) > 0.3 ? "#000" : "#fff"});`;
+    return v;
+  };
+  const L = vars(c.light, false), D = vars(c.dark, true);
+  let css = "";
+  if (L) css += `html:root[data-theme="light"]{${L}}@media (prefers-color-scheme: light){html:root:not([data-theme]){${L}}}`;
+  if (D) css += `html:root[data-theme="dark"]{${D}}@media (prefers-color-scheme: dark){html:root:not([data-theme]){${D}}}`;
+  return `@media screen{${css}}`;          // la hoja impresa sale siempre con los colores de fábrica, en claro
+}
+const sameColors = (a, b) => JSON.stringify(cleanColors(a)) === JSON.stringify(cleanColors(b));
+
 export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
   tint: true,        // tinte por elemento en el anillo de signos
@@ -67,6 +126,7 @@ export const DEFAULTS = Object.freeze({
   tripsOn: false,    // carta natal: dibujar en la rueda los viajes de los planetas por las casas
   trips: TRIP_DEFAULTS,   // qué cuenta para los viajes: aspectos duros, orbe a la cúspide y regentes (ver trips.js)
   interp: INTERP_ENABLED,   // false = «solo datos»: sin lecturas ni descripciones (ver .interp en style.css)
+  colors: cleanColors(null),  // colores propios (ver más arriba)
 });
 
 // Tipos de letra de la app. Los «del dispositivo» dependen de lo que tenga la compu o el celular (Avenir o New York solo
@@ -140,6 +200,7 @@ export function load() {
     trips: cleanTrips(raw.trips),
     aspOff: Array.isArray(raw.aspOff) ? [...new Set(raw.aspOff.filter((t) => Object.hasOwn(ASPECT, t)))] : [],
     interp: INTERP_ENABLED && raw.interp !== false,
+    colors: cleanColors(raw.colors),
   };
 }
 
@@ -158,6 +219,11 @@ export function apply(cfg, root = document.documentElement) {
   // más de 100 %: el mandala crece y las tablas pasan debajo
   if (cfg.wheel > 1) root.dataset.big = ""; else delete root.dataset.big;
   if (cfg.interp === false) root.dataset.nointerp = ""; else delete root.dataset.nointerp;
+  const css = colorCSS(cfg.colors);
+  let st = document.getElementById("userColors");
+  if (css && !st) { st = document.createElement("style"); st.id = "userColors"; document.head.append(st); }
+  if (st && st.textContent !== css) st.textContent = css;
+  try { if (css) localStorage.setItem("carta:colorcss", css); else localStorage.removeItem("carta:colorcss"); } catch {}
 }
 
 const pct = (v) => `${Math.round(v * 100)} %`;
@@ -180,7 +246,20 @@ export function initSettings(onChange) {
     spill: $("#spillBtn"),
     orbAsp: $("#cfgOrbAsp"), orbHouse: $("#cfgOrbHouse"),
     tripBtn: $("#tripBtn"), tripAsp: $("#cfgTripAsp"), tripOrb: $("#cfgTripOrb"),
+    pal: $("#cfgPal"), colors: $("#cfgColors"), resetColors: $("#cfgResetColors"),
   };
+  // colores: las paletas (un botón con sus muestras) y una tabla con un selector de color por cosa y por modo
+  el.pal.replaceChildren(...PALETTES.map(([id, label, p]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cpal-b"; b.dataset.pal = id;
+    const sw = (m, k) => `<i style="background:${p[m][k] || COLOR_BASE[m][k]}"></i>`;
+    b.innerHTML = `<span class="cpal-sw" aria-hidden="true">${sw("light", "bg")}${sw("light", "accent")}${sw("dark", "bg")}${sw("dark", "accent")}</span>${label}`;
+    return b;
+  }));
+  el.colors.innerHTML = `<thead><tr><th scope="col"><span class="sr">Qué</span></th><th scope="col">Modo claro</th><th scope="col">Modo oscuro</th></tr></thead><tbody>` +
+    COLOR_KEYS.map(([k, label]) => `<tr><th scope="row">${label}</th>` + ["light", "dark"].map((m) =>
+      `<td><label class="ccol-in"><input type="color" data-mode="${m}" data-key="${k}" aria-label="${label}, modo ${m === "light" ? "claro" : "oscuro"}"><span></span></label></td>`).join("") + `</tr>`).join("") + `</tbody>`;
+  const colorInputs = [...el.colors.querySelectorAll("input")];
   // un botón por tipo de aspecto: encendido se muestra, apagado se oculta en la rueda, las listas, el cuadro y el calendario
   el.asp.replaceChildren(...Object.entries(ASPECT).map(([type, A]) => {
     const b = document.createElement("button");
@@ -270,6 +349,17 @@ export function initSettings(onChange) {
       if (document.activeElement !== inp) inp.value = cfg.trips.cusp[i];
       inp.classList.toggle("edited", cfg.trips.cusp[i] !== TRIP_DEFAULTS.cusp[i]);
     }
+    for (const inp of colorInputs) {
+      const v = cfg.colors[inp.dataset.mode][inp.dataset.key];
+      if (document.activeElement !== inp) inp.value = (v || COLOR_BASE[inp.dataset.mode][inp.dataset.key]).toLowerCase();
+      inp.closest("td").classList.toggle("edited", !!v);
+      inp.nextElementSibling.textContent = (v || COLOR_BASE[inp.dataset.mode][inp.dataset.key]).toUpperCase();
+    }
+    for (const b of el.pal.children) {
+      const p = PALETTES.find((x) => x[0] === b.dataset.pal)[2];
+      b.setAttribute("aria-pressed", String(sameColors(p, cfg.colors)));
+    }
+    el.resetColors.disabled = noColors(cfg.colors);
     // cada grupo de Configuración tiene su «Restablecer»: apagado si ya está como viene de fábrica
     const D = DEFAULTS, O = ORB_DEFAULTS;
     el.resetLook.disabled = cfg.gfx === D.gfx && cfg.font === D.font && cfg.noteFont === D.noteFont && cfg.fs === D.fs;
@@ -321,6 +411,16 @@ export function initSettings(onChange) {
     inp.value = next.cusp[+inp.dataset.tripCusp];          // lo que se acomodó (tope, vacío) se ve al instante
     if (!sameTrips(next, cfg.trips)) change({ trips: next }, "trips");
   });
+  for (const inp of colorInputs) inp.addEventListener("input", () => {
+    const m = inp.dataset.mode, k = inp.dataset.key, v = inp.value.toUpperCase();
+    const colors = cleanColors({ ...cfg.colors, [m]: { ...cfg.colors[m], [k]: v === COLOR_BASE[m][k] ? null : v } });
+    if (!sameColors(colors, cfg.colors)) change({ colors }, "colors");
+  });
+  el.pal.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pal]");
+    if (b) change({ colors: cleanColors(PALETTES.find((x) => x[0] === b.dataset.pal)[2]) }, "colors");
+  });
+  el.resetColors.addEventListener("click", () => change({ colors: cleanColors(null) }, "colors"));
   // «Restablecer» de cada grupo: lo de ese grupo vuelve a como viene de fábrica (los orbes obligan a recalcular las cartas)
   el.resetLook.addEventListener("click", () => change({ gfx: DEFAULTS.gfx, font: DEFAULTS.font, noteFont: DEFAULTS.noteFont, fs: DEFAULTS.fs }, "gfx"));
   el.resetWheel.addEventListener("click", () => change({ wheel: DEFAULTS.wheel, cuspRing: DEFAULTS.cuspRing, tint: DEFAULTS.tint }, "cusp"));
