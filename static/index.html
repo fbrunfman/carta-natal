@@ -10,6 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0D161C">
   <meta name="robots" content="noindex, nofollow">
+  <link rel="preload" href="fonts/pluto.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
   <script>
     try { var t = localStorage.getItem("carta:theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -466,6 +467,14 @@
 
 </div>
 <!-- una nota, para leerla: grande y sin editar; «Editar» abre el editor -->
+<!-- las notas en el iPad y el celular: en una ventana (app.js mueve acá el panel de las notas mientras está abierta) -->
+<dialog id="notesDlg" class="pdlg notesdlg" aria-labelledby="notesDlgTitle">
+  <div class="pdl-head">
+    <div class="pdl-titles"><p class="pdl-ctx">Notas</p><h2 id="notesDlgTitle" tabindex="-1"></h2></div>
+    <button type="button" class="pdl-icon" id="notesDlgX" aria-label="Cerrar las notas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="pdl-body" id="notesDlgBody"></div>
+</dialog>
 <dialog id="noteView" class="pdlg nview" aria-labelledby="noteViewTitle">
   <div class="pdl-head">
     <div class="pdl-titles"><p class="pdl-ctx" id="noteViewCtx">Nota</p><h2 id="noteViewTitle"></h2></div>

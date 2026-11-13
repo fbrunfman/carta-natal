@@ -267,9 +267,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     notas muestran esas notas (y «+ Nota nueva sobre…»). Con el dedo, el planeta abre su ficha, que ya las trae; con
     lecturas, el planeta y los ángulos abren su ventana como siempre.
   - **Las notas** se abren con el botón **«Notas»** de arriba, entre Viajes e Imprimir (con la cantidad; tocarlo de
-    nuevo vuelve a la pestaña de antes); en el celular está en el botón flotante. Todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
+    nuevo vuelve a la pestaña de antes); en el celular está en el botón flotante. **En el iPad y el celular** (pantallas de
+    hasta 1180 px o con el dedo) se abren en una **ventana** en el centro (el panel de las notas se mueve adentro mientras
+    está abierta), con el nombre de la carta; se cierra con la ✕, Esc o tocando afuera. Todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
     (un planeta encuentra también las notas de sus aspectos; una casa, las de los planetas que están en ella); tocar un
-    chip filtra por eso. En el celular, «Ver en la carta» va a la rueda con la nota iluminada y un cartelito (Editar, ×).
+    chip filtra por eso. En el iPad y el celular, «Ver en la carta» cierra la ventana y va a la rueda con la nota iluminada y un cartelito (Editar, ×).
   - **Atajos:** en Posiciones, Casas y Aspectos cada fila tiene un botón de nota (marcado si hay notas que lo nombran): sin
     notas empieza una nueva ya vinculada; con notas, muestra las que lo nombran y «+ Nota nueva sobre…». En el celular, la
     ficha del planeta lista sus notas y «+ Nota sobre…».

@@ -36,7 +36,7 @@
   --moon-dark: #3A4854;
 
   --serif: ui-serif, "New York", "Iowan Old Style", Georgia, "DejaVu Serif", serif;
-  --sans: system-ui, -apple-system, "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
+  --sans: "Pluton", system-ui, -apple-system, "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;     /* "Pluton": solo el ⯓ */
   --glyph: "Apple Symbols", "Noto Sans Symbols", "Noto Sans Symbols 2", "DejaVu Sans", "Segoe UI Symbol", var(--sans);
   color-scheme: light;
 
@@ -125,19 +125,19 @@
 @font-face { font-family: "Shantell Sans"; font-display: swap; font-weight: 300 800; src: url(fonts/shantell-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Shantell Sans"; font-display: swap; font-weight: 300 800; src: url(fonts/shantell-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
-:root[data-font="helvetica"] { --sans: "Helvetica Neue", Helvetica, Arial, sans-serif; --serif: var(--sans); }
-:root[data-font="avenir"] { --sans: "Avenir Next", Avenir, "Helvetica Neue", sans-serif; --serif: var(--sans); }
-:root[data-font="rounded"] { --sans: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="serif"] { --sans: ui-serif, "New York", "Iowan Old Style", Georgia, serif; --serif: var(--sans); }
-:root[data-font="mono"] { --sans: ui-monospace, "SF Mono", Menlo, Consolas, monospace; --serif: var(--sans); }
-:root[data-font="inter"] { --sans: "Inter", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="sourcesans"] { --sans: "Source Sans 3", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="nunito"] { --sans: "Nunito", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="atkinson"] { --sans: "Atkinson Hyperlegible Next", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="plex"] { --sans: "IBM Plex Sans", system-ui, sans-serif; --serif: var(--sans); }
-:root[data-font="lora"] { --sans: "Lora", Georgia, serif; --serif: var(--sans); }
-:root[data-font="sourceserif"] { --sans: "Source Serif 4", Georgia, serif; --serif: var(--sans); }
-:root[data-font="garamond"] { --sans: "EB Garamond", Georgia, serif; --serif: var(--sans); }
+:root[data-font="helvetica"] { --sans: "Pluton", "Helvetica Neue", Helvetica, Arial, sans-serif; --serif: var(--sans); }
+:root[data-font="avenir"] { --sans: "Pluton", "Avenir Next", Avenir, "Helvetica Neue", sans-serif; --serif: var(--sans); }
+:root[data-font="rounded"] { --sans: "Pluton", ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="serif"] { --sans: "Pluton", ui-serif, "New York", "Iowan Old Style", Georgia, serif; --serif: var(--sans); }
+:root[data-font="mono"] { --sans: "Pluton", ui-monospace, "SF Mono", Menlo, Consolas, monospace; --serif: var(--sans); }
+:root[data-font="inter"] { --sans: "Pluton", "Inter", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="sourcesans"] { --sans: "Pluton", "Source Sans 3", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="nunito"] { --sans: "Pluton", "Nunito", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="atkinson"] { --sans: "Pluton", "Atkinson Hyperlegible Next", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="plex"] { --sans: "Pluton", "IBM Plex Sans", system-ui, sans-serif; --serif: var(--sans); }
+:root[data-font="lora"] { --sans: "Pluton", "Lora", Georgia, serif; --serif: var(--sans); }
+:root[data-font="sourceserif"] { --sans: "Pluton", "Source Serif 4", Georgia, serif; --serif: var(--sans); }
+:root[data-font="garamond"] { --sans: "Pluton", "EB Garamond", Georgia, serif; --serif: var(--sans); }
 :root[data-font="garamond"] body { font-size: 1.06em; }      /* Garamond es chica a igual tamaño */
 
 * { box-sizing: border-box; }
@@ -848,11 +848,11 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 }
 /* el símbolo astrológico de Plutón (⯓) casi ninguna letra lo tiene: va incluido (de Noto Sans Symbols 2, licencia OFL) */
 @font-face { font-family: "Pluton"; font-display: swap; src: url(fonts/pluto.woff2) format("woff2"); unicode-range: U+2BD3; }
-:root { --note-font: "Kalam", "Pluton", var(--sans); }
-:root[data-nfont="patrick"] { --note-font: "Patrick Hand", "Pluton", var(--sans); }
-:root[data-nfont="mali"] { --note-font: "Mali", "Pluton", var(--sans); }
-:root[data-nfont="shantell"] { --note-font: "Shantell Sans", "Pluton", var(--sans); }
-:root[data-nfont="app"] { --note-font: var(--sans), "Pluton"; }
+:root { --note-font: "Pluton", "Kalam", var(--sans); }          /* Plutón primero: solo tiene ⯓ (unicode-range), lo demás sigue de largo */
+:root[data-nfont="patrick"] { --note-font: "Pluton", "Patrick Hand", var(--sans); }
+:root[data-nfont="mali"] { --note-font: "Pluton", "Mali", var(--sans); }
+:root[data-nfont="shantell"] { --note-font: "Pluton", "Shantell Sans", var(--sans); }
+:root[data-nfont="app"] { --note-font: "Pluton", var(--sans); }
 .noted textarea, .ncard .ntext, .nview-text, .npop-t, .pfi-ni, .nlit-t { font-family: var(--note-font); }
 :root { --note: #B07A12; }
 :root[data-theme="dark"] { --note: #E9B44C; }
@@ -1989,6 +1989,14 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .ccol-in input::-moz-color-swatch { border: 0; border-radius: 4px; }
 .ccol-in span { font: 500 calc(12px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-2); }
 .ccol td.edited .ccol-in span { color: var(--accent-2); font-weight: 700; }
+
+/* las notas en una ventana (iPad y celular) */
+.notesdlg { width: min(640px, calc(100vw - 24px)); min-height: min(50vh, 420px); }
+.notesdlg .pdl-body { flex: 1 1 auto; padding-top: 10px; }
+.notesdlg #panel-notas .nlist { margin-top: 10px; }
+@media (max-width: 640px) {
+  .notesdlg { width: calc(100vw - 12px); max-height: calc(100dvh - 24px); }
+}
 
 @media print {
   @page { margin: 12mm; }

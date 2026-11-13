@@ -1987,7 +1987,7 @@ function renderNotes() {
     return;
   }
   const shown = notes.filter((n) => !noteFilter || touches(n, noteFilter, chart)).reverse();
-  const phone = matchMedia("(max-width: 640px)").matches;
+  const phone = notesCompact();          // en la ventana de las notas (iPad, celular): «Ver en la carta»
   list.innerHTML = shown.map((n) => {
     const warn = n.refs.some((r) => refChange(r, n.snap[r]));
     const chips = [...n.refs].sort(refSort).map((r) => {
@@ -2009,8 +2009,9 @@ $("#noteAdd").addEventListener("click", () => openNote(null, $("#noteAdd")));
 $("#noteList").addEventListener("click", (e) => {
   const fb = e.target.closest("[data-filter]"), ed = e.target.closest("[data-edit]"), see = e.target.closest("[data-see]");
   if (fb) { noteFilter = noteFilter === fb.dataset.filter ? "" : fb.dataset.filter; renderNotes(); return; }
-  if (see) {                                   // celular: a la rueda, con la nota iluminada y un cartelito para volver
+  if (see) {                                   // iPad y celular: a la rueda, con la nota iluminada y un cartelito para volver
     closeNote(false);
+    if (notesDlg.open) notesDlg.close();
     mview = "carta"; paintBar(); scrollTo(0, 0);
     lightNote(see.dataset.see, true);
     return;
@@ -2177,9 +2178,37 @@ $("#printBtn").addEventListener("click", () => setFab(false));
 // «Notas»: abre las notas en la columna de las tablas (de nuevo, vuelve a la pestaña de antes); en el celular, desde el
 // botón flotante, va a «Tablas» con las notas
 let tabBeforeNotes = "tab-stair";
+// En el iPad y el celular (pantalla de una columna, o con el dedo) las notas se abren en una ventana: el panel de las notas
+// se mueve adentro mientras está abierta y vuelve a su lugar al cerrarla.
+const notesCompact = () => matchMedia("(max-width: 1180px), (hover: none)").matches;
+const notesDlg = $("#notesDlg");
+let notesHome = null;
+function openNotesModal() {
+  const p = $("#panel-notas");
+  if (!notesHome) notesHome = { parent: p.parentElement, next: p.nextSibling };
+  hideFicha();
+  wheel?.clear();
+  $("#notesDlgTitle").textContent = chart?.input?.name || "Carta natal";
+  $("#notesDlgBody").append(p);
+  p.hidden = false;
+  renderNotes();
+  if (!notesDlg.open) notesDlg.showModal();
+  notesDlg.querySelector(".pdl-body").scrollTop = 0;
+  $("#notesBtn").setAttribute("aria-pressed", "true");
+}
+notesDlg.addEventListener("close", () => {
+  const p = $("#panel-notas");
+  if (notesHome) notesHome.parent.insertBefore(p, notesHome.next);
+  const onTab = $("#tab-notas").getAttribute("aria-selected") === "true";
+  p.hidden = !onTab;
+  $("#notesBtn").setAttribute("aria-pressed", String(onTab));
+});
+notesDlg.addEventListener("click", (e) => { if (e.target === e.currentTarget) notesDlg.close(); });     // el fondo
+$("#notesDlgX").addEventListener("click", () => notesDlg.close());
 $("#notesBtn").addEventListener("click", () => {
   const phone = document.documentElement.hasAttribute("data-mbar");
   setFab(false);
+  if (notesCompact()) { openNotesModal(); return; }
   if (!$("#panel-notas").hidden && !(phone && mview !== "tablas")) {
     selectTab(visibleTabs().find((t) => t.id === tabBeforeNotes) || visibleTabs()[0]);
     return;
@@ -3359,3 +3388,10 @@ async function init() {
   route();                                        // sin # abre el inicio; #carta, la carta de antes
 }
 init();
+// el símbolo de Plutón (⯓) viene en una letra propia (fonts/pluto.woff2): se carga apenas abre la app y, cuando llega, el
+// editor de notas se vuelve a dibujar (Safari en el iPad no repinta solo un <textarea> que ya mostraba el ⯓ sin su letra)
+document.fonts?.load('16px "Pluton"', "\u2BD3").then(() => {
+  const t = $("#noteEdText");
+  if (!t) return;
+  t.style.fontFamily = "serif"; void t.offsetWidth; t.style.fontFamily = "";
+}).catch(() => {});
