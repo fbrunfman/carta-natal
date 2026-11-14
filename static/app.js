@@ -522,16 +522,13 @@ function atFromControls() {
 
 const pad2 = (n) => String(n).padStart(2, "0");
 
-function stepTransit(dir) {
-  if (!tDate.value || !tTime.value) return;
-  const [y, m, d] = tDate.value.split("-").map(Number);
-  const [hh, mm] = tTime.value.split(":").map(Number);
+/** Fecha y hora de pared movidas un paso: i1 / i5 (minutos), q (15 min), h, d, w; m y y sobre el calendario. */
+function stepWall(date, time, unit, dir) {
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
   let t = Date.UTC(y, m - 1, d, hh, mm);
-  const unit = $("#tStep").value;
-  if (unit === "q") t += dir * 15 * 60e3;
-  else if (unit === "h") t += dir * 3600e3;
-  else if (unit === "d") t += dir * 86400e3;
-  else if (unit === "w") t += dir * 7 * 86400e3;
+  const min = { i1: 1, i5: 5, q: 15, h: 60, d: 1440, w: 10080 }[unit];
+  if (min) t += dir * min * 60e3;
   else {
     // meses y años sobre el calendario, sin desbordar fin de mes (31 ene + 1 mes = 28/29 feb)
     const total = y * 12 + (m - 1) + dir * (unit === "m" ? 1 : 12);
@@ -540,8 +537,14 @@ function stepTransit(dir) {
     t = Date.UTC(ny, nm, Math.min(d, last), hh, mm);
   }
   const dt = new Date(t);
-  tDate.value = `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
-  tTime.value = `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}`;
+  return { date: `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`, time: `${pad2(dt.getUTCHours())}:${pad2(dt.getUTCMinutes())}` };
+}
+
+function stepTransit(dir) {
+  if (!tDate.value || !tTime.value) return;
+  const n = stepWall(tDate.value, tTime.value, $("#tStep").value, dir);
+  tDate.value = n.date;
+  tTime.value = n.time;
   loadSoon();
 }
 
@@ -569,22 +572,112 @@ function paintPill() {
   $("#tpPrev").setAttribute("aria-label", `Retroceder ${st.options[st.selectedIndex]?.text || ""}`);
   $("#tpNext").setAttribute("aria-label", `Avanzar ${st.options[st.selectedIndex]?.text || ""}`);
 }
+// (la misma hoja sirve para «Mover la hora» en la carta natal: su pastilla y sus controles)
+const sheetNatal = () => mode === "natal";
 function setTsheet(open, focusBtn = false) {
   document.documentElement.toggleAttribute("data-tsheet", open);
-  $("#tpOpen").setAttribute("aria-expanded", String(open));
-  if (open) { setFab(false); hideFicha(); $("#tsheetX").focus({ preventScroll: true }); }      // (no al campo de la fecha: en el celular abriría el teclado)
-  else if (focusBtn) $("#tpOpen").focus({ preventScroll: true });
+  $("#tpOpen").setAttribute("aria-expanded", String(open && !sheetNatal()));
+  $("#npOpen").setAttribute("aria-expanded", String(open && sheetNatal()));
+  if (open) { setFab(false); hideFicha(); $(sheetNatal() ? "#nsheetX" : "#tsheetX").focus({ preventScroll: true }); }      // (no al campo de la fecha: en el celular abriría el teclado)
+  else if (focusBtn) $(sheetNatal() ? "#npOpen" : "#tpOpen").focus({ preventScroll: true });
 }
 $("#tpOpen").addEventListener("click", () => setTsheet(!document.documentElement.hasAttribute("data-tsheet")));
 $("#tsheetX").addEventListener("click", () => setTsheet(false, true));
 $("#tpPrev").addEventListener("click", () => { stepTransit(-1); paintPill(); });
 $("#tpNext").addEventListener("click", () => { stepTransit(1); paintPill(); });
 document.addEventListener("pointerdown", (e) => {
-  if (document.documentElement.hasAttribute("data-tsheet") && !$("#toolsTransit").contains(e.target) && !$("#tpill").contains(e.target)) setTsheet(false);
+  const tools = $(sheetNatal() ? "#toolsNatal" : "#toolsTransit"), pill = $(sheetNatal() ? "#npill" : "#tpill");
+  if (document.documentElement.hasAttribute("data-tsheet") && !tools.contains(e.target) && !pill.contains(e.target)) setTsheet(false);
 }, true);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.documentElement.hasAttribute("data-tsheet")) { e.preventDefault(); setTsheet(false, true); }
 });
+
+// ---------- carta natal: mover la hora ------------------------------------
+// «Mover la hora» corre la fecha y la hora de la carta de a un paso (1 minuto … 1 año) para ver cómo cambia, o para
+// buscar la hora justa. No toca la carta guardada: «Volver a la de nacimiento» la deja como estaba y «Guardar esta hora…»
+// abre los datos de la carta con la hora nueva. Con la hora movida no se muestran las notas (son de la hora de nacimiento).
+let shiftOn = false;           // los controles a la vista
+let shiftAt = null;            // { date, time } de pared, en la zona de la carta; null = la hora de nacimiento
+let shiftTimer = 0;
+const birthAt = () => (birth?.date && birth?.time ? { date: birth.date, time: String(birth.time).slice(0, 5) } : null);
+const whenShort = (w) => { const [y, m, d] = w.date.split("-").map(Number); return `${d} ${PILL_MES[m - 1]} ${y}, ${w.time}`; };
+/** Cuánto se movió: «+1 h 15 min», «−2 días 3 h», «+1 año 2 meses» (sobre el calendario). */
+function shiftText() {
+  const a = birthAt(), b = shiftAt;
+  if (!a || !b) return "";
+  const parts = (w) => [...w.date.split("-").map(Number), ...w.time.split(":").map(Number)];
+  const ms = (p) => Date.UTC(p[0], p[1] - 1, p[2], p[3], p[4]);
+  let lo = parts(a), hi = parts(b), sign = "+";
+  if (ms(hi) < ms(lo)) { [lo, hi] = [hi, lo]; sign = "−"; }
+  let [Y, M, D, H, I] = hi.map((v, i) => v - lo[i]);
+  if (I < 0) { I += 60; H--; }
+  if (H < 0) { H += 24; D--; }
+  if (D < 0) { M--; D += new Date(Date.UTC(hi[0], hi[1] - 1, 0)).getUTCDate(); }
+  if (M < 0) { M += 12; Y--; }
+  const out = [];
+  if (Y) out.push(`${Y} ${Y === 1 ? "año" : "años"}`);
+  if (M) out.push(`${M} ${M === 1 ? "mes" : "meses"}`);
+  if (D) out.push(`${D} ${D === 1 ? "día" : "días"}`);
+  if (H) out.push(`${H} h`);
+  if (I) out.push(`${I} min`);
+  return sign + out.join(" ");
+}
+function paintShift() {
+  const show = shiftOn && mode === "natal";
+  document.documentElement.toggleAttribute("data-nshift", show);
+  $("#toolsNatal").hidden = !show;
+  $("#shiftBtn").setAttribute("aria-pressed", String(shiftOn));
+  const b = birthAt(), st = $("#nStep"), step = st.options[st.selectedIndex]?.text || "";
+  if (!b) return;
+  const w = shiftAt || b;
+  $("#nShift").innerHTML = shiftAt
+    ? `<strong>${esc(whenShort(w))}</strong><span class="nshift-by">${esc(shiftText())}</span>`
+    : `<strong>${esc(whenShort(w))}</strong> · la hora de nacimiento`;
+  $("#nBack").disabled = $("#nSave").disabled = !shiftAt;
+  $("#npWhen").textContent = whenShort(w);
+  $("#npBy").textContent = shiftAt ? `${shiftText()} · de a ${step}` : `de a ${step}`;
+  for (const [id, dir] of [["#nPrev", "Retroceder"], ["#nNext", "Avanzar"], ["#npPrev", "Retroceder"], ["#npNext", "Avanzar"]]) $(id).setAttribute("aria-label", `${dir} ${step}`);
+}
+function stepNatal(dir) {
+  const b = birthAt();
+  if (!b) return;
+  const cur = shiftAt || b;
+  const n = stepWall(cur.date, cur.time, $("#nStep").value, dir);
+  shiftAt = n.date === b.date && n.time === b.time ? null : n;
+  paintShift();
+  clearTimeout(shiftTimer);
+  shiftTimer = setTimeout(() => { if (mode === "natal" && birth) run(load); }, 140);
+}
+function clearShift(reload = true) {
+  const had = !!shiftAt;
+  shiftAt = null;
+  paintShift();
+  if (had && reload && mode === "natal" && birth) run(load);
+}
+$("#shiftBtn").addEventListener("click", () => {
+  setFab(false);
+  shiftOn = !shiftOn;
+  if (!shiftOn) { if (document.documentElement.hasAttribute("data-tsheet")) setTsheet(false); clearShift(); }
+  else paintShift();
+});
+$("#nPrev").addEventListener("click", () => stepNatal(-1));
+$("#nNext").addEventListener("click", () => stepNatal(1));
+$("#npPrev").addEventListener("click", () => stepNatal(-1));
+$("#npNext").addEventListener("click", () => stepNatal(1));
+$("#nStep").addEventListener("change", paintShift);
+$("#nBack").addEventListener("click", () => clearShift());
+$("#nSave").addEventListener("click", () => {
+  if (!shiftAt) return;
+  const at = shiftAt;
+  setTsheet(false);
+  openForm("edit");
+  form.elements.date.value = at.date;
+  form.elements.time.value = at.time;
+  form.elements.time.dispatchEvent(new Event("input", { bubbles: true }));
+});
+$("#npOpen").addEventListener("click", () => setTsheet(!document.documentElement.hasAttribute("data-tsheet")));
+$("#nsheetX").addEventListener("click", () => setTsheet(false, true));
 
 // ---------- cálculo -------------------------------------------------------
 let seq = 0;
@@ -593,8 +686,27 @@ let seq = 0;
 const fetchNatal = (v) => compute.chart(natalBody(v));
 
 /** Pide al servidor lo que necesita la vista actual y la dibuja. */
+// «Calculando»: si el cálculo de la carta tarda más de un instante, la rueda y las tablas se atenúan con un círculo que gira
+// (la primera vez, sin carta todavía, un cartel «Calculando la carta…»). Así no parece que la app no hizo nada.
+let calcTimer = 0;
+function chartBusy(on) {
+  clearTimeout(calcTimer);
+  if (on) {
+    calcTimer = setTimeout(() => {
+      root.toggleAttribute("data-calc", true);
+      $("#chartWait").hidden = !$("#stage").hidden || !$("#error").hidden;
+    }, 150);
+  } else {
+    root.toggleAttribute("data-calc", false);
+    $("#chartWait").hidden = true;
+  }
+}
 async function load() {
   const my = ++seq;
+  chartBusy(true);
+  try { await loadNow(my); } finally { if (my === seq) chartBusy(false); }
+}
+async function loadNow(my) {
   const v = birth;
   let next;
   if (mode === "transit" && atFromControls()) {
@@ -604,7 +716,7 @@ async function load() {
     const r = await compute.synastry(natalBody(v), partnerBody(partnerItem(), v));
     next = { chart: r.a, transit: null, syn: r };
   } else {
-    next = { chart: await fetchNatal(v), transit: null, syn: null };
+    next = { chart: await fetchNatal(shiftAt && mode === "natal" ? { ...v, ...shiftAt } : v), transit: null, syn: null };
   }
   if (my !== seq) return;                 // mientras tanto se pidió otra cosa
   ({ chart, transit, syn } = next);
@@ -618,6 +730,7 @@ async function run(fn) {
 async function calculate() {
   primeChart();
   birth = readForm();
+  shiftAt = null; shiftOn = false;           // otra carta (o la misma con datos nuevos): vuelve a la hora de nacimiento
   remember();
   try { await run(load); } finally {
     if (formOpen()) editing = { values: readForm(), active: saved.activeId };   // la ✕ ya no vuelve más atrás de esto
@@ -641,6 +754,7 @@ function showError(err) {
   $("#printBtn").hidden = true;
   $("#spillBtn").hidden = true;
   $("#notesBtn").hidden = true;
+  $("#shiftBtn").hidden = true;
   $("#warnings").hidden = true;
   $("#timeNote").hidden = true;
   paintBar();
@@ -669,9 +783,11 @@ function header(c) {
   } else {
     const [y, m, d] = c.input.date.split("-").map(Number);
     $("#title").textContent = name || "Carta natal";
-    $("#sub").textContent =
-      `${longDate.format(new Date(y, m - 1, d))}, ${c.input.time} en ${where}. ` +
-      `Casas ${c.houses.system_name}${c.bodies.some((b) => b.id === "node") ? `, nodo ${c.node_kind === "mean" ? "medio" : "verdadero"}` : ""}.`;
+    const moved = shiftAt && c.input.date === shiftAt.date && String(c.input.time).slice(0, 5) === shiftAt.time;
+    const b = birthAt();
+    $("#sub").innerHTML = esc(`${longDate.format(new Date(y, m - 1, d))}, ${c.input.time} en ${where}. `) +
+      (moved ? `<span class="sub-shift">Hora movida ${esc(shiftText())}</span> ${esc(`(la de nacimiento: ${b.date === shiftAt.date ? b.time : whenShort(b)}). `)}` : "") +
+      esc(`Casas ${c.houses.system_name}${c.bodies.some((b) => b.id === "node") ? `, nodo ${c.node_kind === "mean" ? "medio" : "verdadero"}` : ""}.`);
     document.title = name ? `${name} · Carta natal` : "Carta natal";
   }
 }
@@ -851,7 +967,7 @@ function paintMerge() {
   addEventListener("resize", soon);
   if (typeof ResizeObserver !== "undefined") {
     const ro = new ResizeObserver(soon);
-    for (const sel of ["#chartPage > .head", "#timeNote", "#warnings", ".modebar", "#toolsTransit", "#toolsSyn", "#error", "#tripPick", ".wheel-fig .legend", ".wheel-fig"]) {
+    for (const sel of ["#chartPage > .head", "#timeNote", "#warnings", ".modebar", "#toolsTransit", "#toolsNatal", "#toolsSyn", "#error", "#tripPick", ".wheel-fig .legend", ".wheel-fig"]) {
       const el = document.querySelector(sel);
       if (el) ro.observe(el);
     }
@@ -866,7 +982,9 @@ function render() {
   $("#printBtn").hidden = false;
   $("#spillBtn").hidden = mode !== "natal";
   $("#notesBtn").hidden = mode !== "natal";
+  $("#shiftBtn").hidden = mode !== "natal";
   $("#tripBtn").hidden = mode !== "natal";
+  paintShift();
   header(c);
   paintBar();
   paintTitlePick();
@@ -905,6 +1023,7 @@ function render() {
   renderElements();
   renderOverlay();
   renderNotes();
+  if ($("#notesDlg").open) $("#notesDlgTitle").textContent = c.input?.name || "Carta natal";
   applyTabs();
   paintNoteMarks();
 }
@@ -1343,7 +1462,7 @@ hoverFocus("#panel-over", false);
 // que nombran a ese elemento o empiezan una nueva ya vinculada. Viven con la carta guardada y se guardan solas.
 const NOTE_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg>`;
 const X_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
-const notesOn = () => mode === "natal" && !!chart && !!saved.activeId && !!saved.find(saved.activeId);
+const notesOn = () => mode === "natal" && !!chart && !shiftAt && !!saved.activeId && !!saved.find(saved.activeId);
 let notesPending = null, notesTimer = 0;
 const normCache = new WeakMap();
 /** Las notas de la carta abierta, como lista (con lo que se está escribiendo y todavía no se guardó). */
@@ -1398,7 +1517,7 @@ async function flushNotes() {
     bakSet({ id: p.id, notes: p.notes });
     noteStatus(`No se pudo guardar: ${err.message}${/[.!?]$/.test(err.message) ? "" : "."}`, true);
   }
-  if (page === "chart" && mode === "natal" && !$("#panel-notas").hidden) renderNotes();
+  if (page === "chart" && mode === "natal" && (!$("#panel-notas").hidden || $("#notesDlg").open)) renderNotes();
 }
 addEventListener("pagehide", flushNotes);
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushNotes(); });
@@ -1526,6 +1645,8 @@ const edState = (n) => JSON.stringify([n.text, n.refs]);
 const edDirty = () => !!edNote && edState(edNote) !== edOrig;
 function openNote(nid, anchor, preRefs = []) {
   if (!notesOn()) return;
+  if ($("#noteEd").open && edDirty() && edNote.text.trim() && edNote.id !== nid) { askClose(true); return; }      // otra nota abierta, con cambios
+  if (!notesCompact() && !notesDlg.open) { openNotesModal(); dockAuto = true; }     // compu: se escribe en el drawer de las notas
   closePop();
   closeLinkMenu();
   setFab?.(false);
@@ -1547,7 +1668,7 @@ function openNote(nid, anchor, preRefs = []) {
   noteStatus("");
   paintEditor();
   const ed = $("#noteEd");
-  if (!ed.open) ed.showModal();
+  if (!ed.open) { if (root.hasAttribute("data-ndock")) ed.show(); else ed.showModal(); }
   placeNoteEd();
   lightNote(edNote.id, litBar && litId === edNote.id);
   $("#noteEdText").focus({ preventScroll: true });
@@ -1556,6 +1677,7 @@ function openNote(nid, anchor, preRefs = []) {
 function placeNoteEd() {
   const ed = $("#noteEd");
   if (!ed.open) return;
+  if (root.hasAttribute("data-ndock")) { ed.style.top = ed.style.maxHeight = ""; return; }      // en el drawer: lo ubica style.css
   const vv = window.visualViewport;
   const H = vv ? vv.height : innerHeight, top0 = vv ? vv.offsetTop : 0;
   ed.style.maxHeight = `${Math.floor(H - 16)}px`;
@@ -1595,6 +1717,7 @@ function closeNote(focusBack = true, force = false) {
   const a = edAnchor, wasLit = litBar;
   edNote = edAnchor = null;
   if (!wasLit) lightNote(null); else paintLit();
+  dockDone();
   if (focusBack && a?.isConnected) a.focus({ preventScroll: true });
 }
 function askClose(on) {
@@ -1745,16 +1868,18 @@ $("#noteEdSave").addEventListener("click", saveNote);
 $("#noteAskSave").addEventListener("click", saveNote);
 $("#noteAskDrop").addEventListener("click", () => closeNote(true, true));
 $("#noteAskBack").addEventListener("click", () => { askClose(false); $("#noteEdText").focus({ preventScroll: true }); });
-$("#noteEd").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveNote(); }
-});
-$("#noteEd").addEventListener("cancel", (e) => {        // Esc: primero cierra un menú abierto; si hay cambios, pregunta
-  e.preventDefault();
+function edEscape() {                                   // Esc: primero cierra un menú abierto; si hay cambios, pregunta
   if (!$("#noteLinkMenu").hidden) closeLinkMenu(true);
   else if (!$("#noteEdAsk").hidden) askClose(false);
   else closeNote();
+}
+$("#noteEd").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveNote(); }
+  else if (e.key === "Escape" && !e.currentTarget.matches(":modal")) { e.preventDefault(); edEscape(); }     // en el drawer (sin ventana)
 });
-$("#noteEd").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeNote(); });      // el fondo
+$("#noteEd").addEventListener("cancel", (e) => { e.preventDefault(); edEscape(); });
+$("#noteEdBack").addEventListener("click", () => { dockAuto = false; closeNote(); });
+$("#noteEd").addEventListener("click", (e) => { if (e.target === e.currentTarget && e.currentTarget.matches(":modal")) closeNote(); });      // el fondo
 $("#noteEdDel").addEventListener("click", async () => {
   if (!edNote) return;
   if ($("#noteEdDel").dataset.arm !== "1") { delArm(true); return; }
@@ -1963,7 +2088,9 @@ function renderNotes() {
     $("#noteAdd").hidden = true;
     $("#noteFilter").hidden = true;
     $("#noteMarksRow").hidden = true;
-    list.innerHTML = `<p class="muted nempty">Guardá la carta para poder escribirle notas.</p>`;
+    list.innerHTML = shiftAt
+      ? `<p class="muted nempty">Con la hora movida no se muestran las notas: son de la carta con la hora de nacimiento. Tocá «Volver a la de nacimiento» para verlas.</p>`
+      : `<p class="muted nempty">Guardá la carta para poder escribirle notas.</p>`;
     return;
   }
   $("#noteAdd").hidden = false;
@@ -2027,8 +2154,10 @@ function openView(nid) {
   const n = noteById(nid);
   if (!n || !notesOn()) return;
   closeNote(false);
+  if ($("#noteEd").open) return;                      // quedó preguntando si guardar los cambios
   closePop();
   hideFicha();
+  if (!notesCompact() && !notesDlg.open) { openNotesModal(); dockAuto = true; }
   viewId = nid;
   $("#noteViewCtx").textContent = `Nota · ${noteWhen(n.at)}`;
   $("#noteViewTitle").textContent = chart.input.name || "Carta natal";
@@ -2040,7 +2169,7 @@ function openView(nid) {
     ? [...n.refs].sort(refSort).map((r) => { const w = refChange(r, n.snap[r]); return `<span class="nchip${w ? " warn" : ""}" title="${esc(w || refText(r))}">${refHTML(r)}</span>`; }).join("")
     : `<span class="nchip gen">General</span>`;
   const d = $("#noteView");
-  if (!d.open) d.showModal();
+  if (!d.open) { if (root.hasAttribute("data-ndock")) d.show(); else d.showModal(); }
   d.querySelector(".nview-body").scrollTop = 0;
   lightNote(nid, litBar && litId === nid);
 }
@@ -2051,9 +2180,14 @@ function closeView() {
 $("#noteView").addEventListener("close", () => {
   if (viewId && !edNote && !litBar) lightNote(null);
   viewId = null;
+  dockDone();
 });
-$("#noteView").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeView(); });     // el fondo
+$("#noteView").addEventListener("click", (e) => { if (e.target === e.currentTarget && e.currentTarget.matches(":modal")) closeView(); });     // el fondo
 $("#noteViewX").addEventListener("click", closeView);
+$("#noteViewBack").addEventListener("click", () => { dockAuto = false; closeView(); });
+$("#noteView").addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !e.currentTarget.matches(":modal")) { e.preventDefault(); closeView(); }
+});
 $("#noteViewEdit").addEventListener("click", () => {
   const nid = viewId;
   closeView();
@@ -2148,7 +2282,7 @@ function paintBar() {
   const root = document.documentElement;
   root.toggleAttribute("data-mbar", page === "chart" && !$("#stage").hidden);
   if (!root.hasAttribute("data-mbar")) setFab(false);
-  if (!root.hasAttribute("data-mbar") || mode !== "transit") setTsheet(false);
+  if (root.hasAttribute("data-tsheet") && (!root.hasAttribute("data-mbar") || !(mode === "transit" || (mode === "natal" && shiftOn)))) setTsheet(false);
   paintPill();
   fitTitle();
   root.dataset.mview = mview;
@@ -2192,31 +2326,50 @@ function openNotesModal() {
   $("#notesDlgBody").append(p);
   p.hidden = false;
   renderNotes();
-  if (!notesDlg.open) notesDlg.showModal();
+  if (!notesDlg.open) {
+    if (notesCompact()) notesDlg.showModal();
+    else { root.toggleAttribute("data-ndock", true); notesDlg.show(); }      // compu: al costado, sin tapar la carta
+  }
   notesDlg.querySelector(".pdl-body").scrollTop = 0;
   $("#notesBtn").setAttribute("aria-pressed", "true");
 }
 notesDlg.addEventListener("close", () => {
+  closeView();
+  if ($("#noteEd").open && root.hasAttribute("data-ndock")) closeNote(false, true);
+  root.toggleAttribute("data-ndock", false);
+  dockAuto = false;
   const p = $("#panel-notas");
   if (notesHome) notesHome.parent.insertBefore(p, notesHome.next);
   const onTab = $("#tab-notas").getAttribute("aria-selected") === "true";
   p.hidden = !onTab;
   $("#notesBtn").setAttribute("aria-pressed", String(onTab));
 });
-notesDlg.addEventListener("click", (e) => { if (e.target === e.currentTarget) notesDlg.close(); });     // el fondo
-$("#notesDlgX").addEventListener("click", () => notesDlg.close());
+// compu: si el drawer se abrió solo para una nota (desde una tabla o la rueda), al cerrarla se cierra también y se vuelve
+// a donde se estaba; «‹ Notas» en cambio va a la lista
+let dockAuto = false;
+function dockDone() {
+  if (dockAuto && notesDlg.open && !$("#noteEd").open && !$("#noteView").open) notesDlg.close();
+}
+/** Cierra las notas; si hay una nota abierta con cambios, primero pregunta (salvo force: cambiar de página o de modo). */
+function closeNotes(force = false) {
+  if ($("#noteEd").open) { closeNote(false, force); if ($("#noteEd").open) return false; }
+  closeView();
+  if (notesDlg.open) notesDlg.close();
+  return true;
+}
+notesDlg.addEventListener("click", (e) => { if (e.target === e.currentTarget && !root.hasAttribute("data-ndock")) closeNotes(); });     // el fondo
+$("#notesDlgX").addEventListener("click", () => closeNotes());
 $("#notesBtn").addEventListener("click", () => {
-  const phone = document.documentElement.hasAttribute("data-mbar");
   setFab(false);
-  if (notesCompact()) { openNotesModal(); return; }
-  if (!$("#panel-notas").hidden && !(phone && mview !== "tablas")) {
-    selectTab(visibleTabs().find((t) => t.id === tabBeforeNotes) || visibleTabs()[0]);
-    return;
-  }
-  if (phone) { wheel?.clear(); mview = "tablas"; paintBar(); }
-  selectTab($("#tab-notas"));
-  if (phone) scrollTo(0, 0);
+  if (notesDlg.open) closeNotes(); else { openNotesModal(); dockAuto = false; }
 });
+document.addEventListener("keydown", (e) => {          // compu: Esc cierra el drawer (la nota abierta se cierra antes, con su propio Esc)
+  if (e.key !== "Escape" || e.defaultPrevented || !notesDlg.open || !root.hasAttribute("data-ndock")) return;
+  if ($("#noteEd").open || $("#noteView").open || document.querySelector("dialog:modal")) return;
+  e.preventDefault(); closeNotes();
+});
+// la ventana cambia de tamaño y pasa de compu a iPad (o al revés) con las notas abiertas: se cierran
+matchMedia("(max-width: 1180px), (hover: none)").addEventListener("change", () => { if (notesDlg.open) closeNotes(true); });
 $("#tripMore").addEventListener("click", () => setFab(false));
 document.addEventListener("pointerdown", (e) => {
   if (document.documentElement.hasAttribute("data-fab") && !$(".modeacts").contains(e.target) && !$("#fab").contains(e.target)) setFab(false);
@@ -2405,12 +2558,15 @@ function paintMode() {
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === mode));
   $("#toolsTransit").hidden = mode !== "transit";
   $("#toolsSyn").hidden = mode !== "syn";
-  if (!$("#stage").hidden) { $("#spillBtn").hidden = mode !== "natal"; $("#tripBtn").hidden = mode !== "natal"; $("#notesBtn").hidden = mode !== "natal"; }
+  if (!$("#stage").hidden) { for (const id of ["#spillBtn", "#tripBtn", "#notesBtn", "#shiftBtn"]) $(id).hidden = mode !== "natal"; }
+  if (mode !== "natal" && $("#notesDlg").open) closeNotes(true);
+  paintShift();
   paintBar();
 }
 
 async function setMode(next) {
   if (next === mode) return;
+  if (document.documentElement.hasAttribute("data-tsheet")) setTsheet(false);
   mode = next;
   rememberView();
   paintMode();
@@ -2698,7 +2854,7 @@ function setPage(r) {
   $("#charts").hidden = page !== "charts";
   $("#chartPage").hidden = page !== "chart";
   paintBar();
-  if (page !== "chart") hideFicha();
+  if (page !== "chart") { hideFicha(); if ($("#notesDlg").open) closeNotes(true); }
   for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCharts", "charts"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }
@@ -3388,6 +3544,15 @@ async function init() {
   route();                                        // sin # abre el inicio; #carta, la carta de antes
 }
 init();
+// la barrita de arriba: aparece si algún pedido al servidor tarda más de un instante
+{
+  let t = 0;
+  addEventListener("carta:net", (e) => {
+    clearTimeout(t);
+    if (e.detail > 0) t = setTimeout(() => { $("#busyBar").hidden = false; }, 200);
+    else $("#busyBar").hidden = true;
+  });
+}
 // el símbolo de Plutón (⯓) viene en una letra propia (fonts/pluto.woff2): se carga apenas abre la app y, cuando llega, el
 // editor de notas se vuelve a dibujar (Safari en el iPad no repinta solo un <textarea> que ya mostraba el ⯓ sin su letra)
 document.fonts?.load('16px "Pluton"', "\u2BD3").then(() => {

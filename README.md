@@ -232,8 +232,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Notas de la carta natal**: cada carta guardada puede llevar **muchas notas** (de esa persona). Una nota es un texto
   libre con sus **vínculos**: planetas (en su casa y su signo), casas, el Ascendente, el Medio Cielo y aspectos que tiene
   la carta. Sin vínculos, la nota es sobre la carta en general. Solo se vincula lo que la carta tiene de verdad.
-  - **El editor** es una ventana en el centro de la pantalla (también en el celular: se acomoda en lo que queda arriba
-    del teclado). Tiene el texto, lo **vinculado** (chips con × para quitar), los **sugeridos por el texto** y
+  - **El editor**: en la compu se abre **dentro del drawer de las notas** (ver abajo); en el iPad y el celular, en una
+    ventana en el centro (en el celular se acomoda en lo que queda arriba del teclado). Tiene el texto, lo **vinculado** (chips con × para quitar), los **sugeridos por el texto** y
     **«+ Vincular»** (un planeta, una casa, el Asc, el MC o un aspecto de la carta). **No se guarda solo:** el botón
     **Guardar** (o Cmd/Ctrl+Enter) guarda y cierra; cerrar con cambios sin guardar (×, Esc o tocar afuera) pregunta
     «Guardar / Descartar / Seguir editando». «Borrar nota» pide tocarlo dos veces.
@@ -261,13 +261,17 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     lo demás queda tenue. Lo que tiene notas lleva un **puntito dorado** (planetas, número de casa, Asc/MC; el símbolo del
     aspecto, con borde dorado); esas marcas están **apagadas por defecto** y se prenden con «Marcar en el mandala lo que
     tiene notas» en las notas (se recuerda en ese navegador). Con el mouse, pasar por una tarjeta de «Notas» la ilumina.
-  - **Leer una nota:** tocar una tarjeta (o una nota de las listas) la abre en el centro, grande y sin editar, con sus
-    vínculos iluminados en la rueda y «Editar».
+  - **Leer una nota:** tocar una tarjeta (o una nota de las listas) la abre grande y sin editar (en la compu, en el
+    drawer; en el iPad y el celular, en el centro), con sus vínculos iluminados en la rueda y «Editar».
   - **Tocar la rueda:** un planeta, el número o la zona de una casa, el Asc o el MC o el símbolo de un aspecto que tienen
     notas muestran esas notas (y «+ Nota nueva sobre…»). Con el dedo, el planeta abre su ficha, que ya las trae; con
     lecturas, el planeta y los ángulos abren su ventana como siempre.
-  - **Las notas** se abren con el botón **«Notas»** de arriba, entre Viajes e Imprimir (con la cantidad; tocarlo de
-    nuevo vuelve a la pestaña de antes); en el celular está en el botón flotante. **En el iPad** (pantallas de hasta 1180 px o
+  - **Las notas** se abren con el botón **«Notas»** de arriba, entre Viajes e Imprimir (con la cantidad); en el celular
+    está en el botón flotante. **En la compu** se abren en un **drawer al costado**, debajo de la barra y en el lugar de
+    las tablas, **sin oscurecer nada**: el mandala queda a la vista y se puede usar mientras se lee o se escribe. La nota
+    (nueva, para leer o para editar) se abre adentro, encima de la lista, con **«‹ Notas»** para volver; Esc cierra la
+    nota y, otra vez, el drawer (también la ✕ o el botón «Notas»). Si la nota se empezó desde una tabla o la rueda, al
+    guardarla o cerrarla se vuelve ahí (`data-ndock` en la raíz; test `nd_dock`). **En el iPad** (pantallas de hasta 1180 px o
     con el dedo) se abren en un **panel que entra por la derecha**, como la Configuración (en el celular, a pantalla
     completa; el panel de las notas se mueve adentro mientras está abierto), con el nombre de la carta; se cierra con la ✕, Esc o
     tocando afuera. Todas, la más nueva arriba, con sus chips; tocar una tarjeta la abre para leer. **Filtro** por elemento
@@ -407,6 +411,20 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   abrir el cuadro. Después se abre la impresión del navegador, donde también se guarda como PDF. Sale sin menú ni
   botones, y **siempre en claro**, aunque la pantalla esté en modo oscuro. La lista de Aspectos sale en dos columnas, para
   que entre aunque tenga muchos.
+- **Mover la hora** (carta natal; botón de arriba, entre Viajes y Notas; en el celular, en el botón flotante): abre
+  `‹ paso ›` para correr la fecha y la hora de la carta de a **1 minuto, 5 minutos, 15 minutos, 1 hora, 1 día, 1 semana,
+  1 mes o 1 año** (meses y años sobre el calendario), y se recalcula todo: rueda, tablas, casas, aspectos. Muestra la hora
+  que se ve y cuánto se movió («+1 h 15 min»), también en el subtítulo y en lo que se imprime. **No cambia la carta
+  guardada**: «Volver a la de nacimiento» la deja como estaba (también apagar el botón, cambiar de carta o editarla) y
+  «Guardar esta hora…» abre los datos de la carta con esa fecha y hora para guardarlas (sirve para rectificar). Con la
+  hora movida no se muestran las notas (son de la hora de nacimiento). En Tránsitos y Sinastría no se usa: la carta
+  natal va con su hora; al volver a Natal sigue movida. En el celular, la hora va en una pastilla abajo con ‹ ›, como
+  la fecha de los tránsitos, y tocarla abre los controles. Test: `nd_shift`.
+- **Mientras piensa**: si un pedido al servidor tarda más de un instante (200 ms), aparece una **barrita animada arriba de
+  todo** (`#busyBar`; `api.js` cuenta los pedidos en curso y avisa con el evento `carta:net`). Al recalcular la carta
+  (cambiar de carta, de modo, de fecha o de ajustes) la **rueda y las tablas se atenúan** con un circulito girando en el
+  centro del mandala (`data-calc` en la raíz); la primera vez, cuando todavía no hay nada para mostrar, dice
+  **«Calculando la carta…»**. Si responde rápido no se ve nada. No sale al imprimir. Test: `busy_test`.
 - **Configuración** (el engranaje de arriba a la derecha): un **panel que entra por la derecha** (en el celular, a pantalla
   completa; se cierra con la ✕, Esc o tocando afuera; siempre arranca cerrado). Los ajustes van en **cinco grupos
   plegados**, cada uno con una línea que resume cómo está («Tema automático · Redondeada · letra 100 %»), los textos

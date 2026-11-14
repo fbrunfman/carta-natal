@@ -494,11 +494,21 @@ td .g { margin-right: 4px; }
 .stepper button { width: 34px; border: 0; background: none; font-size: calc(21px * var(--fs)); line-height: 1; color: var(--ink); }
 .stepper button:hover { background: var(--hover); }
 .stepper select { width: auto; height: 100%; border: 0; border-radius: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background-color: transparent; font-size: calc(14px * var(--fs)); }
+/* carta natal: mover la hora */
+#toolsNatal { align-items: center; }
+.nshift { margin: 0; font-size: calc(14px * var(--fs)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.nshift strong { color: var(--ink); font-weight: 600; }
+.nshift .nshift-by { margin-left: 6px; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-2); font-weight: 600; font-size: .93em; }
+.nshift-acts { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.nshift-acts[hidden] { display: none; }
+.sub-shift { color: var(--accent-2); font-weight: 600; }
 .secondary.compact { height: 38px; padding: 0 16px; font-size: calc(14px * var(--fs)); }
 .modeacts { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .modeacts .secondary { margin: 0; }
 #spillBtn[aria-pressed="true"] { background: var(--reach); border-color: var(--reach); color: var(--bg); }
 #spillBtn[aria-pressed="true"]:hover { filter: brightness(1.08); }
+#shiftBtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+#shiftBtn[aria-pressed="true"]:hover { filter: brightness(1.08); }
 #spillBtn svg circle { fill: none; }
 
 .calbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-top: 12px; }
@@ -1102,7 +1112,7 @@ button.nchip:hover { background: var(--hover); }
   :root[data-mbar] .modebar { margin: 0; gap: 0; }
   :root[data-mbar] .modeacts {
     position: fixed; z-index: 41; right: 16px; bottom: calc(146px + env(safe-area-inset-bottom)); margin: 0;
-    display: grid; grid-template-columns: auto auto; justify-content: end; justify-items: end; gap: 10px 0;
+    display: grid; grid-template-columns: 1fr auto; justify-content: end; justify-items: end; gap: 10px 0;      /* (1fr: el sobrante va a la primera; Viajes y su flechita quedan juntos) */
   }
   :root[data-mbar]:not([data-fab]) .modeacts { display: none; }
   :root[data-mbar] .modeacts > button { grid-column: 1 / -1; }
@@ -1114,6 +1124,7 @@ button.nchip:hover { background: var(--hover); }
   }
   :root[data-mbar] .modeacts #spillBtn[aria-pressed="true"] { background: var(--reach); }
   :root[data-mbar] .modeacts #tripBtn[aria-pressed="true"] { background: var(--trip); }
+  :root[data-mbar] .modeacts #shiftBtn[aria-pressed="true"] { background: var(--accent); }
   :root[data-mbar] .modeacts > #tripBtn:has(+ #tripMore:not([hidden])) { border-radius: 22px 0 0 22px; }
   :root[data-mbar] .modeacts > #tripMore { border-radius: 0 22px 22px 0; }
   :root[data-mbar] .modeacts .with-ic svg { width: 17px; height: 17px; }
@@ -1135,7 +1146,7 @@ button.nchip:hover { background: var(--hover); }
   :root:has(#pfi:not([hidden])) .tpill, :root:has(#tripPick:not([hidden])) .tpill, :root[data-tsheet] .tpill { display: none !important; }
 
   /* Tránsitos: la fecha en una pastilla flotante abajo a la izquierda (al lado del botón flotante) y los controles en una hoja */
-  :root[data-mbar][data-mode="transit"] .tpill {
+  :root[data-mbar][data-mode="transit"] #tpill, :root[data-mbar][data-mode="natal"][data-nshift] #npill {
     display: flex; position: fixed; z-index: 41; left: 16px; right: 82px; bottom: calc(80px + env(safe-area-inset-bottom)); height: 54px;
     align-items: stretch; border: 1px solid var(--line-strong); border-radius: 27px; background: var(--surface); box-shadow: 0 8px 22px rgba(0, 0, 0, .3); overflow: hidden;
   }
@@ -1147,8 +1158,8 @@ button.nchip:hover { background: var(--hover); }
   }
   .tpill .tp-when { font-size: calc(15px * var(--fs)); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .tpill .tp-by { font-size: calc(11.5px * var(--fs)); color: var(--ink-2); }
-  :root[data-mbar] #toolsTransit { display: none; }
-  :root[data-mbar][data-tsheet] #toolsTransit:not([hidden]) {
+  :root[data-mbar] #toolsTransit, :root[data-mbar] #toolsNatal { display: none; }
+  :root[data-mbar][data-tsheet] #toolsTransit:not([hidden]), :root[data-mbar][data-tsheet] #toolsNatal:not([hidden]) {
     display: grid; grid-template-columns: 1fr 1fr; gap: 12px; position: fixed; z-index: 43; left: 8px; right: 8px; margin: 0;
     bottom: calc(74px + env(safe-area-inset-bottom)); padding: 12px 14px 14px; border: 1px solid var(--line-strong); border-radius: 16px;
     background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
@@ -1160,6 +1171,11 @@ button.nchip:hover { background: var(--hover); }
   :root[data-mbar] #toolsTransit .stepper { height: 44px; }
   :root[data-mbar] #toolsTransit .stepper select { flex: 1 1 auto; }
   :root[data-mbar] #toolsTransit #tNow { height: 44px; }
+  :root[data-mbar] #toolsNatal .tsheet-head, :root[data-mbar] #toolsNatal .stepper, :root[data-mbar] #toolsNatal .nshift, :root[data-mbar] #toolsNatal .nshift-acts { grid-column: 1 / -1; }
+  :root[data-mbar] #toolsNatal .stepper { height: 44px; }
+  :root[data-mbar] #toolsNatal .stepper select { flex: 1 1 auto; }
+  :root[data-mbar] #toolsNatal .nshift-acts { margin: 0; }
+  :root[data-mbar] #toolsNatal .nshift-acts button { flex: 1 1 auto; height: 42px; }
 
   /* el encabezado de la carta, más chico: la rueda entra en la primera pantalla */
   #chartPage > .head h2 { font-size: calc(30px * var(--fs)); }
@@ -2006,6 +2022,60 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 @media (max-width: 640px) {
   .notesdlg { width: 100vw; border-left: 0; box-shadow: none; }
 }
+/* compu: el drawer va al costado, debajo de la barra y en el lugar de las tablas, sin oscurecer nada: la rueda queda a la
+   vista y se puede usar. La nota (para escribir o para leer) se abre adentro, encima de la lista, con «‹ Notas» para volver. */
+.nback { display: none; flex: none; align-items: center; gap: 2px; padding: 4px 8px 4px 2px; margin-left: -4px; border: 0; border-radius: 7px;
+  background: none; color: var(--accent-2); font: 600 calc(14px * var(--fs))/1.2 var(--sans); cursor: pointer; }
+.nback:hover { background: var(--hover); }
+.nback svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@media screen {
+  :root { --ndock-w: calc(clamp(400px, 32vw, 500px) * var(--ui) + clamp(20px, 2.6vw, 40px)); }     /* la columna de las tablas y su margen */
+  :root[data-ndock] .notesdlg { inset: var(--tb-h) 0 0 auto; z-index: 33; width: var(--ndock-w); height: auto; box-shadow: -10px 0 28px rgba(0, 0, 0, .06); }
+  :root[data-ndock] .notesdlg .pdl-head { padding-top: 16px; }
+  :root[data-ndock] .notesdlg .pdl-body { padding-bottom: 24px; }
+  :root[data-ndock] .stage > .data { visibility: hidden; }
+  :root[data-ndock][data-big] main { padding-right: var(--ndock-w); }
+  :root[data-ndock] #noteEd, :root[data-ndock] #noteView {
+    position: fixed; inset: var(--tb-h) 0 0 auto; z-index: 34; width: var(--ndock-w); max-width: none; height: auto; max-height: none; margin: 0;
+    border: 0; border-left: 1px solid var(--line-strong); border-radius: 0; box-shadow: none; animation: none;
+  }
+  :root[data-ndock] #noteEd { padding: 14px 20px 22px; gap: 10px; }
+  :root[data-ndock] #noteEd .noted-head { margin: 0 -20px 2px; padding: 0 16px 12px 20px; border-bottom: 1px solid var(--line); }
+  :root[data-ndock] #noteEd textarea { min-height: 220px; }
+  :root[data-ndock] .nback { display: inline-flex; }
+  :root[data-ndock] #noteEdX, :root[data-ndock] #noteViewX { display: none; }
+  :root[data-ndock] .nview-body { padding: 18px 22px 8px; }
+  :root[data-ndock] .nview-text { font-size: calc(19px * var(--fs)); }
+  :root[data-ndock] .nview-foot { padding: 12px 20px 18px 22px; }
+}
+
+/* ---------- cargando: la barrita de arriba, la rueda atenuada y el cartel de la primera vez ---------- */
+.busybar { position: fixed; z-index: 70; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; pointer-events: none; background: color-mix(in srgb, var(--accent-2) 18%, transparent); }
+.busybar[hidden] { display: none; }
+.busybar::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; border-radius: 3px; background: var(--accent-2);
+  animation: busy-run 1.1s ease-in-out infinite;
+}
+@keyframes busy-run { to { left: 100%; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin {
+  display: inline-block; flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 2.5px solid color-mix(in srgb, var(--accent-2) 22%, transparent); border-top-color: var(--accent-2);
+  animation: spin .8s linear infinite;
+}
+.calc-wait { display: flex; align-items: center; gap: 12px; margin: 40px 0; color: var(--ink-2); font-size: calc(15px * var(--fs)); }
+.calc-wait[hidden] { display: none; }
+:root[data-calc] .wheel-fig { position: relative; }
+:root[data-calc] #wheel, :root[data-calc] .data { opacity: .45; transition: opacity .2s; }
+:root[data-calc] .wheel-fig::after {
+  content: ""; position: absolute; top: calc(50% - 22px); left: calc(50% - 22px); width: 44px; height: 44px; border-radius: 50%;
+  border: 3.5px solid color-mix(in srgb, var(--accent-2) 22%, transparent); border-top-color: var(--accent-2);
+  animation: spin .8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .busybar::before { animation-duration: 2.5s; }
+  .spin, :root[data-calc] .wheel-fig::after { animation-duration: 2s; }
+}
 
 @media print {
   @page { margin: 12mm; }
@@ -2014,7 +2084,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   .mbar, .fab, .tpill, .tsheet-head, .noted, .ncell, .nbtn, .wnote, .nbar, .npop, .nlit, .hwedge, .pfi, .title-pick, .cpick, .cinfo, #tripMore, .tp-count, #notesBtn,
-  .topbar, .cfgp, .cfgp-scrim, .tb-menu, .modebar, .title-pin, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
+  .topbar, .cfgp, .cfgp-scrim, .tb-menu, .modebar, .title-pin, .busybar, .calc-wait, .tools, .tabs, .seg.orb, .calbar, #sumView, #error, #intro,
   .legend .hint, .interp, #stairInfo, dialog, .trip-pick { display: none !important; }
   .shell { display: block; min-height: 0; }
   main { padding: 0; }

@@ -3,7 +3,15 @@ import { localCharts } from "./local-charts.js";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
+// cuántos pedidos hay en camino: la app muestra una barrita de «cargando» arriba mientras haya alguno (evento carta:net)
+let inflight = 0;
+const net = (d) => { inflight += d; dispatchEvent(new CustomEvent("carta:net", { detail: inflight })); };
+
 async function call(url, options) {
+  net(1);
+  try { return await callNow(url, options); } finally { net(-1); }
+}
+async function callNow(url, options) {
   const res = await fetch(url, options);
   let data = {};
   try { data = await res.json(); } catch { /* respuesta sin cuerpo */ }
