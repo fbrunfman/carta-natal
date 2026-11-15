@@ -65,12 +65,15 @@ let mview = "carta";       // celular, carta natal: la rueda sola («carta») o 
 function readForm() {
   const v = Object.fromEntries(new FormData(form).entries());
   v.manual = $("#manual").checked;
+  v.groups = [...formGroups];
   return v;
 }
 
 function fillForm(v) {
+  formGroups = Array.isArray(v.groups) ? v.groups.filter((g) => typeof g === "string") : [];
+  paintFormGroups();
   for (const [k, val] of Object.entries(v)) {
-    if (k === "manual" || k === "active") continue;
+    if (k === "manual" || k === "active" || k === "groups") continue;
     const el = form.elements[k];
     if (el) el.value = val ?? "";
   }
@@ -84,7 +87,83 @@ function birthFromForm() {
   return {
     name: v.name.trim(), date: v.date, time: v.time, place: v.place.trim(),
     lat: v.lat, lon: v.lon, tz: v.tz.trim(), manual: v.manual, offset: v.manual ? v.offset : null,
+    groups: [...formGroups],
   };
+}
+
+// ---------- grupos ----------------------------------------------------------
+// Una carta puede estar en varios grupos: Amigos, Familia, Consultantes y Famosos están siempre; «+ Grupo» crea otro
+// (queda mientras alguna carta lo tenga). En el formulario se marcan; en Mis cartas se filtra por grupo.
+const GROUP_DEFAULTS = ["Amigos", "Familia", "Consultantes", "Famosos"];
+const gkey = (g) => String(g).toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+const hasGroup = (list, g) => (list || []).some((x) => gkey(x) === gkey(g));
+let formGroups = [];          // los de la carta del formulario
+let extraGroups = [];         // creados con «+ Grupo» y todavía sin carta guardada
+function allGroups() {
+  const out = [], seen = new Set();
+  const add = (g) => { const k = gkey(g); if (k && !seen.has(k)) { seen.add(k); out.push(g); } };
+  GROUP_DEFAULTS.forEach(add);
+  (saved?.items || []).flatMap((it) => it.groups || []).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })).forEach(add);
+  extraGroups.forEach(add);
+  formGroups.forEach(add);
+  return out;
+}
+function paintFormGroups() {
+  const box = $("#formGroups");
+  if (!box) return;
+  const chips = allGroups().map((g) => {
+    const on = hasGroup(formGroups, g);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "gchip";
+    b.textContent = g;
+    b.dataset.g = gkey(g);
+    b.setAttribute("aria-pressed", String(on));
+    b.addEventListener("click", () => {
+      formGroups = on ? formGroups.filter((x) => gkey(x) !== gkey(g)) : [...formGroups, g];
+      paintFormGroups();
+      [...box.querySelectorAll(".gchip")].find((x) => x.dataset.g === gkey(g))?.focus({ preventScroll: true });
+    });
+    return b;
+  });
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "gchip gadd";
+  add.textContent = "+ Grupo";
+  add.title = "Crear un grupo";
+  add.addEventListener("click", newGroup);
+  box.replaceChildren(...chips, add);
+}
+/** «+ Grupo»: un campo en su lugar; Enter (o salir del campo) lo crea ya marcado, Esc lo deja. */
+function newGroup() {
+  const box = $("#formGroups");
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.className = "gnew";
+  inp.maxLength = 30;
+  inp.placeholder = "Nombre del grupo";
+  inp.setAttribute("aria-label", "Nombre del grupo nuevo");
+  inp.enterKeyHint = "done";
+  let over = false;
+  const done = (keep, refocus) => {
+    if (over) return;
+    over = true;
+    const g = inp.value.replace(/\s+/g, " ").trim();
+    if (keep && g) {
+      const name = allGroups().find((x) => gkey(x) === gkey(g)) || g;
+      if (!hasGroup(allGroups(), name)) extraGroups.push(name);
+      if (!hasGroup(formGroups, name)) formGroups = [...formGroups, name];
+    }
+    paintFormGroups();
+    if (refocus) box.querySelector(".gadd")?.focus({ preventScroll: true });
+  };
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true, true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false, true); }
+  });
+  inp.addEventListener("blur", () => done(true, false));
+  box.querySelector(".gadd").replaceWith(inp);
+  inp.focus();
 }
 
 function remember() {
@@ -377,6 +456,7 @@ function openForm(kind, item = null) {
   }
   note("");
   syncSaveButtons();
+  paintFormGroups();
   $("#formTitle").textContent = kind === "new" ? "Nueva carta" : saved.activeId ? "Editar carta" : "Carta sin guardar";
   delArmChart(false);
   $("#formDel").hidden = !saved.activeId;
@@ -394,6 +474,7 @@ function closeForm(cancel) {
     syncSaveButtons();
   }
   editing = null;
+  extraGroups = [];                     // los creados con «+ Grupo» y sin usar no quedan
   if (formDlg.open) formDlg.close();
   syncActions();
   if (formBack?.isConnected && formBack.offsetParent !== null) formBack.focus({ preventScroll: true });
@@ -720,6 +801,7 @@ async function loadNow(my) {
   }
   if (my !== seq) return;                 // mientras tanto se pidió otra cosa
   ({ chart, transit, syn } = next);
+  if (!next.transit && !next.syn) rememberPos(chart);
   render();
 }
 
@@ -3106,6 +3188,11 @@ function chartCard(it, { cur = false, hits = [] } = {}) {
   const sub = elx("small", { className: "hc-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
   if (cur) sub.append(" · ", elx("strong", { textContent: "última abierta" }));
   card.append(sub);
+  if (it.groups?.length) {
+    const gs = elx("span", { className: "hc-groups" });
+    for (const g of it.groups) gs.append(elx("span", { className: "hc-g", textContent: g }));
+    card.append(gs);
+  }
   const pos = posReady(it) ? find.pos.get(it.id).lon : null;
   if (pos && !hits.length) {
     const trio = elx("span", { className: "hc-trio" });
@@ -3218,6 +3305,30 @@ async function retryBusy(call, alive) {
     }
   }
 }
+/** Lo que se guarda de una carta calculada: las longitudes, la casa de cada planeta, sus aspectos duros y «Entre casas». */
+function posEntry(c) {
+  const pl = c.bodies.filter((b) => TRIP_PLANETS.includes(b.id));
+  const lon = Object.fromEntries([...pl.map((b) => [b.id, b.lon]), ["asc", c.angles.asc], ["mc", c.angles.mc]]);
+  if (!FIND_BODIES.every((b) => Number.isFinite(lon[b]))) return null;
+  const house = Object.fromEntries(pl.map((b) => [b.id, b.house]));
+  const asp = (c.aspects || []).filter((x) => TRIP_PLANETS.includes(x.a) && TRIP_PLANETS.includes(x.b) && HARD.includes(x.type))
+    .map((x) => [x.a, x.b, x.type, Math.round(x.orb * 100) / 100]);
+  const reach = Object.fromEntries((c.orbs_v === ORBS_VERSION ? c.house_reach || [] : [])
+    .filter((r) => TRIP_PLANETS.includes(r.id)).map((r) => [r.id, [r.also, r.kind]]));
+  return { lon, house, asp, reach };
+}
+/** Al abrir (o crear) una carta guardada ya está calculada: sus posiciones quedan para la tarjeta y para buscar, sin
+ *  otro pedido al servidor. (En la versión pública, antes solo se calculaban con el botón de Mis cartas.) */
+function rememberPos(c) {
+  try {
+    const it = saved.activeId && saved.find(saved.activeId);
+    if (!it || !birth || shiftAt || trSig(birth) !== trSig(it)) return;
+    const e = posEntry(c);
+    if (!e) return;
+    find.pos.set(it.id, { sig: trSig(it), csig: cfgSig(), ...e });
+    findSave();
+  } catch {}
+}
 /** Calcula las posiciones que faltan (full: también las de las cartas a las que solo les faltan las casas y aspectos). */
 async function runFind(full = true) {
   if (find.running) return;
@@ -3231,15 +3342,9 @@ async function runFind(full = true) {
       const it = queue.shift(), sig = trSig(it);
       try {
         const c = await retryBusy(() => compute.chart(partnerBody(it, view)), () => my === find.seq);
-        const pl = c.bodies.filter((b) => TRIP_PLANETS.includes(b.id));
-        const lon = Object.fromEntries([...pl.map((b) => [b.id, b.lon]), ["asc", c.angles.asc], ["mc", c.angles.mc]]);
-        if (!FIND_BODIES.every((b) => Number.isFinite(lon[b]))) throw new Error("Respuesta incompleta.");
-        const house = Object.fromEntries(pl.map((b) => [b.id, b.house]));
-        const asp = (c.aspects || []).filter((x) => TRIP_PLANETS.includes(x.a) && TRIP_PLANETS.includes(x.b) && HARD.includes(x.type))
-          .map((x) => [x.a, x.b, x.type, Math.round(x.orb * 100) / 100]);
-        const reach = Object.fromEntries((c.orbs_v === ORBS_VERSION ? c.house_reach || [] : [])
-          .filter((r) => TRIP_PLANETS.includes(r.id)).map((r) => [r.id, [r.also, r.kind]]));
-        find.pos.set(it.id, { sig, lon, csig, house, asp, reach });
+        const e = posEntry(c);
+        if (!e) throw new Error("Respuesta incompleta.");
+        find.pos.set(it.id, { sig, csig, ...e });
       } catch (err) {
         find.errs.set(it.id, err);
       }
@@ -3262,7 +3367,8 @@ function paintFindState() {
 // -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
 // un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
 const MC_PAGE = 24;
-const mc = { q: "", letter: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
+const mc = { q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
+const NO_GROUP = "\u0000sin";
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
 (() => {
@@ -3281,7 +3387,7 @@ const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(
   $("#mcNew").addEventListener("click", () => openForm("new"));
   $("#mcCalc").addEventListener("click", () => runFind(true));
   $("#mcClear").addEventListener("click", () => {
-    Object.assign(mc, { q: "", letter: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 });
+    Object.assign(mc, { q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 });
     $("#mcQ").value = "";
     $("#mcSpill").checked = false;
     for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) $(sel).value = mc[key];
@@ -3370,6 +3476,26 @@ function renderMyCharts() {
     if (l) b.setAttribute("aria-label", `Cartas que empiezan con ${l === "#" ? "otro carácter" : l}`);
     return b;
   }));
+  // por grupo: aparece cuando alguna carta tiene grupo
+  const gCount = new Map();
+  let noGroup = 0;
+  for (const it of items) {
+    if (!it.groups?.length) noGroup++;
+    for (const g of it.groups || []) gCount.set(gkey(g), (gCount.get(gkey(g)) || 0) + 1);
+  }
+  if (mc.group && (mc.group === NO_GROUP ? !noGroup : !gCount.has(mc.group))) mc.group = "";
+  const gBox = $("#mcGroups");
+  gBox.hidden = !gCount.size;
+  const gBtn = (key, label, n) => {
+    const b = elx("button", { type: "button", className: "gchip", disabled: key !== "" && !n }, () => { mc.group = mc.group === key ? "" : key; mc.page = 1; renderMyCharts(); });
+    b.append(label);
+    if (n) b.append(elx("span", { className: "gn", textContent: String(n) }));
+    b.setAttribute("aria-pressed", String(mc.group === key));
+    return b;
+  };
+  gBox.replaceChildren(gBtn("", "Todos los grupos", 0),
+    ...allGroups().map((g) => gBtn(gkey(g), g, gCount.get(gkey(g)) || 0)),
+    ...(noGroup && noGroup < items.length ? [gBtn(NO_GROUP, "Sin grupo", noGroup)] : []));
   $("#mcFilters").hidden = !items.length;
   $("#mcAz").hidden = items.length < 2;
   // casa y signo no se combinan con el Ascendente y el Medio Cielo (siempre están en la I y la X)
@@ -3389,14 +3515,15 @@ function renderMyCharts() {
   $("#mcProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
   $("#mcNote").textContent = "Con «Entre casas», un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (los orbes de Reglas avanzadas). Los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
     (isPublic() ? " Cada carta se calcula una vez: los datos de nacimiento se envían al servidor solo para eso; las posiciones quedan en este navegador." : "");
-  const anyFilter = !!(mc.q.trim() || mc.letter || mc.pl || mc.a);
+  const anyFilter = !!(mc.q.trim() || mc.letter || mc.group || mc.pl || mc.a);
   $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "Planeta en signo o casa · planeta en aspecto duro";
   $("#mcFilters").classList.toggle("on", posOn);
   $("#mcClear").hidden = !anyFilter;
 
   // filtrar
   const q = fold(mc.q.trim());
-  let list = items.filter((it) => (!q || fold(it.name).includes(q)) && (!mc.letter || initialOf(it.name) === mc.letter));
+  let list = items.filter((it) => (!q || fold(it.name).includes(q)) && (!mc.letter || initialOf(it.name) === mc.letter) &&
+    (!mc.group || (mc.group === NO_GROUP ? !it.groups?.length : (it.groups || []).some((g) => gkey(g) === mc.group))));
   const hitsOf = new Map();
   if (posOn) {
     list = list.filter((it) => {

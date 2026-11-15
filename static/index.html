@@ -134,6 +134,7 @@
         <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="mcQ" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></label>
         <button type="button" class="primary-pill with-ic" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
       </div>
+      <div class="mc-groups gchips" id="mcGroups" role="group" aria-label="Por grupo"></div>
       <nav class="mc-az" id="mcAz" aria-label="Por inicial"></nav>
       <details class="mc-filters" id="mcFilters">
         <summary><span class="mc-ft" id="mcFiltersTitle">Buscar por posición</span><small class="mc-fsum" id="mcFiltersSum">Planeta en signo o casa · planeta en aspecto duro</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
@@ -628,6 +629,11 @@
           <span>Nombre</span>
           <input name="name" type="text" placeholder="Para encontrarla después" required>
         </label>
+
+        <div class="field gfield">
+          <span id="groupsLab">Grupos</span>
+          <div class="gchips" id="formGroups" role="group" aria-labelledby="groupsLab"></div>
+        </div>
 
         <div class="row2 when">
           <label class="field">

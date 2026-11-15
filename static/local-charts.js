@@ -63,6 +63,16 @@ export const sameBirth = (a, b) => {
   if (pa && pb && pa === pb) return true;
   return Math.abs(+a.lat - +b.lat) < 0.02 && Math.abs(+a.lon - +b.lon) < 0.02;
 };
+/** Los grupos de una carta más los de otra copia de ella (ya validados por el servidor: acá solo se juntan sin repetir). */
+function mergeGroups(old, incoming) {
+  const out = [], seen = new Set();
+  for (const g of [...(old || []), ...(incoming || [])]) {
+    const k = fold(g);
+    if (typeof g !== "string" || !k || seen.has(k) || out.length >= 12) continue;
+    seen.add(k); out.push(g);
+  }
+  return out;
+}
 /** Suma a las notas de una carta las de otra copia de ella (las que no tiene ya, con el mismo texto). */
 export function mergeNotes(old, incoming) {
   const have = cleanNotes(old), add = cleanNotes(incoming);
@@ -143,7 +153,10 @@ export const localCharts = {
         const twin = list.find((c) => sameBirth(c, r.chart));
         if (twin) {
           const m = mergeNotes(twin.notes, chunk[j]?.notes);
-          if (m.added) { twin.notes = m.notes; twin.updated = now(); updated++; notesAdded += m.added; } else skipped++;
+          const groups = mergeGroups(twin.groups, r.chart.groups), moreGroups = groups.length > (twin.groups || []).length;
+          if (m.added) { twin.notes = m.notes; notesAdded += m.added; }
+          if (moreGroups) twin.groups = groups;
+          if (m.added || moreGroups) { twin.updated = now(); updated++; } else skipped++;
           return;
         }
         if (list.length >= MAX_CHARTS) { failed++; return; }

@@ -2238,3 +2238,24 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .trip-words[hidden] { display: none; }
 .trip-none { margin: 2px 4px 6px; }
 .trip-note { margin-top: 14px; }
+
+/* ---------- grupos: chips para marcar (en el formulario) y para filtrar (en Mis cartas); etiquetas en las tarjetas ---------- */
+.gchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchips[hidden] { display: none; }
+.gchip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 99px;
+  background: var(--surface); color: var(--ink); font: 500 calc(13.5px * var(--fs))/1.2 var(--sans); cursor: pointer;
+}
+.gchip:not([aria-pressed="true"]):hover:not(:disabled) { background: var(--hover); }
+.gchip:disabled { opacity: .4; cursor: default; }
+.gchip[aria-pressed="true"] { background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); }
+.gchip[aria-pressed="true"]::before { content: "✓"; font-weight: 700; }
+.gchip .gn { font-size: .85em; font-variant-numeric: tabular-nums; opacity: .7; }
+.gadd { border-style: dashed; color: var(--ink-2); }
+.gnew { width: 12em; min-height: 32px; padding: 4px 12px; border-radius: 99px; font-size: calc(13.5px * var(--fs)); }
+.gfield > span { display: block; }
+.mc-groups { margin-top: 14px; }
+#mcGroups .gchip[aria-pressed="true"]::before { content: none; }
+.hc-groups { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.hc-g { padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line-strong); font-size: calc(11.5px * var(--fs)); color: var(--ink-2); white-space: nowrap; }
+@media (pointer: coarse) { .gchip { min-height: 38px; padding: 6px 14px; } .gnew { min-height: 38px; font-size: 16px; } }

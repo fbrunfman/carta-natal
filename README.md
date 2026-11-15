@@ -96,13 +96,16 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     tarjetas con la fecha, la hora y la ciudad, y el **Sol, la Luna y el Ascendente**. **Las cartas fijadas van primero**
     (con el marcador; si fijás más de 6, se ven todas): se fijan con el **marcador** al lado del nombre de la carta, que se
     vuelve a tocar para soltarla (`carta:pins`, en este navegador). El Sol, la Luna y el Ascendente aparecen cuando ya se conocen sus posiciones
-    (en la versión local se calculan solas; en la pública, después de calcularlas en Mis cartas). Tocar una la abre; al
+    (en la versión local se calculan solas; en la pública, apenas se abre o se crea la carta —ya está calculada, no hace
+    otro pedido— o después de calcularlas en Mis cartas). Tocar una la abre; al
     final, **«+ Nueva carta»**, y con más de 6, **«Ver todas (N) ›»**, que lleva a **Mis cartas**. Sin cartas: «Crear mi
     primera carta». Debajo, el mapa con la Luna en su rincón (en el celular, debajo), y al pie, en una línea, dónde se
     guardan las cartas y «Privacidad y copias» (abre la Configuración en *Datos*). No se abre ninguna carta hasta entrar
     a **Carta**. (Los «Tránsitos destacados de hoy» y «Buscar por posición» ya no están en el inicio.)
   - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›). Se buscan:
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
+    - **por grupo**: una fila con los grupos (con cuántas cartas tiene cada uno) y «Sin grupo»; aparece cuando alguna
+      carta tiene grupo. Ver «Grupos», abajo;
     - **por inicial**: una fila de letras (las que no tienen cartas no se pueden tocar; «Ágata» va en la A);
     - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
       signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo; con **«con Entre casas»** la casa se
@@ -122,7 +125,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     planeta y sus aspectos duros, con la firma de los datos de nacimiento (si se edita la carta, se recalcula) y del sistema
     de casas y los orbes (si cambian, se recalculan las casas y aspectos). **Servidor propio:** se calcula solo. **Versión
     pública:** los datos de nacimiento viajan al servidor, así que no se manda nada hasta apretar «Calcular posiciones»;
-    después solo las cartas nuevas, editadas o con otra configuración. Si una falla se dice cuál y hay «Reintentar».
+    después solo las cartas nuevas, editadas o con otra configuración. Abrir o crear una carta guardada (con la hora de
+    nacimiento, en Natal) ya deja sus posiciones, sin pedir nada más. Si una falla se dice cuál y hay «Reintentar».
     Test: `e2e_miscartas`.
   - **Luna** (calendario lunar): el mes en una grilla de lunes a domingo, con la fase de cada día (al mediodía), el
     signo en que termina el día y, el día que la Luna cambia de signo, **la hora del cambio**. Arriba, las fases
@@ -391,6 +395,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
+- **Grupos**: cada carta puede estar en **varios grupos**. **Amigos, Familia, Consultantes y Famosos** están siempre;
+  **«+ Grupo»** crea otro (Enter lo crea ya marcado, Esc lo deja) y queda mientras alguna carta lo tenga. Se marcan en el
+  formulario de la carta (debajo del nombre); las tarjetas los muestran y Mis cartas filtra por grupo. Se guardan con la
+  carta (`groups`: hasta 12 nombres de hasta 30 caracteres, sin repetir sin importar mayúsculas ni tildes; los valida
+  `store.clean_groups`), viajan al exportar y, al importar una carta que ya está, se le suman los grupos que trae.
 - **Crear y editar cartas**: el formulario se abre en una **ventana en el centro** al tocar **«Nueva carta»** (en la
   lista de la lupa, en «Buscar o cambiar de carta…» o en el inicio; en blanco) o **«Editar los datos»** (en la ⓘ de la
   carta, con sus datos). Abajo de todo, con una carta guardada abierta, **«Eliminar esta carta»** (dos toques; la

@@ -94,11 +94,45 @@ def clean(data) -> dict:
         if tz not in _TZ_NAMES:
             raise StoreError(f"Zona horaria desconocida: «{tz}».")
 
-    return {
+    rec = {
         "name": name, "date": date, "time": time_,
         "place": str(data.get("place") or "").strip()[:120],
         "lat": lat, "lon": lon, "tz": tz, "manual": manual, "offset": offset,
     }
+    groups = clean_groups(data.get("groups"))
+    if groups:
+        rec["groups"] = groups
+    return rec
+
+
+# -- grupos de una carta ---------------------------------------------------------
+# Cada carta puede estar en varios grupos (Amigos, Familia, Consultantes, Famosos u otros que se escriban). Se guardan
+# los nombres: sin espacios de más, hasta 30 caracteres, sin repetir (sin importar mayúsculas ni tildes) y hasta 12.
+GROUP_LEN = 30
+GROUP_MAX = 12
+
+
+def clean_groups(value) -> list:
+    if not isinstance(value, list):
+        return []
+    out, seen = [], set()
+    for g in value:
+        if not isinstance(g, str):
+            continue
+        g = re.sub(r"\s+", " ", g).strip()[:GROUP_LEN].strip()
+        key = _fold(g)
+        if not g or key in seen:
+            continue
+        seen.add(key)
+        out.append(g)
+        if len(out) >= GROUP_MAX:
+            break
+    return out
+
+
+def merge_groups(old, new) -> list:
+    """Los grupos de una carta más los de otra copia de ella (al importar)."""
+    return clean_groups(list(old or []) + list(new or []))
 
 
 # -- notas de una carta --------------------------------------------------------
@@ -327,8 +361,13 @@ class ChartStore:
                 twin = next((c for c in charts if same_birth(c, rec)), None)
                 if twin is not None:
                     merged, n = merge_notes(twin.get("notes"), incoming)
-                    if n:
-                        twin["notes"] = merged
+                    groups = merge_groups(twin.get("groups"), rec.get("groups"))
+                    more_groups = len(groups) > len(twin.get("groups") or [])
+                    if n or more_groups:
+                        if n:
+                            twin["notes"] = merged
+                        if more_groups:
+                            twin["groups"] = groups
                         twin["updated"] = _now()
                         updated += 1
                         notes_added += n
