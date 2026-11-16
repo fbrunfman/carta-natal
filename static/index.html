@@ -821,6 +821,35 @@
           <input type="file" id="importFile" accept="application/json,.json" hidden>
           <p class="status" id="backupNote" role="status"></p>
           </div>
+          <!-- sincronizar entre dispositivos (si el servidor tiene la base configurada: ver sync.py) -->
+          <section class="syncbox" id="syncBox" aria-labelledby="syncT" hidden>
+            <h3 id="syncT">Sincronizar entre dispositivos</h3>
+            <p class="fine tight">Tus cartas (con sus notas y grupos), las fijadas y la configuración quedan iguales en todos tus dispositivos. Se cifran acá con un código que solo vos tenés: el servidor guarda algo que no puede leer.</p>
+            <div id="syncOff">
+              <div class="sync-acts">
+                <button type="button" class="ghost" id="syncCreate">Crear un código</button>
+                <button type="button" class="ghost" id="syncHave" aria-expanded="false" aria-controls="syncJoin">Ya tengo un código</button>
+              </div>
+              <div class="sync-join" id="syncJoin" hidden>
+                <input id="syncCode" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKLM-NPQR-STUV" aria-label="Código de sincronización">
+                <button type="button" class="primary compact" id="syncGo">Conectar</button>
+              </div>
+            </div>
+            <div id="syncOn" hidden>
+              <p class="sync-st" id="syncSt" role="status" aria-live="polite"></p>
+              <div class="sync-acts">
+                <button type="button" class="ghost" id="syncNowBtn">Sincronizar ahora</button>
+                <button type="button" class="ghost" id="syncShow" aria-expanded="false" aria-controls="syncCodeBox">Ver el código</button>
+              </div>
+              <div class="sync-code" id="syncCodeBox" hidden>
+                <code id="syncCodeTxt"></code>
+                <button type="button" class="nlink-btn" id="syncCopy">Copiar</button>
+                <p class="fine tight">Escribilo en tus otros dispositivos (Configuración → Datos → «Ya tengo un código»). Guardalo: sin él no se puede recuperar lo sincronizado.</p>
+              </div>
+              <button type="button" class="nlink-btn sync-offbtn" id="syncOffBtn">Dejar de sincronizar este dispositivo</button>
+            </div>
+            <p class="status" id="syncNote" role="status"></p>
+          </section>
         </div>
       </details>
   </div>

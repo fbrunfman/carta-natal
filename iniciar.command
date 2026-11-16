@@ -25,4 +25,7 @@ if [ ! -x .venv/bin/python ]; then
   fi
 fi
 
+# para sincronizar entre dispositivos (si falla, la app anda igual, sin sincronizar)
+.venv/bin/python -c "import psycopg" >/dev/null 2>&1 || .venv/bin/pip install -q "psycopg[binary]>=3.1" >/dev/null 2>&1
+
 exec .venv/bin/python app.py --open --port "${PORT:-8765}"

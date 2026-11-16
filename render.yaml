@@ -7,3 +7,7 @@ services:
     plan: free
     healthCheckPath: /healthz
     autoDeploy: true
+    envVars:
+      # opcional: la base de la sincronización entre dispositivos (Neon). Ver README, «Sincronizar entre dispositivos»
+      - key: CARTA_NATAL_SYNC_DB
+        sync: false

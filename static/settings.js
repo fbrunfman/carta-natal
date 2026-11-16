@@ -206,6 +206,27 @@ export function load() {
 
 export function save(cfg) {
   try { localStorage.setItem(KEY, JSON.stringify({ v: VERSION, ...cfg })); } catch { /* sin almacenamiento: queda solo en esta sesión */ }
+  dispatchEvent(new CustomEvent("carta:changed", { detail: "cfg" }));      // la sincronización lo sube
+}
+
+// La sincronización entre dispositivos lleva la configuración, salvo lo que depende de la pantalla de cada uno: el tamaño
+// de la letra y el del mandala.
+const LOCAL_ONLY = ["fs", "wheel"];
+/** Lo que viaja a los otros dispositivos. */
+export function syncedCfg() {
+  const c = { ...load() };
+  for (const k of LOCAL_ONLY) delete c[k];
+  return c;
+}
+let reloadFn = null;
+/** Pone la configuración que llegó de otro dispositivo (manteniendo la letra y el mandala de este) y redibuja. */
+export function setSyncedCfg(remote) {
+  if (!remote || typeof remote !== "object") return;
+  const cur = load();
+  const next = { ...remote };
+  for (const k of LOCAL_ONLY) next[k] = cur[k];
+  try { localStorage.setItem(KEY, JSON.stringify({ v: VERSION, ...next })); } catch {}
+  reloadFn?.();
 }
 
 /** Pone la configuración en <html>: atributos para la CSS y variables de escala. */
@@ -436,6 +457,24 @@ export function initSettings(onChange) {
     change({ trips: cleanTrips(null) }, "trips");
     if (orbsChanged) change({ orbs }, "orbs");
   });
+
+  // lo que llegó por la sincronización: se lee de nuevo y se avisa cada cosa que cambió, como si se hubiera tocado
+  reloadFn = () => {
+    const old = cfg;
+    cfg = load();
+    apply(cfg); paint();
+    const diff = (k) => JSON.stringify(old[k]) !== JSON.stringify(cfg[k]);
+    const whats = [];
+    if (diff("gfx") || diff("tint")) whats.push("gfx");
+    if (diff("orbs")) whats.push("orbs");
+    if (diff("aspOff")) whats.push("asp");
+    if (diff("spill")) whats.push("spill");
+    if (diff("trips") || diff("tripsOn")) whats.push("trips");
+    if (diff("cuspRing")) whats.push("cusp");
+    if (diff("interp")) whats.push("interp");
+    if (!whats.length) whats.push("look");
+    for (const w of whats) onChange(cfg, w);
+  };
 
   apply(cfg);
   paint();

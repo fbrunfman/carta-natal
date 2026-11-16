@@ -5,7 +5,8 @@ import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
-import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY } from "./settings.js";
+import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg } from "./settings.js";
+import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState } from "./sync.js";
 import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
@@ -225,6 +226,7 @@ $("#manual").addEventListener("change", (e) => {
 for (const name of ["hsys", "node"]) {
   form.elements[name].addEventListener("change", () => {
     remember();
+    dispatchEvent(new CustomEvent("carta:changed", { detail: "cfg" }));
     if (!birth) return;
     const v = readForm();
     birth = { ...birth, hsys: v.hsys, node: v.node };
@@ -2812,7 +2814,8 @@ function paintCfgSums() {
   const hs = form.elements.hsys, nAsp = Object.keys(ASPECT).length - c.aspOff.length;
   $("#cfgAspGSum").textContent = `${hs.selectedOptions[0]?.textContent || ""} · ${nAsp === Object.keys(ASPECT).length ? "todos los aspectos" : `${nAsp} de ${Object.keys(ASPECT).length} aspectos`} a la vista`;
   $("#cfgAdvGSum").textContent = `Planetas entre casas · Viajes de planetas${$("#cfgResetAdv").disabled ? "" : " · con cambios"}`;
-  $("#cfgDataGSum").textContent = isPublic() ? "Exportar · importar · tus cartas quedan en este navegador" : "Exportar · importar · dónde se guardan tus cartas";
+  $("#cfgDataGSum").textContent = syncState().on ? "Sincronizado entre dispositivos · exportar · importar"
+    : isPublic() ? "Exportar · importar · tus cartas quedan en este navegador" : "Exportar · importar · dónde se guardan tus cartas";
 }
 form.elements.hsys.addEventListener("change", () => { paintCfgSums(); if (page === "charts") renderMyCharts(); });
 paintTheme();
@@ -2820,6 +2823,154 @@ paintTheme();
 // ---------- copia de seguridad: exportar e importar las cartas guardadas --------------------------------
 // Sirve igual en la versión de escritorio (las cartas están en un archivo de tu compu) y en la alojada (están en el
 // navegador). El archivo es el mismo en las dos, así que se puede pasar cartas de una a la otra.
+// ---------- sincronizar entre dispositivos (ver sync.js) ------------------------------------------------------
+let remapActive = null;            // la carta abierta se unió con su copia de otro dispositivo: este es su id nuevo
+const syncHost = {
+  getCfg: () => ({ settings: syncedCfg(), hsys: form.elements.hsys.value, node: form.elements.node.value }),
+  setCfg(d) {
+    if (!d || typeof d !== "object") return;
+    setSyncedCfg(d.settings);
+    for (const n of ["hsys", "node"]) {
+      const el = form.elements[n], v = d[n];
+      if (typeof v === "string" && v !== el.value && [...(el.options || [])].some((o) => o.value === v)) {
+        el.value = v;
+        el.dispatchEvent(new Event("change"));
+      }
+    }
+  },
+  getPins: () => [...pinIds],
+  setPins(a) {
+    if (!Array.isArray(a)) return;
+    pinIds = a.filter((x) => typeof x === "string");
+    try { localStorage.setItem(PIN_KEY, JSON.stringify(pinIds)); } catch {}
+  },
+  remap(pairs) {
+    for (const [from, to] of pairs) {
+      pinIds = [...new Set(pinIds.map((x) => (x === from ? to : x)))];
+      recentIds = [...new Set(recentIds.map((x) => (x === from ? to : x)))];
+      if (find.pos.has(from) && !find.pos.has(to)) find.pos.set(to, find.pos.get(from));
+      find.pos.delete(from);
+      if (saved.activeId === from) remapActive = to;
+    }
+    try { localStorage.setItem(PIN_KEY, JSON.stringify(pinIds)); localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch {}
+    findSave();
+  },
+  onRemote: (what) => syncArrived(what),
+  onState: (st) => paintSync(st),
+};
+const birthKey = (v) => JSON.stringify([v.name, v.date, String(v.time).slice(0, 5), v.place, +v.lat, +v.lon, v.tz, !!v.manual, v.manual ? +v.offset : null]);
+/** Llegaron cambios de otro dispositivo: se redibuja lo que se ve (la carta abierta se recalcula si cambiaron sus datos). */
+async function syncArrived(what) {
+  if (what.charts) {
+    const act = remapActive || saved.activeId;
+    remapActive = null;
+    await saved.refresh();
+    const item = act ? saved.find(act) : null;
+    saved.setActive(item ? item.id : null);
+    if (item && !formOpen() && (birthKey(item) !== birthKey(readForm()) || JSON.stringify(item.groups || []) !== JSON.stringify(readForm().groups))) {
+      const dataChanged = birthKey(item) !== birthKey(readForm());
+      fillForm(item);
+      if (dataChanged && !shiftAt) {
+        if (page === "chart" && chart) await calculate(); else chartStarted = false;
+      }
+    }
+    remember();
+    syncSaveButtons();
+    syncPartners();
+    if (page === "chart" && mode === "natal" && !$("#noteEd").open) { renderNotes(); paintNoteMarks(); }
+  }
+  if (what.charts || what.pins) {
+    paintPin();
+    if (page === "home") paintHomeCards();
+    if (page === "charts") renderMyCharts();
+  }
+  paintCfgSums();
+}
+const whenTxt = (iso) => {
+  const d = new Date(iso), today = new Date().toDateString() === d.toDateString();
+  const hm = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return today ? `hoy ${hm}` : `${d.toLocaleDateString("es-AR", { day: "numeric", month: "short" })} ${hm}`;
+};
+let privacy0 = null;
+function paintSync(st = syncState()) {
+  $("#syncBox").hidden = !st.available;
+  // con la sincronización prendida, lo de «no se envía nada» deja de ser cierto: se dice qué viaja y cómo
+  privacy0 ??= $("#privacyNote").textContent;
+  $("#privacyNote").textContent = privacy0 + (st.on ? " Con la sincronización entre dispositivos, tus cartas viajan cifradas a la base de sincronización: solo tus dispositivos pueden leerlas." : "");
+  if (!st.available) return;
+  $("#syncOff").hidden = st.on;
+  $("#syncOn").hidden = !st.on;
+  if (st.on) {
+    const el = $("#syncSt");
+    el.classList.toggle("err", !!st.err && !st.busy);
+    el.innerHTML = st.busy ? "Sincronizando…"
+      : st.err ? `No se pudo sincronizar: ${esc(st.err)}`
+      : st.last ? `Sincronizado · <b>${esc(whenTxt(st.last))}</b>` : "Todavía no se sincronizó.";
+    $("#syncCodeTxt").textContent = st.code;
+  } else {
+    $("#syncCodeBox").hidden = true;
+    $("#syncShow").setAttribute("aria-expanded", "false");
+  }
+  paintCfgSums();
+}
+function setupSync() {
+  const say = (text, isError = false) => { const el = $("#syncNote"); el.textContent = text; el.classList.toggle("err", isError); };
+  const showCode = (on) => { $("#syncCodeBox").hidden = !on; $("#syncShow").setAttribute("aria-expanded", String(on)); };
+  $("#syncCreate").addEventListener("click", async () => {
+    say("");
+    $("#syncCreate").disabled = true;
+    try {
+      await syncConnect(newCode());
+      showCode(true);
+      const st = syncState();
+      say(st.err ? "" : "Listo. Este es tu código: escribilo en tus otros dispositivos.");
+    } catch (err) { say(err.message, true); }
+    finally { $("#syncCreate").disabled = false; }
+  });
+  $("#syncHave").addEventListener("click", () => {
+    const open = $("#syncJoin").hidden;
+    $("#syncJoin").hidden = !open;
+    $("#syncHave").setAttribute("aria-expanded", String(open));
+    if (open) $("#syncCode").focus();
+  });
+  const go = async () => {
+    say("Buscando…");
+    $("#syncGo").disabled = true;
+    try {
+      await syncJoin($("#syncCode").value);
+      $("#syncCode").value = "";
+      $("#syncJoin").hidden = true;
+      const st = syncState();
+      say(st.err ? "" : "Conectado: tus cartas ya están sincronizadas.");
+    } catch (err) { say(err.message, true); }
+    finally { $("#syncGo").disabled = false; }
+  };
+  $("#syncGo").addEventListener("click", go);
+  $("#syncCode").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+  $("#syncNowBtn").addEventListener("click", () => { say(""); syncNow(); });
+  $("#syncShow").addEventListener("click", () => showCode($("#syncCodeBox").hidden));
+  $("#syncCopy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(syncState().code); say("Código copiado."); }
+    catch { say("No se pudo copiar: seleccionalo y copialo a mano."); }
+  });
+  let armT = 0;
+  $("#syncOffBtn").addEventListener("click", () => {
+    const b = $("#syncOffBtn");
+    if (b.dataset.arm !== "1") {
+      b.dataset.arm = "1";
+      b.textContent = "¿Seguro? Tocá de nuevo para dejar de sincronizar";
+      clearTimeout(armT);
+      armT = setTimeout(() => { b.dataset.arm = ""; b.textContent = "Dejar de sincronizar este dispositivo"; }, 5000);
+      return;
+    }
+    clearTimeout(armT);
+    b.dataset.arm = "";
+    b.textContent = "Dejar de sincronizar este dispositivo";
+    syncOff();
+    say("Este dispositivo ya no se sincroniza. Tus cartas quedan acá; los otros dispositivos siguen igual.");
+  });
+}
+
 function setupBackup() {
   $("#backup").hidden = false;
 
@@ -2876,6 +3027,7 @@ function setupBackup() {
 // Las cartas guardadas viven en el navegador de cada persona; el aviso de privacidad lo dice.
 function setupPublic() {
   $("#privacyNote").textContent = "Zodíaco tropical, calculado con Swiss Ephemeris (Moshier). Los datos de nacimiento se envían al servidor solo para calcular la carta y no se guardan ahí.";
+  privacy0 = null;
 }
 
 const formReady = (v) => !!(v.date && v.time && String(v.lat) !== "" && String(v.lon) !== "" &&
@@ -3154,6 +3306,7 @@ const isPinned = (id) => pinIds.includes(id);
 function setPinned(id, on) {
   pinIds = on ? [...pinIds.filter((x) => x !== id), id] : pinIds.filter((x) => x !== id);
   try { localStorage.setItem(PIN_KEY, JSON.stringify(pinIds)); } catch {}
+  dispatchEvent(new CustomEvent("carta:changed", { detail: "pins" }));
   paintPin();
   if (page === "home") paintHomeCards();
 }
@@ -3669,6 +3822,8 @@ async function init() {
   syncPartners();
   paintMode();
   route();                                        // sin # abre el inicio; #carta, la carta de antes
+  setupSync();
+  initSync(syncHost);                             // de fondo: nada de lo de arriba la espera
 }
 init();
 // la barrita de arriba: aparece si algún pedido al servidor tarda más de un instante

@@ -15,7 +15,7 @@ fallo() { echo; echo "$1"; pausa; exit 1; }
 if [ "$(uname)" != "Darwin" ] && [ -z "$CARTA_INSTALL_ANYOS" ]; then
   fallo "Este instalador es para macOS."
 fi
-for f in app.py astro.py store.py presence.py limits.py requirements.txt static/index.html assets/launcher.sh assets/AppIcon.icns; do
+for f in app.py astro.py store.py sync.py presence.py limits.py requirements.txt static/index.html assets/launcher.sh assets/AppIcon.icns; do
   [ -e "$f" ] || fallo "Falta «$f». Ejecutá este archivo desde la carpeta completa de Carta natal."
 done
 
@@ -35,13 +35,15 @@ if ! "$PY" -c "import swisseph, tzdata" >/dev/null 2>&1; then
   "$PY" -m pip install -q -r requirements.txt \
     || { rm -rf "$DATA/venv"; fallo "No se pudo instalar pyswisseph. Suele faltar el compilador de Apple:  xcode-select --install  (y después volvé a abrir este archivo)."; }
 fi
+# para sincronizar entre dispositivos (si falla, la app anda igual, sin sincronizar)
+"$PY" -c "import psycopg" >/dev/null 2>&1 || "$PY" -m pip install -q "psycopg[binary]>=3.1" >/dev/null 2>&1
 
 # 2. La app: una copia completa de los archivos + el lanzador + el ícono
 echo "Creando $APP ..."
 case "$APP" in */"$NAME.app") ;; *) fallo "Ruta inesperada: $APP" ;; esac
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app" || fallo "No se pudo crear la carpeta de la app."
-cp app.py astro.py store.py presence.py limits.py requirements.txt "$APP/Contents/Resources/app/"
+cp app.py astro.py store.py sync.py presence.py limits.py requirements.txt "$APP/Contents/Resources/app/"
 cp -R static "$APP/Contents/Resources/app/static"
 find "$APP" -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

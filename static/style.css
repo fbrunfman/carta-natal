@@ -2259,3 +2259,22 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .hc-groups { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .hc-g { padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line-strong); font-size: calc(11.5px * var(--fs)); color: var(--ink-2); white-space: nowrap; }
 @media (pointer: coarse) { .gchip { min-height: 38px; padding: 6px 14px; } .gnew { min-height: 38px; font-size: 16px; } }
+
+/* ---------- sincronizar entre dispositivos (Configuración → Datos) ---------- */
+.syncbox { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.syncbox[hidden] { display: none; }
+.syncbox h3 { margin: 0; font-size: calc(14.5px * var(--fs)); font-weight: 600; }
+.sync-acts { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 10px; }
+.sync-join { display: flex; gap: 8px; margin-top: 10px; }
+.sync-join[hidden], .sync-code[hidden], #syncOff[hidden], #syncOn[hidden] { display: none; }
+.sync-join input { flex: 1 1 auto; min-width: 0; font: 600 calc(14px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; }
+.sync-st { margin: 10px 0 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
+.sync-st.err { color: var(--hard); }
+.sync-st b { color: var(--ink); font-weight: 600; }
+.sync-code { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--field); }
+.sync-code code { font: 700 calc(16px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .06em; color: var(--ink); user-select: all; }
+.sync-code .nlink-btn { margin-left: 10px; }
+.sync-offbtn { display: block; margin-top: 12px; color: var(--hard); }
+.syncbox .status { margin: 8px 0 0; font-size: calc(12.5px * var(--fs)); min-height: 0; }
+.syncbox .status:empty { display: none; }
+.syncbox .status.err { color: var(--hard); }

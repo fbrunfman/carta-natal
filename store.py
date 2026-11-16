@@ -146,6 +146,7 @@ NOTE_MAX = 150            # notas por carta
 NOTE_TEXT = 5000          # caracteres por nota
 REF_MAX = 24              # vínculos por nota
 SNAP_STR = re.compile(r"^[a-z]{2,16}$")
+CHART_ID = re.compile(r"^[0-9a-f]{12}$")
 ISO = re.compile(r"\d{4}-\d{2}-\d{2}T[\d:.]+Z?")
 
 
@@ -422,6 +423,38 @@ class ChartStore:
                     self._write(charts)
                     return rec
         raise NotFound("Esa carta ya no existe.")
+
+    def put_many(self, items) -> list:
+        """Guarda cartas tal como vienen de otro dispositivo (la sincronización): con su id, sus notas, sus grupos y
+        sus fechas. Si ya está, se reemplaza; si no, se agrega."""
+        if not isinstance(items, list) or len(items) > 100:
+            raise StoreError("Demasiadas cartas de una vez.")
+        recs = []
+        for it in items:
+            rec = clean(it)
+            cid = it.get("id")
+            if not isinstance(cid, str) or not CHART_ID.match(cid):
+                raise StoreError("Datos inválidos.")
+            notes = clean_notes(it.get("notes"))
+            if notes:
+                rec["notes"] = notes
+            rec["id"] = cid
+            for f in ("created", "updated"):
+                v = it.get(f)
+                rec[f] = v if isinstance(v, str) and ISO.fullmatch(v) else _now()
+            recs.append(rec)
+        with self._lock:
+            charts = self._read()
+            where = {c.get("id"): i for i, c in enumerate(charts)}
+            for rec in recs:
+                if rec["id"] in where:
+                    charts[where[rec["id"]]] = rec
+                else:
+                    where[rec["id"]] = len(charts)
+                    charts.append(rec)
+            if recs:
+                self._write(charts)
+        return recs
 
     def delete(self, chart_id: str) -> None:
         with self._lock:

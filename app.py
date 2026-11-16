@@ -20,6 +20,7 @@ import astro
 from limits import Busy, RateLimiter, Slots
 from presence import Presence
 from store import ChartStore, NotFound, StoreError, clean as clean_chart
+from sync import SyncError, SyncOff, SyncStore, db_url
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 STORE = ChartStore()
@@ -27,6 +28,8 @@ CHARTS_ROUTE = re.compile(r"^/api/charts(?:/([0-9a-f]{12}))?(/notes)?$")
 WINDOW_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 MAX_BODY = 64 * 1024
 MAX_BODY_NOTES = 2 * 1024 * 1024     # las notas de una carta, o un archivo importado con notas
+MAX_BODY_SYNC = 8 * 1024 * 1024      # la sincronización: varias cartas (cifradas) con sus notas
+SYNC = None                          # SyncStore si hay una base de sincronización configurada (ver sync.py)
 
 # Ventanas abiertas. Solo decide algo con --idle-exit (lo usa «Carta natal.app»); sin esa opción
 # el servidor corre hasta que lo cierres vos.
@@ -43,7 +46,8 @@ GLOBAL_LIMITER = None          # entre todos
 HEAVY = Slots(3)               # cálculos pesados a la vez
 TRUSTED_PROXIES = 1            # cuántos proxies hay delante; la IP es la que anotó el último
 COST = {"/api/chart": 1, "/api/transits": 2, "/api/synastry": 2, "/api/transit-calendar": 20, "/api/validate-chart": 0.5,
-        "/api/featured": 6, "/api/upcoming": 8, "/api/moon": 1, "/api/moon-calendar": 3}
+        "/api/featured": 6, "/api/upcoming": 8, "/api/moon": 1, "/api/moon-calendar": 3,
+        "/api/sync/pull": 0.5, "/api/sync/push": 1}
 HEAVY_PATHS = {"/api/transit-calendar", "/api/featured", "/api/upcoming"}     # los que recorren años o meses
 
 
@@ -220,7 +224,8 @@ class Handler(SimpleHTTPRequestHandler):
             # El lanzador lo usa para saber si ya hay un servidor de Carta natal corriendo.
             if parse_qs(url.query).get("launcher"):
                 PRESENCE.touch()
-            self._json({"app": "carta-natal", "idleExit": IDLE_EXIT, "windows": PRESENCE.windows, "public": PUBLIC})
+            self._json({"app": "carta-natal", "idleExit": IDLE_EXIT, "windows": PRESENCE.windows, "public": PUBLIC,
+                        "sync": SYNC is not None})
         elif url.path == "/api/presence":
             self._stream(parse_qs(url.query).get("id", [""])[0])
         else:
@@ -258,7 +263,7 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._guard(writing=True):
             return
         m = CHARTS_ROUTE.match(urlparse(self.path).path)
-        if not m and action != "import":
+        if not m and action not in ("import", "put"):
             self._json({"error": "No encontrado."}, 404)
             return
         chart_id = m.group(1) if m else None
@@ -271,6 +276,8 @@ class Handler(SimpleHTTPRequestHandler):
                     self._json(STORE.set_notes(chart_id, self._read_json(MAX_BODY_NOTES).get("notes")))
             elif action == "import":
                 self._json(STORE.import_many(self._read_json(MAX_BODY_NOTES).get("items")))
+            elif action == "put":                    # cartas que llegan de otro dispositivo (sincronización)
+                self._json({"charts": STORE.put_many(self._read_json(MAX_BODY_SYNC).get("items"))})
             elif action == "create" and not chart_id:
                 self._json(STORE.create(self._read_json()), 201)
             elif action == "update" and chart_id:
@@ -305,12 +312,34 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:  # no tirar el servidor por un caso raro
             self._json({"error": f"Error interno de cálculo: {e}"}, 500)
 
+    def _sync(self, path):
+        """Sincronizar entre dispositivos: bajar lo nuevo o subir cambios (cifrados). Ver sync.py."""
+        if not self._guard(writing=True) or not self._throttle(path):
+            return
+        if SYNC is None:
+            self._json({"error": "La sincronización no está configurada en este servidor."}, 503)
+            return
+        try:
+            data = self._read_json(MAX_BODY_SYNC)
+            self._json(SYNC.pull(data) if path == "/api/sync/pull" else SYNC.push(data))
+        except (SyncError, StoreError) as e:
+            self._json({"error": str(e)}, 400)
+        except SyncOff as e:
+            self._json({"error": str(e)}, 503)
+        except Exception as e:  # la base no responde, se cortó, etc.: no tirar el servidor
+            print(f"sincronización: {type(e).__name__}", flush=True)
+            self._json({"error": "No se pudo sincronizar. Probá de nuevo en un rato."}, 503)
+
     def do_POST(self):
         path = urlparse(self.path).path
         if path in COMPUTE:
             self._compute(COMPUTE[path], path)
+        elif path in ("/api/sync/pull", "/api/sync/push"):
+            self._sync(path)
         elif path == "/api/charts/import":          # sumar las cartas de un archivo exportado
             self._charts_write("import")
+        elif path == "/api/charts/put":
+            self._charts_write("put")
         else:
             self._charts_write("create")
 
@@ -351,7 +380,7 @@ def _watch(server):
 
 
 def main():
-    global PRESENCE, IDLE_EXIT, PUBLIC, ALLOWED_HOSTS, LIMITER, GLOBAL_LIMITER, TRUSTED_PROXIES
+    global PRESENCE, IDLE_EXIT, PUBLIC, ALLOWED_HOSTS, LIMITER, GLOBAL_LIMITER, TRUSTED_PROXIES, SYNC
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=None,
                     help="puerto (local: 8765; con --public: la variable PORT del hosting, o 10000)")
@@ -388,6 +417,11 @@ def main():
         url = f"http://127.0.0.1:{port}"
         print(f"Carta natal en {url}  (Ctrl+C para salir)", flush=True)
         print(f"Cartas guardadas en: {STORE.file}", flush=True)
+
+    sync_url = db_url()
+    if sync_url:
+        SYNC = SyncStore(sync_url)
+        print("Sincronización entre dispositivos: activada.", flush=True)
 
     server = ThreadingHTTPServer((host, port), Handler)
     if args.open and url:

@@ -18,7 +18,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /install /usr/local
 WORKDIR /app
-COPY app.py astro.py limits.py presence.py store.py ./
+COPY app.py astro.py limits.py presence.py store.py sync.py ./
 COPY static ./static
 # sin permisos de root; el hosting define PORT (por defecto 10000)
 RUN useradd --system --uid 10001 --no-create-home app

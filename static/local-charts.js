@@ -123,6 +123,30 @@ export const localCharts = {
     return rec;
   },
 
+  /** Cartas que llegan de otro dispositivo (la sincronización): con su id, notas, grupos y fechas. El servidor valida
+   *  los datos de nacimiento y los grupos; las notas se limpian acá (no viajan al servidor). */
+  async put(items) {
+    if (!items.length) return [];
+    const res = await validate({ items: items.map((c) => ({ ...c, notes: undefined })) });
+    const list = read(), out = [];
+    res.items.forEach((r, j) => {
+      const src = items[j];
+      if (!r.chart || !ID.test(src?.id || "")) return;
+      const notes = cleanNotes(src.notes);
+      const ts = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z?$/.test(v) ? v : now());
+      const rec = { ...r.chart, ...(notes.length ? { notes } : {}), id: src.id, created: ts(src.created), updated: ts(src.updated) };
+      const i = list.findIndex((c) => c.id === rec.id);
+      if (i >= 0) list[i] = rec;
+      else {
+        if (list.length >= MAX_CHARTS) return;
+        list.push(rec);
+      }
+      out.push(rec);
+    });
+    if (out.length) write(list);
+    return out;
+  },
+
   async remove(id) {
     const list = read();
     if (!list.some((c) => c.id === id)) throw new Error("Esa carta ya no existe.");

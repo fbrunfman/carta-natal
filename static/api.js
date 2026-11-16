@@ -28,7 +28,7 @@ export async function config() {
   if (cfg) return cfg;
   try {
     const j = await (await fetch("/api/ping")).json();
-    cfg = { public: !!j.public };
+    cfg = { public: !!j.public, sync: !!j.sync };
   } catch {
     return { public: false };       // sin servidor: no se recuerda, se vuelve a preguntar
   }
@@ -43,6 +43,8 @@ const remote = {
   create: (body) => call("/api/charts", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) }),
   update: (id, body) => call(`/api/charts/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) }),
   remove: (id) => call(`/api/charts/${id}`, { method: "DELETE" }),
+  /** Cartas que llegan de otro dispositivo: con su id, notas y grupos (reemplaza o agrega). */
+  put: (items) => call("/api/charts/put", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ items }) }).then((r) => r.charts),
   // un servidor de una versión anterior (abierto desde antes de las notas) no conoce esta ruta: se dice qué hacer
   setNotes: (id, notes) => call(`/api/charts/${id}/notes`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ notes }) })
     .catch((err) => {
@@ -78,14 +80,18 @@ const remote = {
 };
 
 const store = async () => ((await config()).public ? localCharts : remote);
+// Cada cambio en las cartas avisa (`carta:changed`): la sincronización lo sube. Lo que escribe la propia sincronización
+// (`put`, y `remove` con quiet) no avisa, para no volver a subir lo que acaba de bajar.
+const changed = (r) => { dispatchEvent(new CustomEvent("carta:changed", { detail: "charts" })); return r; };
 export const charts = {
   list: async () => (await store()).list(),
-  create: async (body) => (await store()).create(body),
-  update: async (id, body) => (await store()).update(id, body),
-  remove: async (id) => (await store()).remove(id),
-  setNotes: async (id, notes) => (await store()).setNotes(id, notes),
+  create: async (body) => changed(await (await store()).create(body)),
+  update: async (id, body) => changed(await (await store()).update(id, body)),
+  remove: async (id, quiet = false) => { const r = await (await store()).remove(id); return quiet ? r : changed(r); },
+  setNotes: async (id, notes) => changed(await (await store()).setNotes(id, notes)),
+  put: async (items) => (await store()).put(items),
   exportData: async () => (await store()).exportData(),
-  importData: async (obj) => (await store()).importData(obj),
+  importData: async (obj) => changed(await (await store()).importData(obj)),
 };
 
 // Cálculos que viajan como JSON (los datos de nacimiento no van en la URL).

@@ -599,6 +599,51 @@ versión pública, así que sirve para pasar cartas de una a la otra.
 Si el archivo se corrompe, la app lo aparta con otro nombre y empieza uno vacío en vez de pisarlo.
 (En la versión pública es distinto: ver «Alojarla en internet».)
 
+## Sincronizar entre dispositivos (opcional)
+
+Las mismas cartas en el celular, el iPad y la compu. Cada dispositivo trabaja con lo suyo —**nada espera a la red**: las
+cartas aparecen al instante— y de fondo sube sus cambios y baja los de los otros: al abrir la app, al volver a ella, cada
+2 minutos mientras se ve y unos segundos después de cada cambio. La base es un Postgres de **Neon (plan gratis)**.
+
+**Qué viaja:** cada carta con sus notas y grupos, las cartas fijadas y la configuración (estilo, letras, colores, orbes,
+tipos de aspecto, «Entre casas», viajes, sistema de casas y nodo). **No viaja:** el tamaño de la letra y del mandala (dependen
+de cada pantalla), el tema claro u oscuro, las últimas cartas abiertas y las posiciones calculadas para las tarjetas.
+
+**Privado:** todo se cifra en el dispositivo (AES-GCM) con una clave que sale de un **código de sincronización** (20 letras
+y números, PBKDF2) que nunca viaja. El servidor y Neon guardan solo un identificador del espacio, una clave opaca por cosa,
+cuándo cambió y el texto cifrado: ni nombres, ni fechas, ni notas. Quien no tiene el código no puede leer nada; si se
+pierde el código, lo de la base no se puede recuperar (lo de cada dispositivo queda).
+
+**Cómo se une:** gana el cambio más nuevo. Si una carta cambió en dos dispositivos a la vez, se juntan sus notas y sus
+grupos. Al conectar un dispositivo que ya tenía cartas, las que son la misma persona (misma fecha, hora y lugar) se unen
+en una sola; la configuración y las fijadas llegan de los otros (un dispositivo nuevo no pisa nada con lo de fábrica).
+Borrar una carta la borra en todos.
+
+**Ponerla en marcha (una vez):**
+
+1. **Neon:** entrá a [neon.com](https://neon.com), creá una cuenta (sirve la de GitHub) y un proyecto (por ejemplo
+   `carta-natal`). Región: la más cercana a Render (si no la cambiaste en Render, Oregon → *AWS US West 2 (Oregon)*).
+   En el proyecto, **Connect** → copiá la *connection string* (empieza con `postgresql://` y termina en
+   `?sslmode=require…`). Sirve la normal o la «pooled». La app crea su tabla sola.
+2. **Render:** en el servicio, **Environment → Add Environment Variable**: `CARTA_NATAL_SYNC_DB` = la connection string.
+   Guardá: Render vuelve a desplegar (también hace falta el `git push` de esta versión, que trae `sync.py` y `psycopg`).
+3. **Mac:** doble clic en **`sincronizar.command`**, pegá la misma connection string y Enter: la guarda en
+   `~/Library/Application Support/Carta natal/sync-db.txt` (solo la lee tu usuario), instala `psycopg` y prueba la conexión.
+   Después cerrá Carta natal y volvé a abrirla. (Para dejar de usar la base en esa compu: correlo de nuevo y escribí `borrar`.)
+4. **En la app**, Configuración → **Datos** → *Sincronizar entre dispositivos*: en un dispositivo, **«Crear un código»**
+   (lo muestra: copialo o anotalo); en los otros, **«Ya tengo un código»** y escribilo (mayúsculas, guiones y espacios no
+   importan). Si el código no existe, avisa en vez de crear un espacio vacío.
+
+Ahí mismo: cuándo se sincronizó por última vez (o el error), **«Sincronizar ahora»**, **«Ver el código»** (con «Copiar»)
+y **«Dejar de sincronizar este dispositivo»** (pide confirmar; las cartas quedan en el dispositivo y los otros siguen
+igual). Sin la base configurada en el servidor, esta parte no aparece y la app anda como siempre.
+
+Detalles: `sync.py` (servidor: tabla `sync_items`, `/api/sync/pull` y `/api/sync/push`; en la pública cuestan 0,5 y 1
+pedido de los límites) y `static/sync.js` (cliente). Límites por espacio: 3000 cosas y 40 MB; una carta cifrada, hasta 1,5 MB.
+El servidor de internet y el de la compu pueden escribir a la vez: un candado de Postgres los ordena. En la compu, lo que
+llega se guarda con `POST /api/charts/put` (con su id, notas y grupos). Neon gratis se duerme a los 5 minutos sin uso y
+despierta en menos de un segundo; lo que sí tarda hasta un minuto es Render dormido (la página misma). Test: `e2e_sync`.
+
 ## Alojarla en internet (Render)
 
 La app también puede correr en un servidor para que otras personas la usen con un link. Es la **versión
@@ -608,7 +653,8 @@ Es la misma app con tres diferencias:
 - **Las cartas guardadas viven en el navegador de cada persona**, nunca en el servidor: cada uno ve solo
   las suyas, sin cuentas ni contraseñas. Si borran los datos del sitio se pierden, por eso hay
   *Exportar cartas* e *Importar cartas…* (un archivo JSON) en Configuración → *Datos*.
-- **El servidor no guarda nada**: recibe los datos de nacimiento, calcula y responde. Los datos viajan en el
+- **El servidor no guarda nada** (salvo, si la configurás, la sincronización entre dispositivos: cifrada, ver arriba):
+  recibe los datos de nacimiento, calcula y responde. Los datos viajan en el
   cuerpo de un pedido POST (no en la URL) y el registro del servidor solo anota «POST /api/chart → 200».
   El formulario arranca vacío: tu carta de arranque está en `static/defaults-local.js`, que no se sube al
   repositorio y que la versión pública no sirve (devuelve 404).
@@ -656,9 +702,11 @@ astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, trá
                   tránsitos destacados y próximos eventos (ingresos, estaciones, casas), y la Luna (signo, fase,
                   cambios de signo y fases principales del mes) y dónde están el Sol y los planetas ahora (el mapa del inicio)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
+sync.py           sincronizar entre dispositivos (opcional): Postgres/Neon, lo cifrado de cada dispositivo
+sincronizar.command  conecta la app de la compu con la base de Neon (guarda la conexión e instala psycopg)
 app.py            servidor (local: solo 127.0.0.1; con --public, para alojarla): /api/chart, /api/timezones,
                   /api/charts, /api/transits, /api/featured, /api/upcoming, /api/synastry, /api/transit-calendar,
-                  /api/moon, /api/moon-calendar, /api/validate-chart, /api/ping, /api/presence, /healthz
+                  /api/moon, /api/moon-calendar, /api/validate-chart, /api/ping, /api/presence, /api/sync/pull, /api/sync/push, /healthz
 presence.py       cuándo cerrar el servidor: cuando no queda ninguna ventana abierta (--idle-exit)
 limits.py         límites de la versión pública: pedidos por persona y cálculos pesados a la vez
 Dockerfile, render.yaml, .dockerignore, .gitignore   para alojarla en Render
@@ -680,6 +728,7 @@ static/           interfaz
   interp-signs.js, interp-houses.js, interp-aspects.js   los textos de interpretación (editables)
   glyphs.js                         símbolos de planetas y signos dibujados como vectores
   saved.js, api.js                  cartas guardadas (la lista, crear, editar, borrar) y cliente de la API
+  sync.js                           sincronizar entre dispositivos: el código, cifrar, subir, bajar y unir
   fontpick.js                       el selector de letras con vista previa (cada opción con su letra)
   fonts/                            letras incluidas (OFL): Inter, Source Sans, Nunito, Atkinson, IBM Plex Sans, Lora, Source Serif, EB Garamond; Kalam, Patrick Hand, Mali, Shantell Sans; Plutón (⯓)
   notes.js                          notas de la carta: vínculos, leer el texto, qué cambió (sin DOM: se prueba con node)
@@ -709,6 +758,11 @@ En la versión pública escucha en todas las interfaces, pero no guarda nada de 
 que no sea el mismo sitio, exige JSON para escribir, limita los pedidos por persona (la IP es la que anotó
 el proxy del hosting, no la que diga el navegador en `X-Forwarded-For`), no sirve código del servidor ni
 lista carpetas, y manda `X-Frame-Options`, `nosniff`, `no-referrer` y `noindex`.
+
+La sincronización entre dispositivos no le da al servidor nada legible: el código queda en cada dispositivo y lo que llega
+está cifrado. Quien conozca un código ajeno no puede adivinarlo (20 caracteres al azar, unos 100 bits), y en la versión
+pública esos pedidos cuentan para los límites de siempre. La cadena de conexión de Neon vive solo en la variable de Render
+y en `sync-db.txt` de la compu (fuera del repositorio).
 
 ## Límites
 
