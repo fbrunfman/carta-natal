@@ -2921,9 +2921,14 @@ function setupSync() {
     $("#syncCreate").disabled = true;
     try {
       await syncConnect(newCode());
-      showCode(true);
       const st = syncState();
-      say(st.err ? "" : "Listo. Este es tu código: escribilo en tus otros dispositivos.");
+      if (st.err) {                     // no se pudo subir nada: el código no sirve todavía (otro dispositivo no lo encontraría)
+        syncOff();
+        say(`No se pudo crear el código: ${st.err}`, true);
+        return;
+      }
+      showCode(true);
+      say("Listo. Este es tu código: escribilo en tus otros dispositivos.");
     } catch (err) { say(err.message, true); }
     finally { $("#syncCreate").disabled = false; }
   });
