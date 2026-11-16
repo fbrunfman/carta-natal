@@ -40,7 +40,9 @@ export function newCode() {
 // Lo que se escribe o se pega: mayúsculas o minúsculas, con guiones, espacios o rayas (el celular cambia «-» por «—»), o
 // pegado dentro de un texto («mi código es abcd-efgh-…»): se busca el código ahí adentro.
 export function normCode(s) {
-  const t = String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let t = String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const link = t.match(/#\/?SYNC=([^&\s]+)/);                        // el link para conectar: lo que va después de #sync=
+  if (link) { try { t = decodeURIComponent(link[1]); } catch { t = link[1]; } }
   const m = t.match(/(?:^|[^A-Z0-9])([A-Z0-9]{4}(?:[\s\-\u2010-\u2015_.·]*[A-Z0-9]{4}){4})(?![A-Z0-9])/);
   return (m ? m[1] : t).replace(/[^A-Z0-9]/g, "");
 }

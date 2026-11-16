@@ -2282,3 +2282,37 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .syncbox .status { margin: 8px 0 0; font-size: calc(12.5px * var(--fs)); min-height: 0; }
 .syncbox .status:empty { display: none; }
 .syncbox .status.err { color: var(--hard); }
+.sync-qr { margin-bottom: 12px; }
+.sync-qr[hidden] { display: none; }
+.sync-qr-img { width: 168px; height: 168px; padding: 8px; border-radius: 10px; background: #fff; }   /* siempre claro: las cámaras leen mejor negro sobre blanco */
+.sync-qr-img svg { display: block; width: 100%; height: 100%; }
+/* el link para conectar: una ventana chica que pregunta */
+.syncdlg { width: min(460px, calc(100vw - 24px)); }
+.syncdlg .pdl-body { padding-top: 14px; }
+.syncdlg .pdl-body p { margin: 0 0 8px; }
+.syncdlg .status { min-height: 0; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
+.syncdlg .status:empty { display: none; }
+.syncdlg .status.err { color: var(--hard); }
+.syncdlg-foot { display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.syncdlg-foot [hidden] { display: none; }
+
+/* ---------- inicio sin cartas (con sincronización): dos caminos ---------- */
+.hw-lead { margin: 0 0 12px; color: var(--ink-2); font-size: calc(14.5px * var(--fs)); }
+.hw-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
+@media (max-width: 640px) { .hw-paths { grid-template-columns: minmax(0, 1fr); } }
+.hw-opt {
+  display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 4px 12px; padding: 16px 18px; text-align: left;
+  border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.hw-opt:hover { border-color: var(--accent-2); }
+.hw-opt[aria-expanded="true"] { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2) inset; }
+.hw-opt svg { grid-row: span 2; width: 26px; height: 26px; margin-top: 1px; fill: none; stroke: var(--accent-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hw-opt b { font-size: calc(15.5px * var(--fs)); font-weight: 600; line-height: 1.3; }
+.hw-opt small { color: var(--ink-2); font-size: calc(13px * var(--fs)); line-height: 1.4; }
+.hw-join { max-width: 760px; margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); }
+.hw-join[hidden] { display: none; }
+.hw-join .fine { margin: 0 0 10px; }
+.hw-join .sync-join { margin-top: 0; grid-template-columns: 1fr auto auto; }
+.hw-join .status { margin: 8px 0 0; font-size: calc(13px * var(--fs)); min-height: 0; color: var(--ink-2); }
+.hw-join .status:empty { display: none; }
+.hw-join .status.err { color: var(--hard); }

@@ -513,6 +513,21 @@
   </div>
   <div class="pdl-body" id="notesDlgBody"></div>
 </dialog>
+<!-- se abrió un link para conectar (…/#sync=CÓDIGO): se pregunta antes de conectar -->
+<dialog id="syncDlg" class="pdlg syncdlg" aria-labelledby="syncDlgTitle">
+  <div class="pdl-head">
+    <div class="pdl-titles"><p class="pdl-ctx">Sincronizar</p><h2 id="syncDlgTitle">Conectar este dispositivo</h2></div>
+    <button type="button" class="pdl-icon" id="syncDlgX" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="pdl-body">
+    <p id="syncDlgTxt"></p>
+    <p class="status" id="syncDlgNote" role="status" aria-live="polite"></p>
+  </div>
+  <div class="syncdlg-foot">
+    <button type="button" class="ghost" id="syncDlgNo">Ahora no</button>
+    <button type="button" class="home-continue" id="syncDlgGo">Conectar</button>
+  </div>
+</dialog>
 <dialog id="noteView" class="pdlg nview" aria-labelledby="noteViewTitle">
   <div class="pdl-head">
     <button type="button" class="nback" id="noteViewBack" aria-label="Volver a las notas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Notas</button>
@@ -839,13 +854,18 @@
             <div id="syncOn" hidden>
               <p class="sync-st" id="syncSt" role="status" aria-live="polite"></p>
               <div class="sync-acts">
-                <button type="button" class="ghost" id="syncNowBtn">Sincronizar ahora</button>
+                <button type="button" class="ghost" id="syncShare">Compartir link para conectar</button>
                 <button type="button" class="ghost" id="syncShow" aria-expanded="false" aria-controls="syncCodeBox">Ver el código</button>
+                <button type="button" class="ghost" id="syncNowBtn">Sincronizar ahora</button>
               </div>
               <div class="sync-code" id="syncCodeBox" hidden>
+                <div class="sync-qr" id="syncQr" hidden>
+                  <div class="sync-qr-img" id="syncQrImg" role="img" aria-label="Código QR del link para conectar"></div>
+                  <p class="fine tight">Escanealo con la cámara del otro dispositivo: abre la app y pregunta si conectarlo.</p>
+                </div>
                 <code id="syncCodeTxt"></code>
                 <button type="button" class="nlink-btn" id="syncCopy">Copiar</button>
-                <p class="fine tight">Escribilo en tus otros dispositivos (Configuración → Datos → «Ya tengo un código»). Guardalo: sin él no se puede recuperar lo sincronizado.</p>
+                <p class="fine tight">O escribilo en el otro dispositivo (Configuración → Datos → «Ya tengo un código»). Guardalo: sin él no se puede recuperar lo sincronizado.</p>
               </div>
               <button type="button" class="nlink-btn sync-offbtn" id="syncOffBtn">Dejar de sincronizar este dispositivo</button>
             </div>

@@ -6,7 +6,7 @@ import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg } from "./settings.js";
-import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState, normCode, codeProblem } from "./sync.js";
+import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState, normCode, codeProblem, codeOk } from "./sync.js";
 import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
@@ -26,6 +26,7 @@ const VIEW = "carta:view";
 // Datos iniciales: en tu computadora, tu carta (están en defaults-local.js, que la versión pública no sirve).
 // Se recuerda lo último que calculaste.
 let LOCAL_DEFAULTS = null;
+let PUBLIC_URL = "";          // la dirección de la versión web (para el link de conectar desde la compu): defaults-local.js
 // Punto de partida de «Nueva carta»: vacío, salvo el lugar más común.
 const BLANK = {
   name: "", date: "", time: "", place: "Buenos Aires, Argentina", lat: "-34.6", lon: "-58.4167",
@@ -2826,9 +2827,11 @@ paintTheme();
 // ---------- sincronizar entre dispositivos (ver sync.js) ------------------------------------------------------
 let remapActive = null;            // la carta abierta se unió con su copia de otro dispositivo: este es su id nuevo
 const syncHost = {
-  getCfg: () => ({ settings: syncedCfg(), hsys: form.elements.hsys.value, node: form.elements.node.value }),
+  // `site`: la dirección de la versión web, para que la compu pueda armar el link de conectar
+  getCfg: () => ({ settings: syncedCfg(), hsys: form.elements.hsys.value, node: form.elements.node.value, ...(siteBase() ? { site: siteBase() } : {}) }),
   setCfg(d) {
     if (!d || typeof d !== "object") return;
+    if (typeof d.site === "string" && /^https?:\/\/[^\s#]+$/.test(d.site)) { try { localStorage.setItem(SITE_KEY, d.site); } catch {} }
     setSyncedCfg(d.settings);
     for (const n of ["hsys", "node"]) {
       const el = form.elements[n], v = d[n];
@@ -2897,6 +2900,7 @@ function paintSync(st = syncState()) {
   // con la sincronización prendida, lo de «no se envía nada» deja de ser cierto: se dice qué viaja y cómo
   privacy0 ??= $("#privacyNote").textContent;
   $("#privacyNote").textContent = privacy0 + (st.on ? " Con la sincronización entre dispositivos, tus cartas viajan cifradas a la base de sincronización: solo tus dispositivos pueden leerlas." : "");
+  if (page === "home" && !saved.items.length && !document.querySelector("#hwJoin:not([hidden])")) paintHomeCards();
   if (!st.available) return;
   $("#syncOff").hidden = st.on;
   $("#syncOn").hidden = !st.on;
@@ -2913,9 +2917,73 @@ function paintSync(st = syncState()) {
   }
   paintCfgSums();
 }
+// -- el link para conectar otro dispositivo: …/#sync=CÓDIGO (lo que va después de # no viaja al servidor)
+const SITE_KEY = "carta:site";
+/** La dirección de la versión web: esta misma si es la web; en la compu, la que trajo la sincronización o defaults-local.js. */
+function siteBase() {
+  if (isPublic()) return location.origin + location.pathname.replace(/\/index\.html$/, "").replace(/\/$/, "");
+  let s = "";
+  try { s = localStorage.getItem(SITE_KEY) || ""; } catch {}
+  return (s || PUBLIC_URL || "").replace(/\/$/, "");
+}
+const syncLink = (code) => (siteBase() && code ? `${siteBase()}/#sync=${code}` : "");
+let qrLib = null;
+async function paintQr() {
+  const link = syncLink(syncState().code);
+  $("#syncQr").hidden = !link;
+  if (!link) return;
+  try {
+    qrLib ||= (await import("./vendor/qrcode.js")).default;
+    const qr = qrLib(0, "M");
+    qr.addData(link);
+    qr.make();
+    $("#syncQrImg").innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  } catch { $("#syncQr").hidden = true; }
+}
+
+/** Un campo para escribir o pegar el código (o el link): cuántos van de 20, qué está mal y «Conectar».
+ *  Se usa en Configuración y en el inicio sin cartas. */
+function joinUI({ input, count, note, go, paste }, onDone) {
+  const say = (text, isError = false) => { note.textContent = text; note.classList.toggle("err", isError); };
+  const check = () => {
+    const n = normCode(input.value).length, p = codeProblem(input.value);
+    count.textContent = n ? `${n} de 20` : "";
+    count.classList.toggle("ok", !p);
+    say(p && n >= 20 ? p : "", true);         // recién con 20 o más, para no retar a mitad de camino
+  };
+  const run = async () => {
+    say("Buscando…");
+    go.disabled = true;
+    try {
+      await syncJoin(input.value);
+      input.value = "";
+      count.textContent = "";
+      const st = syncState();
+      if (st.err) say(`No se pudo sincronizar: ${st.err}`, true);
+      else { say("Conectado: tus cartas ya están sincronizadas."); onDone?.(); }
+    } catch (err) { say(err.message, true); }
+    finally { go.disabled = false; }
+  };
+  input.addEventListener("input", check);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } });
+  go.addEventListener("click", run);
+  if (paste) {
+    paste.hidden = !navigator.clipboard?.readText;
+    paste.addEventListener("click", async () => {
+      try { input.value = (await navigator.clipboard.readText()).trim(); check(); if (codeOk(input.value)) run(); }
+      catch { say("No se pudo pegar: mantené apretado el campo y elegí «Pegar».", true); }
+    });
+  }
+  return { say };
+}
+
 function setupSync() {
   const say = (text, isError = false) => { const el = $("#syncNote"); el.textContent = text; el.classList.toggle("err", isError); };
-  const showCode = (on) => { $("#syncCodeBox").hidden = !on; $("#syncShow").setAttribute("aria-expanded", String(on)); };
+  const showCode = (on) => {
+    $("#syncCodeBox").hidden = !on;
+    $("#syncShow").setAttribute("aria-expanded", String(on));
+    if (on) paintQr();
+  };
   $("#syncCreate").addEventListener("click", async () => {
     say("");
     $("#syncCreate").disabled = true;
@@ -2928,7 +2996,8 @@ function setupSync() {
         return;
       }
       showCode(true);
-      say("Listo. Este es tu código: escribilo en tus otros dispositivos.");
+      say(syncLink(st.code) ? "Listo. Para sumar otro dispositivo: «Compartir link para conectar» o escaneá el QR."
+        : "Listo. Este es tu código: escribilo en tus otros dispositivos.");
     } catch (err) { say(err.message, true); }
     finally { $("#syncCreate").disabled = false; }
   });
@@ -2938,33 +3007,22 @@ function setupSync() {
     $("#syncHave").setAttribute("aria-expanded", String(open));
     if (open) $("#syncCode").focus();
   });
-  const go = async () => {
-    say("Buscando…");
-    $("#syncGo").disabled = true;
-    try {
-      await syncJoin($("#syncCode").value);
-      $("#syncCode").value = "";
-      $("#syncJoin").hidden = true;
-      const st = syncState();
-      say(st.err ? "" : "Conectado: tus cartas ya están sincronizadas.");
-    } catch (err) { say(err.message, true); }
-    finally { $("#syncGo").disabled = false; }
-  };
-  $("#syncGo").addEventListener("click", go);
-  $("#syncCode").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
-  // mientras se escribe: cuántos van de 20, y qué está mal (recién cuando ya hay 20 o más, para no retar a mitad de camino)
-  $("#syncCode").addEventListener("input", () => {
-    const n = normCode($("#syncCode").value).length, p = codeProblem($("#syncCode").value);
-    const el = $("#syncCount");
-    el.textContent = n ? `${n} de 20` : "";
-    el.classList.toggle("ok", !p);
-    say(p && n >= 20 ? p : "", true);
-  });
+  joinUI({ input: $("#syncCode"), count: $("#syncCount"), note: $("#syncNote"), go: $("#syncGo") }, () => { $("#syncJoin").hidden = true; });
   $("#syncNowBtn").addEventListener("click", () => { say(""); syncNow(); });
   $("#syncShow").addEventListener("click", () => showCode($("#syncCodeBox").hidden));
   $("#syncCopy").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(syncState().code); say("Código copiado."); }
     catch { say("No se pudo copiar: seleccionalo y copialo a mano."); }
+  });
+  $("#syncShare").addEventListener("click", async () => {
+    const url = syncLink(syncState().code);
+    if (!url) return;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Carta natal", text: "Abrí este link en tu otro dispositivo para conectarlo con tus cartas:", url }); return; }
+      catch (err) { if (err?.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(url); say("Link copiado: mandátelo (por WhatsApp, mail…) y abrilo en el otro dispositivo."); }
+    catch { showCode(true); say("No se pudo copiar: escaneá el QR o usá el código."); }
   });
   let armT = 0;
   $("#syncOffBtn").addEventListener("click", () => {
@@ -2982,6 +3040,59 @@ function setupSync() {
     syncOff();
     say("Este dispositivo ya no se sincroniza. Tus cartas quedan acá; los otros dispositivos siguen igual.");
   });
+  // el link para conectar: la ventana que pregunta
+  const dlg = $("#syncDlg");
+  $("#syncDlgX").addEventListener("click", () => dlg.close());
+  $("#syncDlgNo").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  $("#syncDlgGo").addEventListener("click", async () => {
+    const code = dlg.dataset.code, note = $("#syncDlgNote"), btn = $("#syncDlgGo");
+    note.classList.remove("err");
+    note.textContent = "Conectando…";
+    btn.disabled = true;
+    try {
+      if (syncState().on) syncOff();          // pasaba con otro código
+      await syncJoin(code);
+      const st = syncState();
+      if (st.err) throw new Error(st.err);
+      note.textContent = "Listo: tus cartas ya están en este dispositivo.";
+      btn.hidden = true;
+      $("#syncDlgNo").textContent = "Cerrar";
+      setTimeout(() => { if (dlg.open) dlg.close(); }, 1800);
+    } catch (err) {
+      note.classList.add("err");
+      note.textContent = err.message;
+    } finally { btn.disabled = false; }
+  });
+}
+/** Se abrió un link …/#sync=CÓDIGO: se saca de la dirección (que no quede en el historial) y se devuelve el código. */
+function takeSyncLink() {
+  const m = /^#\/?sync=([^&]+)/i.exec(location.hash);
+  if (!m) return null;
+  history.replaceState(null, "", location.pathname + location.search + "#inicio");
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+/** Pregunta antes de conectar (según cómo está este dispositivo). */
+function offerSyncLink(code) {
+  const st = syncState(), dlg = $("#syncDlg");
+  const set = (title, txt, goTxt, noTxt) => {
+    $("#syncDlgTitle").textContent = title;
+    $("#syncDlgTxt").textContent = txt;
+    $("#syncDlgGo").hidden = !goTxt;
+    $("#syncDlgGo").textContent = goTxt || "";
+    $("#syncDlgNo").textContent = noTxt;
+    $("#syncDlgNote").textContent = "";
+    $("#syncDlgNote").classList.remove("err");
+  };
+  dlg.dataset.code = code;
+  if (!st.available) set("Sincronizar", "Este link es para conectar dispositivos, pero esta versión de la app no tiene la sincronización configurada.", "", "Cerrar");
+  else if (codeProblem(code)) set("Link incompleto", `El link para conectar no está entero: ${codeProblem(code)} Copialo de nuevo desde tu otro dispositivo.`, "", "Cerrar");
+  else if (st.on && normCode(st.code) === normCode(code)) set("Ya está conectado", "Este dispositivo ya está sincronizado con ese código.", "", "Listo");
+  else if (st.on) set("Cambiar de código", "Este dispositivo ya se sincroniza con otro código. ¿Pasarlo a este? Las cartas que hay acá quedan y se suman.", "Cambiar", "Cancelar");
+  else set("Conectar este dispositivo", "Vas a tener acá las mismas cartas, notas, grupos y configuración que en tus otros dispositivos, y se mantienen iguales." +
+    (saved.items.length ? " Las cartas que ya hay acá se suman (las que son la misma persona se unen)." : ""), "Conectar", "Ahora no");
+  if (!dlg.open) dlg.showModal();
+  ($("#syncDlgGo").hidden ? $("#syncDlgNo") : $("#syncDlgGo")).focus();
 }
 
 function setupBackup() {
@@ -3123,7 +3234,10 @@ function setPage(r) {
   else if (!chartStarted) startChart();
 }
 
+let syncReady = null;
 function route() {
+  const link = takeSyncLink();                    // …/#sync=CÓDIGO: pregunta si conectar (y sigue al inicio)
+  if (link) (syncReady || Promise.resolve()).then(() => offerSyncLink(link));
   const r = parseRoute();
   if (page === r.page && !(r.page === "lunar" && r.y && (moon.cal?.y !== r.y || moon.cal?.m !== r.m))) return;
   setPage(r);
@@ -3383,6 +3497,35 @@ function renderHomeCharts() {
   paintHomeCards();
   $("#homePrivTxt").textContent = isPublic() ? "Tus cartas se guardan solo en este navegador." : "Tus cartas se guardan en esta computadora.";
 }
+/** Inicio sin cartas, con la sincronización disponible y este dispositivo sin conectar: dos caminos. */
+function homeWelcome() {
+  const box = elx("div", { className: "hw" });
+  box.innerHTML = `<p class="hw-lead">Todavía no hay cartas en este dispositivo.</p>
+    <div class="hw-paths">
+      <button type="button" class="hw-opt" id="hwNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><b>Empezar de cero</b><small>Cargá tu primera carta.</small></button>
+      <button type="button" class="hw-opt" id="hwSync" aria-expanded="false" aria-controls="hwJoin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4.5v4h-4M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 19.5v-4h4"/></svg><b>Ya uso Carta natal en otro dispositivo</b><small>Traé tus cartas, notas y configuración.</small></button>
+    </div>
+    <div class="hw-join" id="hwJoin" hidden>
+      <p class="fine">Lo más fácil: en tu otro dispositivo, Configuración → Datos → <b>«Compartir link para conectar»</b> y abrí ese link acá (o escaneá su QR). O pegá el código:</p>
+      <div class="sync-join">
+        <input id="hwCode" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" placeholder="ABCD-EFGH-JKLM-NPQR-STUV" aria-label="Código de sincronización" aria-describedby="hwCount">
+        <span class="sync-count" id="hwCount" aria-live="polite"></span>
+        <button type="button" class="ghost" id="hwPaste">Pegar</button>
+        <button type="button" class="primary compact" id="hwGo">Conectar</button>
+      </div>
+      <p class="status" id="hwNote" role="status"></p>
+    </div>`;
+  const $b = (s) => box.querySelector(s);
+  $b("#hwNew").addEventListener("click", () => createFirst());
+  $b("#hwSync").addEventListener("click", () => {
+    const open = $b("#hwJoin").hidden;
+    $b("#hwJoin").hidden = !open;
+    $b("#hwSync").setAttribute("aria-expanded", String(open));
+    if (open) $b("#hwCode").focus({ preventScroll: true });
+  });
+  joinUI({ input: $b("#hwCode"), count: $b("#hwCount"), note: $b("#hwNote"), go: $b("#hwGo"), paste: $b("#hwPaste") });
+  return box;
+}
 /** Inicio: las 6 últimas cartas que abriste, «+ Nueva carta» y «Ver todas» (a Mis cartas). */
 function paintHomeCards() {
   const body = $("#homeChartBody");
@@ -3398,6 +3541,8 @@ function paintHomeCards() {
     if (formReady(v)) {
       nodes.push(elx("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
       nodes.push(elx("button", { type: "button", className: "home-tr-all hc-add", textContent: "Nueva carta" }, () => openForm("new")));
+    } else if (syncState().available && !syncState().on) {
+      nodes.push(homeWelcome());                      // con sincronización: empezar de cero o traer las cartas de otro dispositivo
     } else {
       nodes.push(elx("p", { className: "home-empty", textContent: "Todavía no guardaste ninguna carta." }));
       nodes.push(elx("button", { type: "button", className: "home-continue", textContent: "Crear mi primera carta" }, () => createFirst()));
@@ -3809,7 +3954,10 @@ async function init() {
   await config();
   setupBackup();
   if (isPublic()) setupPublic();
-  else { try { LOCAL_DEFAULTS = (await import("./defaults-local.js")).DEFAULTS; } catch { /* sin archivo: formulario vacío */ } }
+  else {
+    try { const m = await import("./defaults-local.js"); LOCAL_DEFAULTS = m.DEFAULTS; PUBLIC_URL = m.PUBLIC_URL || ""; }
+    catch { /* sin archivo: formulario vacío */ }
+  }
   const last = recall();
   fillForm(last);
   const view = recallView();
@@ -3834,9 +3982,9 @@ async function init() {
   syncSaveButtons();
   syncPartners();
   paintMode();
-  route();                                        // sin # abre el inicio; #carta, la carta de antes
   setupSync();
-  initSync(syncHost);                             // de fondo: nada de lo de arriba la espera
+  syncReady = initSync(syncHost);                 // de fondo: nada de lo de abajo la espera
+  route();                                        // sin # abre el inicio; #carta, la carta de antes
 }
 init();
 // la barrita de arriba: aparece si algún pedido al servidor tarda más de un instante

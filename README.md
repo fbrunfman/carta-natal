@@ -634,6 +634,15 @@ Borrar una carta la borra en todos.
    (lo muestra: copialo o anotalo); en los otros, **«Ya tengo un código»** y escribilo (mayúsculas, guiones y espacios no
    importan). Si el código no existe, avisa en vez de crear un espacio vacío.
 
+**Sumar otro dispositivo sin tipear nada:** en uno ya conectado, **«Compartir link para conectar»** (en el celular abre
+el menú de compartir; en la compu lo copia) o el **QR** de «Ver el código» (escaneado con la cámara). El link es
+`…/#sync=CÓDIGO`: lo que va después de `#` no viaja al servidor. Al abrirlo, la app lo saca de la dirección y pregunta
+«Conectar este dispositivo» (o avisa si ya está conectado, si pasaba con otro código —«Cambiar»— o si el link vino
+cortado). En la compu, el link apunta a la versión web: su dirección sale de `PUBLIC_URL` en `static/defaults-local.js`
+o de la que trae la sincronización desde la web. El QR lo dibuja `static/vendor/qrcode.js` (qrcode-generator, MIT), sin
+pedir nada a internet. **Un dispositivo sin cartas ni código** abre en el inicio con dos caminos: **«Empezar de cero»**
+o **«Ya uso Carta natal en otro dispositivo»** (pegar el link o el código, con **«Pegar»**). Test: `e2e_synclink`.
+
 Ahí mismo: cuándo se sincronizó por última vez (o el error), **«Sincronizar ahora»**, **«Ver el código»** (con «Copiar»)
 y **«Dejar de sincronizar este dispositivo»** (pide confirmar; las cartas quedan en el dispositivo y los otros siguen
 igual). Sin la base configurada en el servidor, esta parte no aparece y la app anda como siempre.
@@ -729,6 +738,7 @@ static/           interfaz
   glyphs.js                         símbolos de planetas y signos dibujados como vectores
   saved.js, api.js                  cartas guardadas (la lista, crear, editar, borrar) y cliente de la API
   sync.js                           sincronizar entre dispositivos: el código, cifrar, subir, bajar y unir
+  vendor/qrcode.js                  qrcode-generator (MIT): el QR del link para conectar otro dispositivo
   fontpick.js                       el selector de letras con vista previa (cada opción con su letra)
   fonts/                            letras incluidas (OFL): Inter, Source Sans, Nunito, Atkinson, IBM Plex Sans, Lora, Source Serif, EB Garamond; Kalam, Patrick Hand, Mali, Shantell Sans; Plutón (⯓)
   notes.js                          notas de la carta: vínculos, leer el texto, qué cambió (sin DOM: se prueba con node)
