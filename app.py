@@ -8,8 +8,11 @@
 import argparse
 import json
 import os
+import platform
 import re
 import select
+import subprocess
+import sys
 import threading
 import time
 import webbrowser
@@ -327,8 +330,11 @@ class Handler(SimpleHTTPRequestHandler):
         except SyncOff as e:
             self._json({"error": str(e)}, 503)
         except Exception as e:  # la base no responde, se cortó, etc.: no tirar el servidor
-            print(f"sincronización: {type(e).__name__}", flush=True)
-            self._json({"error": "No se pudo sincronizar. Probá de nuevo en un rato."}, 503)
+            detail = f"{type(e).__name__}: {e}".strip()[:400]
+            print(f"sincronización: {detail}", flush=True)
+            msg = "No se pudo sincronizar. Probá de nuevo en un rato."
+            # en la compu se dice qué pasó (es tu máquina y ayuda a arreglarlo); en internet, solo en el registro
+            self._json({"error": msg if PUBLIC else f"{msg} [{detail}]"}, 503)
 
     def do_POST(self):
         path = urlparse(self.path).path
@@ -379,8 +385,30 @@ def _watch(server):
     server.shutdown()
 
 
+def _native_on_apple_silicon():
+    """En un Mac con chip Apple, «Carta natal.app» a veces arranca el servidor bajo Rosetta (como si fuera Intel), y ahí
+    no carga lo instalado para el chip (psycopg, para sincronizar). Si pasa eso, y Python anda nativo con lo de siempre,
+    el servidor se vuelve a arrancar nativo (mismo proceso, mismos argumentos). Si algo no anda, sigue como estaba."""
+    if sys.platform != "darwin" or platform.machine() != "x86_64" or os.environ.get("CARTA_NATAL_NATIVE"):
+        return
+    try:
+        arm = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True, timeout=5).stdout.strip() == "1"
+        if not arm:
+            return                                   # un Mac Intel de verdad
+        probe = subprocess.run(["/usr/bin/arch", "-arm64", sys.executable, "-c", "import swisseph, tzdata"],
+                               capture_output=True, timeout=60)
+        if probe.returncode != 0:
+            return                                   # este Python (o pyswisseph) no anda nativo: se queda en Intel
+        os.environ["CARTA_NATAL_NATIVE"] = "1"
+        sys.stdout.flush()
+        os.execv("/usr/bin/arch", ["arch", "-arm64", sys.executable] + sys.argv)
+    except Exception:
+        return
+
+
 def main():
     global PRESENCE, IDLE_EXIT, PUBLIC, ALLOWED_HOSTS, LIMITER, GLOBAL_LIMITER, TRUSTED_PROXIES, SYNC
+    _native_on_apple_silicon()
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=None,
                     help="puerto (local: 8765; con --public: la variable PORT del hosting, o 10000)")
