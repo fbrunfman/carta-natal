@@ -92,7 +92,10 @@ class SyncStore:
         return conn
 
     def _run(self, fn):
-        import psycopg
+        try:
+            import psycopg
+        except ImportError as e:
+            raise SyncOff(f"Falta instalar psycopg en el Python de la app (corré sincronizar.command de nuevo). [{e}]")
         with self._lock:
             for attempt in (0, 1):
                 try:

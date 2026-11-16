@@ -71,6 +71,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSMinimumSystemVersion</key><string>10.13</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.lifestyle</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>LSArchitecturePriority</key><array><string>arm64</string><string>x86_64</string></array>
 </dict>
 </plist>
 PLIST
