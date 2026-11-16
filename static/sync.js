@@ -37,8 +37,24 @@ export function newCode() {
   const s = [...r].map((b) => ALPH[b % 32]).join("");
   return s.match(/.{4}/g).join("-");
 }
-export const normCode = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+// Lo que se escribe o se pega: mayúsculas o minúsculas, con guiones, espacios o rayas (el celular cambia «-» por «—»), o
+// pegado dentro de un texto («mi código es abcd-efgh-…»): se busca el código ahí adentro.
+export function normCode(s) {
+  const t = String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const m = t.match(/(?:^|[^A-Z0-9])([A-Z0-9]{4}(?:[\s\-\u2010-\u2015_.·]*[A-Z0-9]{4}){4})(?![A-Z0-9])/);
+  return (m ? m[1] : t).replace(/[^A-Z0-9]/g, "");
+}
 export const codeOk = (s) => { const n = normCode(s); return n.length === 20 && [...n].every((c) => ALPH.includes(c)); };
+/** Qué tiene de malo un código, para decirlo claro (null si está bien). */
+export function codeProblem(s) {
+  const n = normCode(s);
+  if (!n) return "Escribí el código (20 letras y números, por ejemplo ABCD-EFGH-JKLM-NPQR-STUV).";
+  const bad = [...new Set([...n].filter((c) => !ALPH.includes(c)))];
+  if (bad.length) return `Los códigos no usan 0, O, 1 ni I, y acá hay ${bad.map((c) => `«${c}»`).join(", ")}: revisá esa letra.`;
+  if (n.length < 20) return `Le ${20 - n.length === 1 ? "falta 1 letra o número" : `faltan ${20 - n.length} letras o números`}: tiene ${n.length} de 20.`;
+  if (n.length > 20) return `Le ${n.length - 20 === 1 ? "sobra 1 letra o número" : `sobran ${n.length - 20} letras o números`}: tiene ${n.length} de 20.`;
+  return null;
+}
 export const fmtCode = (s) => normCode(s).match(/.{1,4}/g)?.join("-") || "";
 
 let keys = null;            // { code, aes, mac, sid }
@@ -264,7 +280,8 @@ export function state() {
 
 /** Prender con un código (nuevo o de otro dispositivo). Devuelve la primera sincronización. */
 export async function connect(code) {
-  if (!codeOk(code)) throw new Error("El código tiene 20 letras y números (por ejemplo ABCD-EFGH-JKLM-NPQR-STUV).");
+  const bad = codeProblem(code);
+  if (bad) throw new Error(bad);
   saveState({ code: normCode(code), since: 0, items: {}, joined: false });
   kCache.clear();
   return syncNow();
@@ -272,7 +289,8 @@ export async function connect(code) {
 /** Conectar con el código de otro dispositivo: primero se fija que haya algo con ese código (un error al escribirlo
  *  daría un espacio vacío nuevo y los dispositivos no se encontrarían). */
 export async function join(code) {
-  if (!codeOk(code)) throw new Error("El código tiene 20 letras y números (por ejemplo ABCD-EFGH-JKLM-NPQR-STUV).");
+  const bad = codeProblem(code);
+  if (bad) throw new Error(bad);
   const k = await getKeys(code);
   const r = await post("/api/sync/pull", { sid: k.sid, since: 0 });
   if (!r.items.length) throw new Error("No encontré nada con ese código. Revisá que esté bien escrito (es el que muestra «Ver el código» en tu otro dispositivo).");

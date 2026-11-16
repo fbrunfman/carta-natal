@@ -6,7 +6,7 @@ import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg } from "./settings.js";
-import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState } from "./sync.js";
+import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState, normCode, codeProblem } from "./sync.js";
 import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
@@ -2947,6 +2947,14 @@ function setupSync() {
   };
   $("#syncGo").addEventListener("click", go);
   $("#syncCode").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+  // mientras se escribe: cuántos van de 20, y qué está mal (recién cuando ya hay 20 o más, para no retar a mitad de camino)
+  $("#syncCode").addEventListener("input", () => {
+    const n = normCode($("#syncCode").value).length, p = codeProblem($("#syncCode").value);
+    const el = $("#syncCount");
+    el.textContent = n ? `${n} de 20` : "";
+    el.classList.toggle("ok", !p);
+    say(p && n >= 20 ? p : "", true);
+  });
   $("#syncNowBtn").addEventListener("click", () => { say(""); syncNow(); });
   $("#syncShow").addEventListener("click", () => showCode($("#syncCodeBox").hidden));
   $("#syncCopy").addEventListener("click", async () => {

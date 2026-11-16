@@ -831,7 +831,8 @@
                 <button type="button" class="ghost" id="syncHave" aria-expanded="false" aria-controls="syncJoin">Ya tengo un código</button>
               </div>
               <div class="sync-join" id="syncJoin" hidden>
-                <input id="syncCode" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKLM-NPQR-STUV" aria-label="Código de sincronización">
+                <input id="syncCode" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" inputmode="text" enterkeyhint="go" placeholder="ABCD-EFGH-JKLM-NPQR-STUV" aria-label="Código de sincronización" aria-describedby="syncCount">
+                <span class="sync-count" id="syncCount" aria-live="polite"></span>
                 <button type="button" class="primary compact" id="syncGo">Conectar</button>
               </div>
             </div>

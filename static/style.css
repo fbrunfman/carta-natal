@@ -2265,9 +2265,13 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .syncbox[hidden] { display: none; }
 .syncbox h3 { margin: 0; font-size: calc(14.5px * var(--fs)); font-weight: 600; }
 .sync-acts { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 10px; }
-.sync-join { display: flex; gap: 8px; margin-top: 10px; }
+.sync-join { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 10px; margin-top: 10px; }
+.sync-join input { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }      /* entero a la vista: 24 caracteres */
+.sync-count { font-size: calc(12.5px * var(--fs)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sync-count.ok { color: var(--accent-2); font-weight: 600; }
+.sync-join .primary { justify-self: end; }
 .sync-join[hidden], .sync-code[hidden], #syncOff[hidden], #syncOn[hidden] { display: none; }
-.sync-join input { flex: 1 1 auto; min-width: 0; font: 600 calc(14px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; }
+.sync-join input { min-width: 0; font: 600 calc(14px * var(--fs)) ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; }
 .sync-st { margin: 10px 0 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
 .sync-st.err { color: var(--hard); }
 .sync-st b { color: var(--ink); font-weight: 600; }
