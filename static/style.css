@@ -2316,3 +2316,6 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .hw-join .status { margin: 8px 0 0; font-size: calc(13px * var(--fs)); min-height: 0; color: var(--ink-2); }
 .hw-join .status:empty { display: none; }
 .hw-join .status.err { color: var(--hard); }
+.check.trip-reach { align-items: flex-start; margin: 12px 0 4px; font-size: calc(13px * var(--fs)); color: var(--ink-2); line-height: 1.45; }
+.check.trip-reach input { margin-top: 3px; flex: none; }
+.check.trip-reach strong { color: var(--ink); }

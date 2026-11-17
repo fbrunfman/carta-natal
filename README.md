@@ -113,7 +113,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
       ella, o solo en ella si está en cúspide, con los orbes de *Reglas avanzadas*, y la tarjeta lo dice: «casas X y XI» o
       «casa XI (en cúspide, desde la X)») y *planeta en aspecto duro* con otro
       (o con cualquiera): «cualquier aspecto duro» son los de los viajes de planetas (Configuración → *Reglas avanzadas*;
-      de fábrica conjunción, oposición y cuadratura), o uno en particular (también semicuadratura y sesquicuadratura). Los
+      de fábrica los cinco: conjunción, oposición, cuadratura, semicuadratura y sesquicuadratura), o uno en particular. Los
       aspectos usan los orbes de Configuración y las casas, el sistema de casas elegido. Todo se combina (nombre, inicial y
       las dos búsquedas por posición), y cada tarjeta dice lo que encontró (por ejemplo «☉ □ ♂ cuadratura con Marte 7°46′»).
       «Limpiar la búsqueda» vuelve a todas.
@@ -369,12 +369,18 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     dibuja). Vienen todas marcadas y se desmarcan de a una, con **Marcar todos / Desmarcar todos** (planetas) o **Marcar todas /
     Desmarcar todas** (casas). Al cambiar entre Planeta y Casa, o al volver a prender «Viajes», vuelve a estar todo marcado y
     rige solo el filtro elegido (no se guarda). La pestaña «Viajes» sigue mostrando todos los viajes. No sale en la hoja impresa.
-  - **Configuración → «Viajes de planetas»** (`trips` en `carta:cfg`): los **aspectos duros** que cuentan (de fábrica conjunción,
-    oposición y cuadratura; se pueden sumar semicuadratura y sesquicuadratura, o sacar cualquiera) y el **orbe a la cúspide**
-    del viaje por eje (de fábrica 1° en las angulares y 1° en las otras, de 0° a 15°). Los **regentes** son siempre los modernos,
+  - **Configuración → «Viajes de planetas»** (`trips` en `carta:cfg`): los **aspectos duros** que cuentan (de fábrica los cinco:
+    conjunción, oposición, cuadratura, semicuadratura y sesquicuadratura; se puede sacar cualquiera), el **orbe a la cúspide**
+    del viaje por eje (de fábrica 1° en las angulares y 1° en las otras, de 0° a 15°) y **«Con Entre casas»** (prendido de
+    fábrica): la casa de cada planeta es la del botón «Entre casas» (con los orbes de *Planetas entre casas*), esté o no
+    prendido ese botón. Un planeta **en cúspide** cuenta en la casa que sigue: viaja desde ella y el que se intercambia con él
+    por aspecto llega a ella; uno **en las 2 casas** cuenta en las dos: viaja desde las dos, no viaja a ninguna de ellas, y el
+    otro llega a cada una. Las explicaciones lo dicen («Mercurio está entre las casas VI y VII…», «Venus está en la casa VI, en
+    cúspide desde la V…»). Los **regentes** son siempre los modernos,
     como en la cruz de elementos (Escorpio de Plutón, Acuario de Urano, Piscis de Neptuno): ya no hay opción de regentes
     tradicionales. «Restablecer viajes» vuelve a los de fábrica. Lo guardado con los valores de fábrica de antes (oposición y
-    cuadratura, 4° y 2,5°) pasa solo a los de ahora; lo que se haya elegido a mano se respeta. Solo viajan los diez planetas
+    cuadratura, 4° y 2,5°), o con los del medio sin tocar (conjunción, oposición y cuadratura), pasa solo a los de ahora; lo que se haya
+    elegido a mano se respeta. Solo viajan los diez planetas
     (sin nodo).
   - No sale en la hoja impresa (la rueda sí, con los viajeros si el botón está prendido).
 - **Qué aspectos se ven** (Configuración → *Aspectos*): ocho botones, uno por tipo (conjunción, oposición, trígono,

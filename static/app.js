@@ -987,7 +987,7 @@ $("#tripPick").addEventListener("click", (e) => {
 
 function drawWheel() {
   const outer = outerRing();
-  const allTrips = tripsOn && !outer && mode === "natal" ? groupTrips(computeTrips(chart, tripCfg)) : null;
+  const allTrips = tripsOn && !outer && mode === "natal" ? groupTrips(computeTrips(chart, tripCfg, reachData())) : null;
   const trips = allTrips ? allTrips.filter((g) => (tripBy === "planet" ? tripSel.has(g.id) : tripHSel.has(g.to))).map((g) => ({ ...g, words: groupWords(g) })) : null;
   syncTripPick(allTrips);
   hideFicha();
@@ -1171,7 +1171,7 @@ function renderHouses(c) {
 function renderTrips(c) {
   const el = $("#panel-viajes");
   if (mode !== "natal") { el.innerHTML = ""; return; }
-  const trips = computeTrips(c, tripCfg);
+  const trips = computeTrips(c, tripCfg, c === chart ? reachData() : (c.orbs_v === ORBS_VERSION ? c.house_reach || [] : []));
   let html = "";
   for (const type of TRIP_TYPES) {
     const rows = trips.map((t, i) => [t, i]).filter(([t]) => t.type === type);

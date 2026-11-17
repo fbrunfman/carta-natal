@@ -11,6 +11,11 @@
 //    Saturno se opone a Venus, que rige Libra (cúspide de la V) y Tauro (cúspide de la XII): Saturno viaja a la V y a la XII.
 //
 // Un planeta nunca viaja a la casa donde ya está.
+//
+// Con «Entre casas» (prendido de fábrica, en Reglas avanzadas): un planeta cerca de la cúspide de la casa que sigue cuenta
+// también en ella («en las 2 casas»), o solo en ella si está en cúspide; lo mismo que el botón «Entre casas» de la carta
+// (house_reach, con los orbes de Planetas entre casas). Así, «la casa donde está» puede ser una o dos: viaja desde esas
+// y nunca hacia esas, y el que se intercambia con él por aspecto llega a cada una.
 
 import { BODY, SIGNS, ASPECT, fmtOrb, glyphHTML, signHTML } from "./astro-data.js";
 import { RULER as MODERN } from "./elements.js";
@@ -27,8 +32,10 @@ export const TRIP_ASPECTS = ["conjunction", "opposition", "square", "semisquare"
 export const TRIP_TYPES = ["aspect", "axis", "implied"];
 export const TRIP_TITLES = { aspect: "Por aspecto", axis: "Por eje", implied: "Por implicancia" };
 
-// Valores de fábrica: conjunción, oposición y cuadratura; pegado a la cúspide hasta 1° [cúspide angular, otra].
-export const TRIP_DEFAULTS = Object.freeze({ asp: Object.freeze(["conjunction", "opposition", "square"]), cusp: Object.freeze([1, 1]) });
+// Valores de fábrica: los cinco aspectos duros; pegado a la cúspide hasta 1° [cúspide angular, otra]; con «Entre casas».
+export const TRIP_DEFAULTS = Object.freeze({ asp: Object.freeze([...TRIP_ASPECTS]), cusp: Object.freeze([1, 1]), reach: true });
+/** Los de fábrica de antes (para pasar a los de ahora lo guardado que quedó igual a ellos). */
+export const TRIP_OLD_ASP = ["conjunction", "opposition", "square"];
 const ORB_TOP = 15;
 const ANGULAR = new Set([1, 4, 7, 10]);
 
@@ -43,6 +50,7 @@ export function cleanTrips(raw) {
   return {
     asp: Array.isArray(r.asp) ? TRIP_ASPECTS.filter((t) => r.asp.includes(t)) : [...TRIP_DEFAULTS.asp],
     cusp: [orb(cusp[0], TRIP_DEFAULTS.cusp[0]), orb(cusp[1], TRIP_DEFAULTS.cusp[1])],
+    reach: typeof r.reach === "boolean" ? r.reach : TRIP_DEFAULTS.reach,
   };
 }
 export const sameTrips = (a, b) => JSON.stringify(cleanTrips(a)) === JSON.stringify(cleanTrips(b));
@@ -52,17 +60,25 @@ const norm180 = (x) => ((((x % 360) + 540) % 360) - 180);
 /**
  * Todos los viajes de una carta natal.
  * @param chart  la respuesta de /api/chart: bodies [{id, lon, house}], aspects [{a, b, type, orb}] (sin filtrar por lo que se muestra), houses.cusps
- * @param cfg    { asp: [tipos de aspecto duros], cusp: [orbe a la cúspide angular, a las otras] }
- * @returns [{ id, from, to, type: "aspect" | "axis" | "implied", via }] ordenados por tipo, planeta y casa
+ * @param cfg    { asp: [tipos de aspecto duros], cusp: [orbe a la cúspide angular, a las otras], reach: con «Entre casas» }
+ * @param reach  [{ id, house, also, kind: "pass" | "both" }] los planetas entre casas (de fábrica, chart.house_reach)
+ * @returns [{ id, from, to, type: "aspect" | "axis" | "implied", via, at }] ordenados por tipo, planeta y casa
+ *   from = la casa donde está (con «Entre casas» y en cúspide, la que sigue; en las 2 casas, la suya)
+ *   at   = { house, also, kind } si el planeta está entre casas (y via.at, lo mismo del otro, en los viajes por aspecto)
  *   via (por aspecto)    { other, aspect, orb }
  *   via (por eje)        { cusp, dist }                  dist = grados con signo del planeta a la cúspide (+ si ya la pasó)
  *   via (por implicancia){ other, aspect, orb, sign }    sign = el signo de la cúspide de la casa `to`
  */
-export function computeTrips(chart, cfg = TRIP_DEFAULTS) {
+export function computeTrips(chart, cfg = TRIP_DEFAULTS, reach = chart.house_reach) {
   const c = cleanTrips(cfg);
   const cusps = chart.houses.cusps;
   const bodies = chart.bodies.filter((b) => TRIP_PLANETS.includes(b.id));
   const house = Object.fromEntries(bodies.map((b) => [b.id, b.house]));
+  // dónde cuenta cada planeta: su casa, la que sigue (en cúspide) o las dos
+  const atOf = {};
+  if (c.reach) for (const r of reach || []) if (r && r.id in house && (r.kind === "pass" || r.kind === "both")) atOf[r.id] = { house: house[r.id], also: r.also, kind: r.kind };
+  const homes = (id) => (!atOf[id] ? [house[id]] : atOf[id].kind === "pass" ? [atOf[id].also] : [house[id], atOf[id].also]);
+  const at = (id) => (atOf[id] ? { at: { ...atOf[id] } } : {});
   const rulers = RULERS;
   const signOfCusp = (h) => Math.floor((((cusps[h - 1] % 360) + 360) % 360) / 30);
   const trips = [];
@@ -70,11 +86,13 @@ export function computeTrips(chart, cfg = TRIP_DEFAULTS) {
   for (const a of chart.aspects) {
     if (!c.asp.includes(a.type) || !(a.a in house) || !(a.b in house)) continue;
     for (const [x, y] of [[a.a, a.b], [a.b, a.a]]) {
-      const hx = house[x], hy = house[y];
-      if (hx !== hy) trips.push({ id: x, from: hx, to: hy, type: "aspect", via: { other: y, aspect: a.type, orb: a.orb } });
+      const hx = homes(x), hy = homes(y);
+      for (const to of hy) {
+        if (!hx.includes(to)) trips.push({ id: x, from: hx[0], to, type: "aspect", via: { other: y, aspect: a.type, orb: a.orb, ...at(y) }, ...at(x) });
+      }
       for (let h = 1; h <= 12; h++) {
-        if (h === hx || rulers[signOfCusp(h)] !== y) continue;
-        trips.push({ id: x, from: hx, to: h, type: "implied", via: { other: y, aspect: a.type, orb: a.orb, sign: signOfCusp(h) } });
+        if (hx.includes(h) || rulers[signOfCusp(h)] !== y) continue;
+        trips.push({ id: x, from: hx[0], to: h, type: "implied", via: { other: y, aspect: a.type, orb: a.orb, sign: signOfCusp(h) }, ...at(x) });
       }
     }
   }
@@ -84,7 +102,8 @@ export function computeTrips(chart, cfg = TRIP_DEFAULTS) {
       const d = norm180(b.lon - cusps[k - 1]);
       if (Math.abs(d) > c.cusp[ANGULAR.has(k) ? 0 : 1]) continue;
       const to = ((k + 5) % 12) + 1;                      // el otro extremo del eje
-      if (to !== b.house) trips.push({ id: b.id, from: b.house, to, type: "axis", via: { cusp: k, dist: Math.round(d * 1e5) / 1e5 } });
+      const hb = homes(b.id);
+      if (!hb.includes(to)) trips.push({ id: b.id, from: hb[0], to, type: "axis", via: { cusp: k, dist: Math.round(d * 1e5) / 1e5 }, ...at(b.id) });
     }
   }
 
@@ -128,6 +147,14 @@ export function tripPlain(t) {
   return `${A} → ${roman(t.to)} (${why})`;
 }
 
+/** Dónde está, en palabras: «está en la casa III», «está en la casa IV, en cúspide desde la III» o «está entre las casas III y IV». */
+function whereWords(from, at, more = false) {
+  if (!at) return `está en la casa ${roman(from)}`;
+  return at.kind === "pass" ? `está en la casa ${roman(at.also)}, en cúspide desde la ${roman(at.house)}${more ? "," : ""}` : `está entre las casas ${roman(at.house)} y ${roman(at.also)}`;
+}
+const homesOf = (from, at) => (!at ? [from] : at.kind === "pass" ? [at.also] : [at.house, at.also]);
+const andList = (hs) => hs.map(roman).join(" y la ");
+
 /** La explicación en palabras de un viaje. */
 export function tripWords(t) {
   const A = name(t.id), v = t.via, R = roman;
@@ -139,10 +166,11 @@ export function tripWords(t) {
   }
   const B = name(v.other);
   if (t.type === "aspect") {
-    return `${cabeza} está en la casa ${R(t.from)} y ${WITH[v.aspect]} ${B}, que está en la casa ${R(t.to)} (orbe ${fmtOrb(v.orb)}). ` +
-      `Por eso ${A} viaja a la casa ${R(t.to)}, y ${B}, a la ${R(t.from)}.`;
+    const otherHomes = homesOf(t.to, v.at), back = homesOf(t.from, t.at).filter((h) => !otherHomes.includes(h));
+    return `${cabeza} ${whereWords(t.from, t.at, true)} y ${WITH[v.aspect]} ${B}, que ${whereWords(t.to, v.at)} (orbe ${fmtOrb(v.orb)}). ` +
+      `Por eso ${A} viaja a la casa ${R(t.to)}` + (back.length ? `, y ${B}, a la ${andList(back)}.` : ".");
   }
-  return `${cabeza} está en la casa ${R(t.from)} y ${WITH[v.aspect]} ${B} (orbe ${fmtOrb(v.orb)}). ` +
+  return `${cabeza} ${whereWords(t.from, t.at, true)} y ${WITH[v.aspect]} ${B} (orbe ${fmtOrb(v.orb)}). ` +
     `${cap(B)} es regente de ${SIGNS[v.sign]}, el signo de la cúspide de la casa ${R(t.to)}. Por eso ${A} viaja a la casa ${R(t.to)}.`;
 }
 

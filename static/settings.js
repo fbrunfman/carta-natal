@@ -3,14 +3,14 @@
 // El mismo código de aplicar() está resumido en el <script> del <head> de index.html para que no haya parpadeo.
 
 import { ASPECT } from "./astro-data.js";
-import { cleanTrips, sameTrips, TRIP_ASPECTS, TRIP_DEFAULTS } from "./trips.js";
+import { cleanTrips, sameTrips, TRIP_ASPECTS, TRIP_DEFAULTS, TRIP_OLD_ASP } from "./trips.js";
 
 export const KEY = "carta:cfg";
 // Lecturas, explicaciones y análisis de la carta: apagados a pedido. Con false la app queda siempre en «solo datos» y la
 // opción de Configuración está oculta. Para volver a ponerlos: true acá, y también en el <script> del <head> de index.html
 // y sacar el `hidden` de la sección «Interpretación» de Configuración.
 export const INTERP_ENABLED = false;
-export const VERSION = 2;       // las configuraciones guardadas llevan `v`; sin `v` son de cuando los valores de fábrica eran otros
+export const VERSION = 3;       // las configuraciones guardadas llevan `v`; sin `v` son de cuando los valores de fábrica eran otros
 
 // Orbes (en grados). Son los mismos valores de fábrica que trae el servidor (ORB_TABLE y HOUSE_ORBS en astro.py); el servidor
 // recibe los que se elijan acá en cada pedido. asp: una fila por grupo de planetas, y por columna: [conjunción · oposición ·
@@ -182,7 +182,11 @@ export function load() {
   // ellos se toma como «sin elegir» y pasa a los de ahora.
   const t = raw.trips;
   if (t && typeof t === "object" && Array.isArray(t.asp) && Array.isArray(t.cusp) && t.asp.join() === "opposition,square" && t.cusp.join() === "4,2.5") delete raw.trips;
-  if (raw.v !== VERSION) {
+  // Después fueron conjunción, oposición y cuadratura; ahora son los cinco aspectos duros: lo que quedó igual a eso pasa a los de ahora
+  if (!(raw.v >= 3) && raw.trips && Array.isArray(raw.trips.asp) && [...raw.trips.asp].sort().join() === [...TRIP_OLD_ASP].sort().join()) {
+    raw.trips = { ...raw.trips, asp: undefined };
+  }
+  if (!(raw.v >= 2)) {
     if (raw.font === "system") delete raw.font;
     if (raw.tint === false && raw.gfx !== "classic") delete raw.tint;
   }
@@ -266,7 +270,7 @@ export function initSettings(onChange) {
     asp: $("#cfgAsp"),
     spill: $("#spillBtn"),
     orbAsp: $("#cfgOrbAsp"), orbHouse: $("#cfgOrbHouse"),
-    tripBtn: $("#tripBtn"), tripAsp: $("#cfgTripAsp"), tripOrb: $("#cfgTripOrb"),
+    tripBtn: $("#tripBtn"), tripAsp: $("#cfgTripAsp"), tripOrb: $("#cfgTripOrb"), tripReach: $("#cfgTripReach"),
     pal: $("#cfgPal"), colors: $("#cfgColors"), resetColors: $("#cfgResetColors"),
   };
   // colores: las paletas (un botón con sus muestras) y una tabla con un selector de color por cosa y por modo
@@ -330,6 +334,7 @@ export function initSettings(onChange) {
   const tripRead = () => cleanTrips({
     asp: [...el.tripAsp.children].filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.tripAsp),
     cusp: tripInputs.map((inp) => (inp.value === "" ? NaN : Number(inp.value))),
+    reach: el.tripReach.checked,
   });
 
   // las letras, en grupos (el selector con vista previa lo arma fontpick.js sobre este <select>)
@@ -365,6 +370,7 @@ export function initSettings(onChange) {
 
     if (el.tripBtn) el.tripBtn.setAttribute("aria-pressed", cfg.tripsOn);
     for (const b of el.tripAsp.children) b.setAttribute("aria-pressed", cfg.trips.asp.includes(b.dataset.tripAsp));
+    el.tripReach.checked = cfg.trips.reach;
     for (const inp of tripInputs) {
       const i = +inp.dataset.tripCusp;
       if (document.activeElement !== inp) inp.value = cfg.trips.cusp[i];
@@ -427,6 +433,7 @@ export function initSettings(onChange) {
     const t = b.dataset.tripAsp;
     change({ trips: cleanTrips({ ...cfg.trips, asp: cfg.trips.asp.includes(t) ? cfg.trips.asp.filter((x) => x !== t) : [...cfg.trips.asp, t] }) }, "trips");
   });
+  el.tripReach.addEventListener("change", () => change({ trips: cleanTrips({ ...cfg.trips, reach: el.tripReach.checked }) }, "trips"));
   for (const inp of tripInputs) inp.addEventListener("change", () => {
     const next = tripRead();
     inp.value = next.cusp[+inp.dataset.tripCusp];          // lo que se acomodó (tope, vacío) se ve al instante
