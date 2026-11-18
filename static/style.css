@@ -2354,26 +2354,261 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .place-list li.pl-note { display: block; cursor: default; padding: 8px 10px 6px; border-top: 1px solid var(--line); border-radius: 0; color: var(--ink-2); font-size: calc(12px * var(--fs)); background: none; }
 .place-list li.pl-note:hover { background: none; }
 
-/* Mis cartas en el celular y en tablets: buscar y «Nueva» en una fila; grupos e iniciales en una fila cada uno, que se
-   desliza de costado (con los bordes esfumados), en vez de 4 o 5 renglones de botones */
-main { --gut: clamp(20px, 2.6vw, 40px); }
-@media (max-width: 480px) { main { --gut: 16px; } }
-@media (max-width: 760px), (pointer: coarse) and (max-width: 1180px) {
-  .mc-top { flex-wrap: nowrap; gap: 8px; }
-  .mc-q { flex: 1 1 auto; width: auto; max-width: 420px; min-width: 0; }
-  #mcNew { flex: none; }
-  .mc-groups, .mc-az {
-    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
-    margin-inline: calc(-1 * var(--gut)); padding: 2px var(--gut); scroll-padding-inline: var(--gut);
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--gut), #000 calc(100% - var(--gut)), transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 var(--gut), #000 calc(100% - var(--gut)), transparent);
-  }
-  .mc-groups::-webkit-scrollbar, .mc-az::-webkit-scrollbar { display: none; }
-  .mc-groups > *, .mc-az > * { flex: none; white-space: nowrap; }
-  .mc-groups { margin-top: 12px; }
-  .mc-az { margin-top: 8px; }
-  .mc-az button { min-width: 34px; height: 34px; }
-  .mc-filters { margin-top: 12px; }
-  .mc-count { margin-top: 12px; }
+
+/* ======================================================================================================================
+   Rediseño de Inicio y Mis cartas (noviembre 2026): encabezado con una constelación y «+ Nueva carta», cuadros
+   (`.hbox`), tarjetas de carta con el color de su grupo y el menú «⋮», el panel de filtros de Mis cartas y el cielo
+   redondo. Va al final para pisar lo de antes.
+   ====================================================================================================================== */
+:root { --g-s: 58%; --g-l: 46%; }
+:root[data-theme="dark"] { --g-s: 66%; --g-l: 66%; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) { --g-s: 66%; --g-l: 66%; } }
+
+/* encabezado: título y subtítulo, la constelación en el medio y el botón a la derecha */
+.head.head-x { display: flex; align-items: center; gap: 12px 20px; }
+.head-t { flex: none; min-width: 0; }
+.head-x .head-t p { margin-top: 6px; }
+.head-deco { flex: 1 1 140px; min-width: 0; max-width: 330px; height: auto; aspect-ratio: 300 / 70; margin: 0 auto; overflow: visible; }
+.hd-arc { fill: none; stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 1.5 5; stroke-linecap: round; opacity: .9; }
+.hd-arc2 { opacity: .5; }
+.hd-star { fill: var(--accent-2); }
+.hd-star-s { opacity: .75; }
+.hd-moon { fill: var(--accent-2); }
+.hd-dot { fill: var(--ink-2); opacity: .6; }
+.head-new { flex: none; height: 46px; padding: 0 22px; font-size: calc(15.5px * var(--fs)); }
+.head-new svg { width: 18px; height: 18px; }
+@media (max-width: 640px) {
+  .head.head-x { align-items: flex-start; }
+  .head-t { flex: 1 1 auto; }
+  .head-deco { display: none; }
+  .head-new { height: 42px; padding: 0 16px; margin-top: 4px; }
+  .head-new-x { display: none; }
 }
-@media (max-width: 420px) { .mc-new-x { display: none; } }
+
+/* un cuadro */
+.hbox { min-width: 0; padding: 18px 20px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--line-strong) 25%, transparent); }
+.hbox-k { margin: 0; font: 600 calc(12.5px * var(--fs))/1.3 var(--sans); text-transform: uppercase; letter-spacing: .09em; color: var(--ink-2); }
+
+/* ---------- Inicio ---------- */
+.home-dash { display: flex; flex-direction: column; gap: 16px; }
+.home-col { display: contents; }
+.home-last { order: 1; } .home-charts { order: 2; } .home-sky { order: 3; } .home-moon { order: 4; }
+@container (min-width: 1000px) {
+  .home-dash { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .home-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .home-col-sky .hbox { order: 0; }
+  .home-col-charts .hbox { order: 0; }
+}
+/* la última carta abierta */
+.home-last { position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.home-last[hidden] { display: none; }
+.home-last .hbox-k { color: var(--accent-2); }
+.hl-nm { margin: 2px 0 0; max-width: 100%; overflow-wrap: anywhere; font: 600 calc(28px * var(--fs))/1.15 var(--serif); letter-spacing: -.01em; }
+.hl-sub { margin: 0; color: var(--ink-2); font-size: calc(14px * var(--fs)); font-variant-numeric: tabular-nums; }
+.home-last .hc-groups { margin-top: 4px; }
+.home-last .hc-trio { margin-top: 10px; }
+.home-last .hc-pos { padding: 5px 14px 5px 11px; font-size: calc(14px * var(--fs)); }
+.hl-go { margin-top: 12px; padding: 4px 0; border: 0; background: none; color: var(--accent-2); font-weight: 600; font-size: calc(15px * var(--fs)); }
+.hl-go span { display: inline-block; transition: transform .15s; }
+.hl-go:hover span { transform: translateX(3px); }
+/* últimas cartas */
+#homeCharts.hc { margin: 0; max-width: none; }
+.home-charts .hc-head { margin: 0 0 14px; }
+.home-charts .hc-all { color: var(--accent-2); }
+.home-charts.empty .hc-head { margin-bottom: 10px; }
+.home-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (max-width: 639px) {
+  /* celular: una fila que se desliza de costado, con la tarjeta que sigue asomando */
+  .home-cards {
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 10px;
+    margin: 0 -20px; padding: 2px 20px 4px; scroll-padding-inline: 20px; overscroll-behavior-x: contain;
+  }
+  .home-cards::-webkit-scrollbar { display: none; }
+  .home-cards > .hc-item { flex: 0 0 min(86%, 340px); scroll-snap-align: start; }
+  .home-cards > .home-empty { margin: 0; }
+}
+/* el cielo de hoy */
+.home-sky .hbox-k { margin-bottom: 8px; }
+.home-sky .sky-wrap { margin: 0 auto; width: min(100%, 680px, max(300px, calc(100dvh - 200px))); }
+.home-sky .sky { border: 0; border-radius: 50%; background: none; overflow: visible; }
+.sky-rim { fill: none; stroke: color-mix(in srgb, var(--accent-2) 55%, var(--line-strong)); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.home-sky .sky-foot { margin-top: 4px; }
+.home-sky .sky-info { min-height: 0; }
+/* la Luna: el dibujo a la izquierda, una raya y los datos */
+.home-moon { padding: 20px 24px; }
+.home-moon .sky-moon {
+  --mi: 112px; --mg: 22px;
+  position: static; grid-area: auto; margin: 0; max-width: none; width: auto; padding: 0; border: 0; border-radius: 0; background: none;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+}
+.home-moon .sky-moon-btn { display: flex; align-items: center; gap: var(--mg); width: 100%; }
+.home-moon .sky-moon-ic { width: var(--mi); }
+.home-moon .sky-moon-txt { padding-left: var(--mg); border-left: 1px solid var(--line-strong); gap: 3px; }
+.home-moon .mc-kicker { font-size: calc(12.5px * var(--fs)); letter-spacing: .09em; }
+.home-moon .sky-moon-sign { font-size: calc(30px * var(--fs)); }
+.home-moon .sky-moon-sign .mc-deg { font-size: calc(15px * var(--fs)); }
+.home-moon .sky-moon-ph { font-size: calc(16px * var(--fs)); }
+.home-moon .sky-moon-il { font-size: calc(15px * var(--fs)); }
+.home-moon .sky-moon-hint { display: none; }
+.home-moon .sky-moon-cal {
+  display: inline-block; margin: 2px 0 0 calc(var(--mi) + 2 * var(--mg) + 1px); padding: 2px 0; font-size: calc(15px * var(--fs));
+  color: var(--accent-2); text-decoration: underline; text-underline-offset: 4px;
+}
+.home-moon .sky-moon-btn:hover .sky-moon-ic { transform: scale(1.04); }
+@media (max-width: 420px) {
+  .home-moon { padding: 16px; }
+  .home-moon .sky-moon { --mi: 80px; --mg: 14px; }
+  .home-moon .sky-moon-sign { font-size: calc(25px * var(--fs)); }
+}
+.home-priv { text-align: center; }
+
+/* ---------- tarjetas de carta (Inicio y Mis cartas) ---------- */
+.hc-card { gap: 4px; padding: 15px 18px 16px 20px; border-color: var(--line-strong); border-radius: 14px; }
+.hc-card::before {
+  content: ""; position: absolute; left: -1px; top: 16px; width: 3.5px; height: 44px; border-radius: 0 4px 4px 0;
+  background: hsl(var(--gh) var(--g-s) var(--g-l)); opacity: 0;
+}
+.hc-card[style*="--gh"]::before { opacity: 1; }
+.hc-nm { font-size: calc(20px * var(--fs)); }
+.hc-item .hc-nm { padding-right: 76px; }
+.hc-item:has(.hc-pin) .hc-nm { padding-right: 104px; }
+.hc-sub { font-size: calc(13.5px * var(--fs)); }
+.hc-groups { margin-top: 5px; }
+.hc-g { padding: 2px 10px; border-color: hsl(var(--gh, 210) 40% var(--g-l) / .5); background: hsl(var(--gh, 210) var(--g-s) var(--g-l) / .12); color: var(--ink); font-size: calc(12px * var(--fs)); }
+.hc-trio { gap: 6px; margin-top: 11px; }
+.hc-pos { gap: 5px; padding: 4px 11px 4px 9px; border: 1px solid var(--line-strong); background: color-mix(in srgb, var(--field) 50%, transparent); font-size: calc(13px * var(--fs)); }
+.hc-pos em { color: var(--ink-2); }
+.hc-acts { top: 10px; right: 10px; align-items: center; gap: 0; }
+.hc-act { width: 34px; height: 34px; padding: 0; }
+.hc-act svg { width: 18px; height: 18px; }
+.hc-more svg { fill: currentColor; stroke: none; }
+.hc-more[aria-expanded="true"] { background: var(--hover); border-color: var(--line); color: var(--ink); }
+.hc-acts .hc-pin { position: static; display: inline-flex; width: 28px; justify-content: center; color: var(--accent-2); }
+.hc-acts .hc-pin svg { width: 17px; height: 17px; fill: currentColor; stroke: none; }
+@media (hover: hover) { .hc-item:not(:hover):not(:focus-within) .hc-act:not([aria-expanded="true"]) { opacity: .6; } }
+
+/* el menú «⋮» */
+.cmenu {
+  position: absolute; z-index: 80; min-width: 210px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 12px;
+  background: var(--surface); box-shadow: 0 12px 32px rgba(8, 20, 34, .22), 0 2px 6px rgba(8, 20, 34, .12);
+}
+.cmenu[hidden] { display: none; }
+.cmenu-i {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); font-size: calc(14.5px * var(--fs)); text-align: left;
+}
+.cmenu-i svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.cmenu-i:hover, .cmenu-i:focus-visible { background: var(--hover); outline: none; }
+.cmenu-del { color: var(--hard); }
+.cmenu-del[data-arm="1"], .cmenu-del[data-arm="1"]:hover { background: var(--hard); color: #fff; font-weight: 600; }
+
+/* ---------- Mis cartas ---------- */
+#charts { container-type: inline-size; }
+.mc-panel {
+  display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr) auto; grid-template-areas: "q g e" "r2 r2 r2";
+  align-items: center; gap: 12px 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+}
+.mc-panel[hidden] { display: none; }
+.mc-row { display: contents; }
+.mc-panel .mc-row2 { grid-area: r2; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mc-panel .mc-q { grid-area: q; width: auto; }
+.mc-panel .mc-q input { height: 40px; border-radius: 10px; }
+.mc-gwrap { grid-area: g; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 14px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.mc-gwrap[hidden] { display: none; }
+.mc-panel .mc-groups {
+  flex: 1 1 auto; min-width: 0; margin: 0; padding: 2px 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.mc-panel .mc-groups::-webkit-scrollbar { display: none; }
+.mc-gwrap.more .mc-groups { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+.mc-panel .mc-groups > * { flex: none; white-space: nowrap; }
+.mc-panel .gchip { min-height: 34px; padding: 4px 13px; }
+.gchip .gdot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: hsl(var(--gh) var(--g-s) var(--g-l)); }
+#mcGroups .gchip[aria-pressed="true"] .gdot { box-shadow: 0 0 0 1.5px var(--accent-ink); }
+.mc-gmore {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%;
+  background: var(--surface); color: var(--ink);
+}
+.mc-gmore[hidden] { display: none; }
+.mc-gmore svg, .mc-posbtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mc-gmore:hover { background: var(--hover); }
+#mcGEdit { grid-area: e; justify-self: end; }
+#mcGEdit[hidden] { display: none; }
+#mcGEdit.gdone { border-style: solid; }
+.mc-ini {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; height: 40px; padding-left: 14px;
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--field); color: var(--ink-2); font-size: calc(14px * var(--fs));
+}
+.mc-ini[hidden] { display: none; }
+.mc-ini.on { border-color: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-2); }
+.mc-ini select { width: auto; min-width: 7.5em; height: 38px; padding: 0 34px 0 6px; border: 0; background-color: transparent; color: var(--ink); font-weight: 600; box-shadow: none; }
+.mc-ini select:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-radius: 8px; }
+.mc-posbtn {
+  flex: none; position: relative; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 14px;
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--field); color: var(--ink); font-size: calc(14.5px * var(--fs)); font-weight: 600;
+}
+.mc-posbtn:hover { background: var(--hover); }
+.mc-poschev { margin-left: 8px; transition: transform .15s; }
+.mc-posbtn[aria-expanded="true"] { background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); }
+.mc-posbtn[aria-expanded="true"] .mc-poschev { transform: rotate(180deg); }
+.mc-posbtn.on:not([aria-expanded="true"]) { border-color: var(--accent-2); color: var(--accent-2); }
+.mc-posdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.mc-posdot[hidden] { display: none; }
+@container (max-width: 999px) {
+  .mc-panel { grid-template-columns: minmax(180px, 300px) minmax(0, 1fr) auto; grid-template-areas: "q g g" "r2 r2 e"; }
+  .mc-gwrap { border-right: 0; padding-right: 0; }
+}
+@container (max-width: 639px) {
+  .mc-panel { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "q q" "g e" "r2 r2"; padding: 12px; gap: 10px; }
+  .mc-gwrap { border: 0; padding: 0; }
+  .mc-gwrap .mc-gmore { display: none; }
+  .mc-panel .mc-row2 { gap: 10px; }
+  .mc-ini { flex: 1 1 auto; min-width: 0; }
+  .mc-ini select { flex: 1 1 auto; min-width: 0; }
+}
+/* buscar por posición */
+.mc-filters { margin: 14px 0 0; padding: 16px 20px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.mc-filters[hidden] { display: none; }
+.mc-filters.on { border-color: var(--accent-2); }
+.mc-fhead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.mc-fhead .hbox-k { color: var(--accent-2); }
+.mc-fhead .mc-fsum { color: var(--accent-2); font-weight: 600; }
+.mc-fclose { margin-left: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--ink-2); }
+.mc-fclose:hover { background: var(--hover); color: var(--ink); }
+.mc-fclose svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mc-fcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 0; }
+.mc-fcol { min-width: 0; margin: 0; padding: 0 24px 0 0; border: 0; }
+.mc-fcol + .mc-fcol { padding: 0 0 0 24px; border-left: 1px solid var(--line); }
+.mc-fcol legend { padding: 0; margin-bottom: 10px; font: 600 calc(16px * var(--fs))/1.3 var(--sans); color: var(--ink); }
+.mc-fgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
+.mc-fgrid label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
+.mc-fgrid select { width: 100%; min-width: 0; }
+.mc-fgrid select:disabled { opacity: .45; }
+.mc-fcol .mc-chk { margin: 12px 0 0; }
+.mc-info {
+  display: inline-grid; place-items: center; width: 17px; height: 17px; margin-left: 2px; border: 1.3px solid var(--ink-2); border-radius: 50%;
+  font: italic 600 11px/1 var(--serif); color: var(--ink-2); cursor: help;
+}
+.mc-filters .mc-fact { margin-top: 14px; }
+.mc-filters .mc-fact:not(:has(:not([hidden]):not(:empty))) { display: none; }
+.mc-fnote { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: calc(13px * var(--fs)); color: var(--ink-2); }
+@container (max-width: 899px) {
+  .mc-fcols { grid-template-columns: minmax(0, 1fr); }
+  .mc-fcol { padding: 0; }
+  .mc-fcol + .mc-fcol { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+}
+@container (max-width: 520px) { .mc-fgrid { grid-template-columns: minmax(0, 1fr); } .mc-filters { padding: 14px; } }
+.mc-countrow { display: flex; align-items: center; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; margin: 16px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.mc-countrow .mc-count { margin: 0; }
+.mc-countrow .home-tr-all[hidden] { display: none; }
+/* las tarjetas: 3 columnas en la compu, 2 en el iPad, 1 en el celular */
+.mc-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@container (min-width: 1700px) { .mc-list { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (max-width: 999px) { .mc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@container (max-width: 639px) { .mc-list { grid-template-columns: minmax(0, 1fr); gap: 10px; } }
+
+/* en el inicio las tarjetas son más angostas: el Sol y la Luna sin el símbolo del signo (el Ascendente lo lleva) */
+.home-cards .hc-pos { padding: 3px 10px 3px 8px; font-size: calc(12.5px * var(--fs)); }
+.home-cards .hc-pos:not(:last-child) > .g { display: none; }
+.home-cards .hc-trio { gap: 5px; }
+.home-last:hover { border-color: var(--line-strong); }

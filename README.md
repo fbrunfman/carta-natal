@@ -78,40 +78,48 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
 - **Cinco páginas** (Inicio · Luna · Carta · Mis cartas · Combinar). La dirección lleva la página
   (`#inicio`, `#luna`, `#luna/2026-10`, `#carta`, `#cartas`, `#combinar`): el botón «atrás» del celular vuelve del calendario al inicio y al
   recargar queda la misma página. Sin nada en la dirección se abre **Inicio**.
-  - **Inicio**: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
+  - **Inicio** (rediseño de noviembre 2026): arriba el título con la fecha, una constelación chica y **«+ Nueva carta»**.
+    En la compu, **dos columnas**: a la izquierda **«Cielo de hoy»** (el mapa, **redondo**) y debajo **la Luna** en su
+    cuadro; a la derecha **«Última carta abierta»** (grande, con Sol, Luna y Asc y **«Continuar con esta carta →»**; todo
+    el cuadro la abre) y **«Últimas cartas»** en dos columnas. En el celular y el iPad vertical, una columna: la última
+    abierta, las últimas cartas (en el celular, **una fila que se desliza** con la que sigue asomando), el cielo y la Luna.
+    El mapa: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
     la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol,
     la Luna y los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). La Luna se dibuja con su fase.
     Tocar un planeta dice en qué grado y signo está. Cuando dos están juntos se separan hacia adentro o hacia afuera sin
     cambiar el ángulo (y si en un grupo muy apretado no hay lugar, los círculos se achican un poco); el nombre va del lado
-    donde hay lugar. **La Luna** también está en una tarjeta con lo de ahora: signo y grado, fase y porcentaje
-    iluminado (en pantallas medianas, chica, abajo a la izquierda del mapa y arriba del rótulo de Escorpio; en el celular,
-    debajo del mapa); el enlace «Calendario lunar ›» (debajo del
-    mapa, o en la tarjeta en el celular) lleva al calendario. **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
+    donde hay lugar (y dentro del círculo). **La Luna** tiene su cuadro con lo de ahora: el dibujo de la fase, signo y
+    grado, fase y porcentaje iluminado, y «Calendario lunar →». **Al tocar la Luna —la de la tarjeta o la del mapa— se abre el poema**: un
     cuadro con **un poema para la Luna en ese signo**, con el nombre del autor y la obra, entero, más desde cuándo está en
     el signo, cuándo pasa al siguiente (y en cuánto) y la próxima fase. Sale uno al azar entre los de ese signo (cada vez que
     se entra al inicio sale otro, sin repetir el anterior; las actualizaciones no lo cambian); la barra de la izquierda lleva
     el color del elemento del signo; con las lecturas apagadas (hoy) el poema no se muestra. Se actualiza solo cada 5 minutos y al volver a la
     pestaña. Los poemas están en `static/poems.js` (uno por objeto, por signo; un poema sin `autor` no sale).
-    **Arriba de todo, «Últimas cartas»**: las **6 últimas que abriste** (la que tenés abierta primero, marcada «última
-    abierta»; las que nunca abriste van después, las más nuevas primero; se recuerda en este navegador, `carta:recent`), como
+    **«Última carta abierta»** es la que tenés abierta (o la última que abriste); **«Últimas cartas»**: las **6 que
+    siguen** (las que nunca abriste van después, las más nuevas primero; se recuerda en este navegador, `carta:recent`), como
     tarjetas con la fecha, la hora y la ciudad, y el **Sol, la Luna y el Ascendente**. **Las cartas fijadas van primero**
     (con el marcador; si fijás más de 6, se ven todas): se fijan con el **marcador** al lado del nombre de la carta, que se
     vuelve a tocar para soltarla (`carta:pins`, en este navegador). El Sol, la Luna y el Ascendente aparecen cuando ya se conocen sus posiciones
     (en la versión local se calculan solas; en la pública, apenas se abre o se crea la carta —ya está calculada, no hace
-    otro pedido— o después de calcularlas en Mis cartas). Tocar una la abre; cada una tiene **editar** (lápiz) y
-    **eliminar** (tacho, dos toques: el primero pide confirmar), como en Mis cartas; al
-    final, **«+ Nueva carta»**, y con más de 6, **«Ver todas (N) ›»**, que lleva a **Mis cartas**. Sin cartas: «Crear mi
-    primera carta». Debajo, el mapa con la Luna en su rincón (en el celular, debajo), y al pie, en una línea, dónde se
+    otro pedido— o después de calcularlas en Mis cartas). Tocar una la abre; cada una tiene **editar** (lápiz) y **«⋮»**
+    (Fijar en el inicio / Eliminar), igual que en Mis cartas; **«Ver todas (N) ›»** lleva a **Mis cartas**. Sin cartas:
+    «Crear mi primera carta» (o la bienvenida con la sincronización). Al pie, en una línea, dónde se
     guardan las cartas y «Privacidad y copias» (abre la Configuración en *Datos*). No se abre ninguna carta hasta entrar
     a **Carta**. (Los «Tránsitos destacados de hoy» y «Buscar por posición» ya no están en el inicio.)
-  - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›). Se buscan:
+  - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›), en **3
+    columnas en la compu, 2 en el iPad y 1 en el celular**. Arriba, el título («37 cartas guardadas · orden alfabético»)
+    y «+ Nueva carta»; debajo, **un panel con los filtros**: buscar, los grupos (una fila que se desliza, con la flecha ›
+    si hay más) y «Editar»; abajo, «Inicial» (un desplegable) y **«Posiciones»**, que abre la búsqueda por posición en un
+    cuadro aparte (dos columnas: *planeta en signo / casa* y *planeta en aspecto duro*; un punto en el botón avisa que hay
+    una búsqueda activa). «Limpiar filtros» va al lado de la cuenta. **Las tarjetas** (las mismas en el inicio) llevan una
+    rayita del color de su primer grupo (cada grupo tiene su color: los de fábrica fijos, los propios en orden
+    alfabético; el filtro muestra el mismo color en un puntito), los grupos, **☉ ♓ Piscis · ☾ ♋ Cáncer · Asc ♍ Virgo**
+    (en la versión local se calculan solas), el lápiz para **editar** y **«⋮»** con **«Fijar en el inicio»** (o
+    «Quitar del inicio»; las fijadas muestran el marcador) y **«Eliminar»** (dos toques). Se buscan:
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
     - **por grupo**: una fila con los grupos (con cuántas cartas tiene cada uno) y «Sin grupo»; aparece cuando alguna
       carta tiene grupo. Al final, **«Editar»** para quitar grupos. Ver «Grupos», abajo;
-    - **por inicial**: una fila de letras (las que no tienen cartas no se pueden tocar; «Ágata» va en la A);
-    - **en el celular y en tablets** (hasta 760 px, o pantalla táctil hasta 1180 px) los filtros ocupan menos: buscar y
-      «+ Nueva» en una fila, y los grupos y las iniciales en **una fila cada uno que se desliza de costado** (con los
-      bordes esfumados), en vez de varios renglones de botones. En la compu siguen envolviendo;
+    - **por inicial**: el desplegable «Inicial» (las letras sin cartas no se pueden elegir; «Ágata» va en la A);
     - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
       signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo; con **«con Entre casas»** la casa se
       cuenta con la lógica del botón «Entre casas»: un planeta cerca de la cúspide de la casa que sigue cuenta también en

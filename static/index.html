@@ -68,34 +68,41 @@
   <main id="main">
     <!-- Inicio: el cielo de ahora visto desde la Tierra; la Luna abajo a la izquierda y, al tocarla, un poema -->
     <section id="home" class="page" aria-labelledby="homeTitle" hidden>
-      <header class="head">
-        <h2 id="homeTitle">Inicio</h2>
-        <p id="homeSub"></p>
+      <header class="head head-x">
+        <div class="head-t">
+          <h2 id="homeTitle">Inicio</h2>
+          <p id="homeSub"></p>
+        </div>
+        <svg class="head-deco" viewBox="0 0 300 70" aria-hidden="true" focusable="false"><path class="hd-arc" d="M8 60 C 80 18, 200 6, 292 46"/><path class="hd-arc hd-arc2" d="M40 66 C 110 34, 210 26, 280 58"/><path class="hd-star" d="M78 30 l2.2 6.3 6.3 2.2 -6.3 2.2 -2.2 6.3 -2.2 -6.3 -6.3 -2.2 6.3 -2.2Z"/><path class="hd-star hd-star-s" d="M238 22 l1.5 4.2 4.2 1.5 -4.2 1.5 -1.5 4.2 -1.5 -4.2 -4.2 -1.5 4.2 -1.5Z"/><path class="hd-moon" d="M163 12 a9 9 0 1 0 9 12 a7 7 0 1 1 -9 -12Z"/><circle class="hd-dot" cx="120" cy="22" r="1.3"/><circle class="hd-dot" cx="205" cy="40" r="1.1"/><circle class="hd-dot" cx="268" cy="34" r="1.3"/></svg>
+        <button type="button" class="primary-pill with-ic head-new" id="homeNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nueva<span class="head-new-x">&nbsp;carta</span></span></button>
       </header>
-      <!-- tus cartas: las 6 últimas que abriste, como tarjetas; «Ver todas» lleva a Mis cartas -->
-      <section class="home-charts hc" id="homeCharts" aria-labelledby="homeChartsTitle">
-        <div class="hc-head">
-          <h3 id="homeChartsTitle">Últimas cartas</h3>
-          <a class="hc-all" id="homeAll" href="#cartas" hidden>Ver todas <span id="homeAllN"></span> <span aria-hidden="true">›</span></a>
-        </div>
-        <div id="homeChartBody"></div>
-      </section>
-      <!-- el cielo de ahora, con la Luna en su rincón (en el celular, debajo) -->
-      <div class="home-grid">
-        <div class="home-main">
-          <div class="sky-wrap" id="skyWrap">
-            <div class="sky" id="sky" role="group" aria-label="El cielo ahora, visto desde la Tierra"></div>
-            <div class="sky-moon" id="skyMoon"><span class="mc-wait">Calculando el cielo…</span></div>
-            <div class="sky-foot">
-              <p class="sky-info" id="skyInfo" role="status" aria-live="polite"></p>
-              <a class="sky-foot-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>
+      <div class="home-dash">
+        <!-- columna del cielo: el mapa de hoy y la Luna (en el celular van después de las cartas) -->
+        <div class="home-col home-col-sky">
+          <section class="hbox home-sky" aria-labelledby="homeSkyTitle">
+            <h3 class="hbox-k" id="homeSkyTitle">Cielo de hoy</h3>
+            <div class="sky-wrap" id="skyWrap">
+              <div class="sky" id="sky" role="group" aria-label="El cielo ahora, visto desde la Tierra"></div>
+              <div class="sky-foot">
+                <p class="sky-info" id="skyInfo" role="status" aria-live="polite"></p>
+              </div>
             </div>
-          </div>
-          <div id="homeErr" class="error" role="alert" hidden></div>
+            <div id="homeErr" class="error" role="alert" hidden></div>
+          </section>
+          <section class="hbox home-moon" aria-label="La Luna hoy">
+            <div class="sky-moon" id="skyMoon"><span class="mc-wait">Calculando el cielo…</span></div>
+          </section>
         </div>
-        <div class="home-side">
-          <!-- en el tablero de escritorio la Luna del rincón pasa a esta columna (app.js la mueve) -->
-          <div class="home-moon-slot" id="homeMoonSlot"></div>
+        <!-- columna de las cartas: la última que abriste, grande, y las otras últimas -->
+        <div class="home-col home-col-charts">
+          <section class="hbox home-last" id="homeLast" aria-labelledby="homeLastK" hidden></section>
+          <section class="hbox home-charts hc" id="homeCharts" aria-labelledby="homeChartsTitle">
+            <div class="hc-head">
+              <h3 class="hbox-k" id="homeChartsTitle">Últimas cartas</h3>
+              <a class="hc-all" id="homeAll" href="#cartas" hidden>Ver todas <span id="homeAllN"></span> <span aria-hidden="true">›</span></a>
+            </div>
+            <div id="homeChartBody"></div>
+          </section>
         </div>
       </div>
       <p class="home-priv"><span id="homePrivTxt"></span> <button type="button" class="home-priv-link" id="homePriv">Privacidad y copias</button></p>
@@ -126,44 +133,60 @@
     <!-- Combinar (beta): se pintan uno o más planetas y sale algo que los junta (texto, biografía, película o canción) -->
     <!-- Mis cartas: todas, en orden alfabético, de a páginas; se buscan por nombre, por inicial y por posiciones -->
     <section id="charts" class="page" aria-labelledby="chartsTitle" hidden>
-      <header class="head">
-        <h2 id="chartsTitle">Mis cartas</h2>
-        <p id="chartsSub"></p>
-      </header>
-      <div class="mc-top">
-        <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="mcQ" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></label>
-        <button type="button" class="primary-pill with-ic" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva<span class="mc-new-x">&nbsp;carta</span></button>
-      </div>
-      <div class="mc-groups gchips" id="mcGroups" role="group" aria-label="Por grupo"></div>
-      <nav class="mc-az" id="mcAz" aria-label="Por inicial"></nav>
-      <details class="mc-filters" id="mcFilters">
-        <summary><span class="mc-ft" id="mcFiltersTitle">Buscar por posición</span><small class="mc-fsum" id="mcFiltersSum">Planeta en signo o casa · planeta en aspecto duro</small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
-        <div class="mc-fb">
-        <div class="mc-frow" role="group" aria-label="Planeta en signo o en casa">
-          <span class="mc-flab">Planeta en signo / casa</span>
-          <select id="mcPl" aria-label="Planeta"></select>
-          <span class="mc-w">en</span>
-          <select id="mcSign" aria-label="Signo"></select>
-          <span class="mc-w">y</span>
-          <select id="mcHouse" aria-label="Casa"></select>
-          <label class="mc-chk" title="Contar los planetas que están cerca de la cúspide de la casa que sigue, como el botón «Entre casas» de la carta"><input type="checkbox" id="mcSpill">con «Entre casas»</label>
+      <header class="head head-x">
+        <div class="head-t">
+          <h2 id="chartsTitle">Mis cartas</h2>
+          <p id="chartsSub"></p>
         </div>
-        <div class="mc-frow" role="group" aria-label="Planeta en aspecto duro con otro">
-          <span class="mc-flab">Planeta en aspecto duro</span>
-          <select id="mcA" aria-label="Planeta"></select>
-          <select id="mcAsp" aria-label="Aspecto"></select>
-          <span class="mc-w">con</span>
-          <select id="mcB" aria-label="Otro planeta"></select>
+        <svg class="head-deco" viewBox="0 0 300 70" aria-hidden="true" focusable="false"><path class="hd-arc" d="M8 60 C 80 18, 200 6, 292 46"/><path class="hd-arc hd-arc2" d="M40 66 C 110 34, 210 26, 280 58"/><path class="hd-star" d="M78 30 l2.2 6.3 6.3 2.2 -6.3 2.2 -2.2 6.3 -2.2 -6.3 -6.3 -2.2 6.3 -2.2Z"/><path class="hd-star hd-star-s" d="M238 22 l1.5 4.2 4.2 1.5 -4.2 1.5 -1.5 4.2 -1.5 -4.2 -4.2 -1.5 4.2 -1.5Z"/><path class="hd-moon" d="M163 12 a9 9 0 1 0 9 12 a7 7 0 1 1 -9 -12Z"/><circle class="hd-dot" cx="120" cy="22" r="1.3"/><circle class="hd-dot" cx="205" cy="40" r="1.1"/><circle class="hd-dot" cx="268" cy="34" r="1.3"/></svg>
+        <button type="button" class="primary-pill with-ic head-new" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nueva<span class="head-new-x">&nbsp;carta</span></span></button>
+      </header>
+      <div class="mc-panel" id="mcPanel">
+        <div class="mc-row mc-row1">
+          <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="mcQ" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></label>
+          <div class="mc-gwrap" id="mcGWrap">
+            <div class="mc-groups gchips" id="mcGroups" role="group" aria-label="Por grupo"></div>
+            <button type="button" class="mc-gmore" id="mcGMore" aria-label="Ver más grupos" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+          <button type="button" class="gchip gedit" id="mcGEdit" aria-label="Editar los grupos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg><span>Editar</span></button>
+        </div>
+        <div class="mc-row mc-row2">
+          <label class="mc-ini" id="mcIniBox"><span>Inicial:</span><select id="mcIni" aria-label="Por inicial"></select></label>
+          <button type="button" class="mc-posbtn" id="mcPosBtn" aria-expanded="false" aria-controls="mcFilters"><svg class="mc-posic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Posiciones</span><span class="mc-posdot" id="mcPosDot" hidden></span><svg class="mc-poschev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+        </div>
+      </div>
+      <section class="mc-filters" id="mcFilters" aria-labelledby="mcFiltersTitle" hidden>
+        <div class="mc-fhead">
+          <h3 class="hbox-k" id="mcFiltersTitle">Buscar por posición</h3>
+          <small class="mc-fsum" id="mcFiltersSum"></small>
+          <button type="button" class="mc-fclose" id="mcFClose" aria-label="Cerrar la búsqueda por posición"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5"/></svg></button>
+        </div>
+        <div class="mc-fcols">
+          <fieldset class="mc-fcol">
+            <legend>Planeta en signo / casa</legend>
+            <div class="mc-fgrid">
+              <label><span>Planeta</span><select id="mcPl"></select></label>
+              <label><span>Signo</span><select id="mcSign"></select></label>
+              <label><span>Casa</span><select id="mcHouse"></select></label>
+            </div>
+            <label class="mc-chk"><input type="checkbox" id="mcSpill">Entre casas <span class="mc-info" tabindex="0" role="note" aria-label="Con «Entre casas», un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (los orbes de Reglas avanzadas)." title="Un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (orbes de Reglas avanzadas)">i</span></label>
+          </fieldset>
+          <fieldset class="mc-fcol">
+            <legend>Planeta en aspecto duro</legend>
+            <div class="mc-fgrid">
+              <label><span>Planeta</span><select id="mcA"></select></label>
+              <label><span>Aspecto</span><select id="mcAsp"></select></label>
+              <label><span>Con planeta</span><select id="mcB"></select></label>
+            </div>
+          </fieldset>
         </div>
         <div class="mc-fact">
           <button type="button" class="home-continue" id="mcCalc" hidden></button>
           <span class="home-tr-prog" id="mcProg" role="status" aria-live="polite"></span>
-          <button type="button" class="home-tr-all" id="mcClear" hidden>Limpiar la búsqueda</button>
         </div>
-        <p class="home-tr-note" id="mcNote"></p>
-        </div>
-      </details>
-      <p class="mc-count" id="mcCount" role="status" aria-live="polite"></p>
+        <p class="mc-fnote" id="mcNote"></p>
+      </section>
+      <div class="mc-countrow"><p class="mc-count" id="mcCount" role="status" aria-live="polite"></p><button type="button" class="home-tr-all" id="mcClear" hidden>Limpiar filtros</button></div>
       <div class="hc-cards mc-list" id="mcList"></div>
       <nav class="mc-pages" id="mcPages" aria-label="Páginas"></nav>
     </section>

@@ -102,6 +102,20 @@ function birthFromForm() {
 const GROUP_DEFAULTS = ["Amigos", "Familia", "Consultantes", "Famosos"];
 const gkey = (g) => String(g).toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 const hasGroup = (list, g) => (list || []).some((x) => gkey(x) === gkey(g));
+// el color de cada grupo (el tono; la CSS pone la luz según el tema): los de fábrica fijos, los demás según su nombre
+const GROUP_HUES = { amigos: 212, familia: 152, consultantes: 32, famosos: 280 };
+const HUE_SET = [350, 190, 52, 320, 236, 95, 12, 168, 300, 70, 258, 128];
+// los propios van tomando, en orden alfabético, los colores de la lista (así no se repiten mientras haya menos de 12)
+let hueCache = { sig: "", map: new Map() };
+function groupHue(g) {
+  const k = gkey(g);
+  if (GROUP_HUES[k] != null) return GROUP_HUES[k];
+  const own = allGroups().map(gkey).filter((x) => GROUP_HUES[x] == null);
+  if (!own.includes(k)) own.push(k);
+  const sig = own.join("|");
+  if (sig !== hueCache.sig) hueCache = { sig, map: new Map(own.sort().map((x, i) => [x, HUE_SET[i % HUE_SET.length]])) };
+  return hueCache.map.get(k);
+}
 let formGroups = [];          // los de la carta del formulario
 let extraGroups = [];         // creados con «+ Grupo» y todavía sin carta guardada
 function allGroups() {
@@ -3440,39 +3454,26 @@ function renderHome() {
   renderHomeCharts();
 }
 
-/** Dibuja el mapa: los signos, la Tierra, los planetas en su lugar y la Luna en el rincón. */
+/** Dibuja el mapa (los signos, la Tierra y los planetas en su lugar) y la Luna en su cuadro. */
 function paintSky() {
   const sky = $("#sky"), box = $("#skyMoon"), now = moon.now;
-  placeMoon();
   const W = Math.round(sky.clientWidth) || 640;
   skyState.w = W;
   sky.innerHTML = skyShellHTML(W);
   if (now) {
     box.innerHTML = `<button type="button" class="sky-moon-btn" id="moonBtn" aria-haspopup="dialog">${moonCornerHTML(now, moon.south)}</button>` +
-      `<a class="sky-moon-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">›</span></a>`;
+      `<a class="sky-moon-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">→</span></a>`;
   } else {
     box.innerHTML = `<span class="mc-wait">Calculando el cielo…</span>`;
-  }
-  // en pantallas medianas la Luna está encima del mapa (en el celular, debajo; en el tablero, en la columna): los planetas no la tapan
-  const obstacles = [], mr = box.getBoundingClientRect(), sr = sky.getBoundingClientRect();
-  if (now && mr.width && box.parentElement.id === "skyWrap" && mr.top < sr.bottom - 1 && mr.left < sr.right - 1) {
-    obstacles.push({ x0: mr.left - sr.left - 4, y0: mr.top - sr.top - 4, x1: mr.right - sr.left + 4, y1: mr.bottom - sr.top + 4 });
   }
   // la Luna es un cuerpo más del cielo: se dibuja con su fase en su longitud (el servidor la manda aparte de los planetas)
   const bodies = now?.planets ? [{ id: "moon", lon: now.lon, sign: now.sign, deg: now.deg, min: now.min, retro: false }, ...now.planets] : [];
   const moonArt = now ? moonIcon(now.elong, moon.south) : "";
-  skyState.layout = layoutSky(bodies, W, obstacles);
+  skyState.layout = layoutSky(bodies, W);
   sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel, moonArt)).join(""));
   paintSkyInfo();
 }
 
-/** En el tablero de escritorio la Luna va en la columna de la derecha; si no, en el rincón del mapa (o debajo, en el celular). */
-function placeMoon() {
-  const box = $("#skyMoon"), slot = $("#homeMoonSlot"), wrap = $("#skyWrap");
-  const dash = getComputedStyle($("#home .home-grid")).display === "grid";
-  if (dash && box.parentElement !== slot) slot.append(box);
-  else if (!dash && box.parentElement !== wrap) wrap.insertBefore(box, wrap.querySelector(".sky-foot"));
-}
 
 function paintSkyInfo() {
   const el = $("#skyInfo"), now = moon.now;
@@ -3495,8 +3496,7 @@ function watchSky() {
   if (skyWatch || typeof ResizeObserver === "undefined") return;
   skyWatch = new ResizeObserver(() => {
     const w = Math.round($("#sky").clientWidth);
-    const dash = getComputedStyle($("#home .home-grid")).display === "grid";        // pasar a tablero (o volver) mueve la Luna
-    if (page !== "home" || !moon.now || !w || (Math.abs(w - skyState.w) < 6 && dash === ($("#skyMoon").parentElement.id === "homeMoonSlot"))) return;
+    if (page !== "home" || !moon.now || !w || Math.abs(w - skyState.w) < 6) return;
     cancelAnimationFrame(skyFrame);
     skyFrame = requestAnimationFrame(paintSky);
   });
@@ -3613,23 +3613,23 @@ const elx = (tag, props = {}, fn) => {
 };
 const dmyOf = (d) => (d ? d.split("-").reverse().join("/") : "");
 
-/** Una tarjeta de carta: nombre, fecha · hora · ciudad, y el Sol, la Luna y el Ascendente si ya se conocen sus posiciones.
- *  `hits`: lo que encontró la búsqueda por posición (va resaltado). Los nombres los escribe quien usa la app: todo con DOM. */
+/** Una tarjeta de carta: nombre, fecha · hora · ciudad, sus grupos y el Sol, la Luna y el Ascendente si ya se conocen
+ *  sus posiciones. Lleva a la izquierda una rayita del color de su (primer) grupo. `hits`: lo que encontró la búsqueda por
+ *  posición (va resaltado en vez del Sol, la Luna y el Ascendente). Los nombres los escribe quien usa la app: todo con DOM. */
 function chartCard(it, { cur = false, hits = [] } = {}) {
   const card = elx("button", { type: "button", className: "hc-card", title: `Abrir la carta de ${it.name}` }, () => openSaved(it));
   if (cur) card.classList.add("cur");
+  if (it.groups?.length) card.style.setProperty("--gh", groupHue(it.groups[0]));
   card.append(elx("b", { className: "hc-nm", textContent: it.name }));
-  if (isPinned(it.id)) {
-    const pin = elx("span", { className: "hc-pin", title: "Fijada en el inicio" });
-    pin.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg><span class="sr">(fijada)</span>`;
-    card.append(pin);
-  }
   const sub = elx("small", { className: "hc-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
-  if (cur) sub.append(" · ", elx("strong", { textContent: "última abierta" }));
   card.append(sub);
   if (it.groups?.length) {
     const gs = elx("span", { className: "hc-groups" });
-    for (const g of it.groups) gs.append(elx("span", { className: "hc-g", textContent: g }));
+    for (const g of it.groups) {
+      const t = elx("span", { className: "hc-g", textContent: g });
+      t.style.setProperty("--gh", groupHue(g));
+      gs.append(t);
+    }
     card.append(gs);
   }
   const pos = posReady(it) ? find.pos.get(it.id).lon : null;
@@ -3685,17 +3685,18 @@ function homeWelcome() {
   joinUI({ input: $b("#hwCode"), count: $b("#hwCount"), note: $b("#hwNote"), go: $b("#hwGo"), paste: $b("#hwPaste") });
   return box;
 }
-/** Inicio: las 6 últimas cartas que abriste, «+ Nueva carta» y «Ver todas» (a Mis cartas). */
+/** Inicio: la última carta abierta, grande (con «Continuar con esta carta»), y debajo las últimas que abriste, con las
+ *  fijadas primero. «+ Nueva carta» está arriba, al lado del título; «Ver todas» lleva a Mis cartas. */
 function paintHomeCards() {
-  const body = $("#homeChartBody");
+  const body = $("#homeChartBody"), lastBox = $("#homeLast");
   const items = saved.items;
-  const act = saved.activeId ? saved.find(saved.activeId) : null;
   const v = readForm();
   const pinned = pinIds.map((id) => saved.find(id)).filter(Boolean);
-  const nShow = Math.max(HOME_CARDS, pinned.length);
-  $("#homeAll").hidden = items.length <= nShow;
+  $("#homeAll").hidden = items.length <= 1;
   $("#homeAllN").textContent = `(${items.length})`;
   if (!items.length) {
+    lastBox.hidden = true;
+    $("#homeCharts").classList.add("empty");
     const nodes = [];
     if (formReady(v)) {
       nodes.push(elx("button", { type: "button", className: "home-continue", textContent: `Continuar con ${v.name || "la carta sin guardar"}` }, () => go("#carta")));
@@ -3709,17 +3710,52 @@ function paintHomeCards() {
     body.replaceChildren(...nodes);
     return;
   }
-  // primero las fijadas, después la abierta y después las últimas que abriste
-  const rest = byRecent(items).filter((it) => !pinned.includes(it));
-  const list = [...pinned, ...(act && !pinned.includes(act) ? [act] : []), ...rest.filter((it) => it !== act)];
-  const grid = elx("div", { className: "hc-cards" });
-  grid.append(...list.slice(0, nShow).map((it) => listItem(it, { cur: it === act, where: "home" })));
-  const add = elx("button", { type: "button", className: "hc-card hc-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
-  add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
-  grid.append(add);
+  $("#homeCharts").classList.remove("empty");
+  // la última abierta: la que está abierta ahora o, si no, la última que se abrió
+  const recent = byRecent(items);
+  const last = (saved.activeId && saved.find(saved.activeId)) || recent[0];
+  paintHomeLast(last);
+  const list = [...pinned, ...recent.filter((it) => !pinned.includes(it))].filter((it) => it !== last);
+  const nShow = Math.max(HOME_CARDS, pinned.filter((it) => it !== last).length);
+  const grid = elx("div", { className: "hc-cards home-cards" });
+  grid.append(...list.slice(0, nShow).map((it) => listItem(it, { where: "home" })));
+  if (!list.length) grid.append(elx("p", { className: "home-empty", textContent: "Acá van a aparecer las otras cartas que abras." }));
   body.replaceChildren(grid);
   // en la versión local las posiciones (para el Sol, la Luna y el Ascendente) se calculan solas
-  if (!isPublic() && !find.running && list.slice(0, nShow).some((it) => !posReady(it))) runFind(false);
+  if (!isPublic() && !find.running && [last, ...list.slice(0, nShow)].some((it) => !posReady(it))) runFind(false);
+}
+/** El cuadro de la última carta abierta. */
+function paintHomeLast(it) {
+  const box = $("#homeLast");
+  box.hidden = !it;
+  if (!it) return;
+  if (it.groups?.length) box.style.setProperty("--gh", groupHue(it.groups[0])); else box.style.removeProperty("--gh");
+  const k = elx("p", { className: "hbox-k", id: "homeLastK", textContent: "Última carta abierta" });
+  const nm = elx("h3", { className: "hl-nm", textContent: it.name });
+  const sub = elx("p", { className: "hl-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
+  const parts = [k, nm, sub];
+  if (it.groups?.length) {
+    const gs = elx("span", { className: "hc-groups" });
+    for (const g of it.groups) { const t = elx("span", { className: "hc-g", textContent: g }); t.style.setProperty("--gh", groupHue(g)); gs.append(t); }
+    parts.push(gs);
+  }
+  const pos = posReady(it) ? find.pos.get(it.id).lon : null;
+  if (pos) {
+    const trio = elx("span", { className: "hc-trio" });
+    for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
+      const s = split(pos[id]).sign;
+      const t = elx("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[s]}` });
+      t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(s)}</span>`;
+      t.append(SIGNS[s]);
+      trio.append(t);
+    }
+    parts.push(trio);
+  }
+  const go_ = elx("button", { type: "button", className: "hl-go", id: "homeContinue" }, () => openSaved(it));
+  go_.innerHTML = `Continuar con esta carta <span aria-hidden="true">→</span>`;
+  parts.push(go_);
+  box.replaceChildren(...parts);
+  box.onclick = (e) => { if (!e.target.closest("button, a") && !getSelection()?.toString()) openSaved(it); };   // todo el cuadro abre la carta
 }
 $("#homePriv").addEventListener("click", () => openCfg("cfgDataG"));
 
@@ -3837,7 +3873,7 @@ function paintFindState() {
 // -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
 // un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
 const MC_PAGE = 24;
-const mc = { gEdit: false, q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
+const mc = { gEdit: false, posOpen: false, q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
 const NO_GROUP = "\u0000sin";
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
@@ -3855,6 +3891,14 @@ const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(
   $("#mcQ").addEventListener("input", (e) => { mc.q = e.target.value; mc.page = 1; renderMyCharts(); });
   $("#mcSpill").addEventListener("change", (e) => { mc.spill = e.target.checked; mc.page = 1; renderMyCharts(); });
   $("#mcNew").addEventListener("click", () => openForm("new"));
+  $("#homeNew").addEventListener("click", () => openForm("new"));
+  $("#mcIni").addEventListener("change", (e) => { mc.letter = e.target.value; mc.page = 1; renderMyCharts(); });
+  $("#mcPosBtn").addEventListener("click", () => { mc.posOpen = !mc.posOpen; renderMyCharts(); if (mc.posOpen) $("#mcPl").focus({ preventScroll: true }); });
+  $("#mcFClose").addEventListener("click", () => { mc.posOpen = false; renderMyCharts(); $("#mcPosBtn").focus({ preventScroll: true }); });
+  $("#mcGEdit").addEventListener("click", () => { mc.gEdit = !mc.gEdit; gArm = null; renderMyCharts(); });
+  $("#mcGMore").addEventListener("click", () => { const g = $("#mcGroups"); g.scrollBy({ left: g.clientWidth * 0.7, behavior: "smooth" }); });
+  $("#mcGroups").addEventListener("scroll", () => paintGMore(), { passive: true });
+  addEventListener("resize", () => { if (page === "charts") paintGMore(); });
   $("#mcCalc").addEventListener("click", () => runFind(true));
   $("#mcClear").addEventListener("click", () => {
     Object.assign(mc, { q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 });
@@ -3901,43 +3945,116 @@ function posHits(it) {
   }
   return hits;
 }
-// En Mis cartas y en el inicio cada tarjeta lleva «Editar» y «Eliminar» (este, con dos toques: el primero pide confirmar).
+// En Mis cartas y en el inicio cada tarjeta lleva «Editar» (el lápiz) y «⋮», un menú con «Fijar en el inicio» y
+// «Eliminar» (este, con dos toques: el primero pide confirmar). Las fijadas muestran el marcador.
 const PENCIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>`;
 const TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/></svg>`;
-let mcArm = { id: null, timer: 0 };
+const DOTS = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>`;
+const MARK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg>`;
 function listItem(it, { hits = [], cur = false, where = "mc" } = {}) {
-  const redraw = () => (where === "home" ? paintHomeCards() : renderMyCharts());
-  const box = where === "home" ? "#homeChartBody" : "#mcList";
   const wrap = elx("div", { className: "hc-item" });
+  wrap.dataset.id = it.id;
   const acts = elx("div", { className: "hc-acts" });
+  if (isPinned(it.id)) {
+    const pin = elx("span", { className: "hc-pin", title: "Fijada en el inicio" });
+    pin.innerHTML = `${MARK}<span class="sr">(fijada en el inicio)</span>`;
+    acts.append(pin);
+  }
   const ed = elx("button", { type: "button", className: "hc-act", title: "Editar los datos" }, () => openForm("edit", it));
   ed.innerHTML = PENCIL;
   ed.setAttribute("aria-label", `Editar ${it.name}`);
-  const del = elx("button", { type: "button", className: "hc-act hc-del", title: "Eliminar" });
-  del.setAttribute("aria-label", `Eliminar ${it.name}`);
-  const armed = mcArm.id === it.id;
-  del.innerHTML = TRASH + (armed ? "<span>¿Eliminar?</span>" : "");
-  if (armed) { del.dataset.arm = "1"; del.title = "Tocá de nuevo para eliminar"; del.setAttribute("aria-label", `¿Eliminar ${it.name}? Tocá de nuevo`); }
-  del.addEventListener("click", async () => {
-    clearTimeout(mcArm.timer);
-    if (mcArm.id !== it.id) {                       // primer toque: pide confirmar (se desarma a los 6 s)
-      mcArm = { id: it.id, timer: setTimeout(() => { mcArm = { id: null, timer: 0 }; redraw(); }, 6000) };
-      redraw();
-      $(`${box} .hc-del[data-arm="1"]`)?.focus();
-      return;
-    }
-    mcArm = { id: null, timer: 0 };
-    try {
-      await deleteChart(it.id, { active: saved.activeId, values: readForm() });
-      if (where === "home") renderHomeCharts();
-    } catch (err) {
-      if (where === "home") { del.title = `No se pudo eliminar: ${err.message}`; redraw(); }
-      else $("#mcCount").textContent = `No se pudo eliminar: ${err.message}`;
-    }
-  });
-  acts.append(ed, del);
+  const more = elx("button", { type: "button", className: "hc-act hc-more", title: "Más" });
+  more.innerHTML = DOTS;
+  more.setAttribute("aria-label", `Más opciones para ${it.name}`);
+  more.setAttribute("aria-haspopup", "menu");
+  more.setAttribute("aria-expanded", "false");
+  more.addEventListener("click", (e) => { e.stopPropagation(); cardMenu.open === more ? closeCardMenu(true) : openCardMenu(it, more, where); });
+  acts.append(ed, more);
   wrap.append(chartCard(it, { hits, cur }), acts);
   return wrap;
+}
+
+// el menú «⋮» de las tarjetas: uno solo, que se pone al lado del botón que lo abrió
+const cardMenu = { el: null, open: null, it: null, where: "mc", arm: false, timer: 0 };
+function openCardMenu(it, btn, where) {
+  closeCardMenu(false);
+  if (!cardMenu.el) {
+    cardMenu.el = elx("div", { className: "cmenu", id: "cardMenu" });
+    cardMenu.el.setAttribute("role", "menu");
+    cardMenu.el.addEventListener("keydown", (e) => {
+      const its = [...cardMenu.el.querySelectorAll("[role=menuitem]")];
+      const i = its.indexOf(document.activeElement);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); its[(i + (e.key === "ArrowDown" ? 1 : its.length - 1)) % its.length]?.focus(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeCardMenu(true); }
+      else if (e.key === "Tab") closeCardMenu(false);
+    });
+    document.body.append(cardMenu.el);
+  }
+  Object.assign(cardMenu, { open: btn, it, where, arm: false });
+  btn.setAttribute("aria-expanded", "true");
+  paintCardMenu();
+  cardMenu.el.hidden = false;
+  placeCardMenu();
+  cardMenu.el.querySelector("[role=menuitem]")?.focus({ preventScroll: true });
+}
+function paintCardMenu() {
+  const { it, arm } = cardMenu;
+  const pinned = isPinned(it.id);
+  const pin = elx("button", { type: "button", className: "cmenu-i" }, () => {
+    setPinned(it.id, !pinned);
+    closeCardMenu(false);
+    if (page === "charts") renderMyCharts();
+  });
+  pin.setAttribute("role", "menuitem");
+  pin.innerHTML = `${MARK}<span>${pinned ? "Quitar del inicio" : "Fijar en el inicio"}</span>`;
+  const del = elx("button", { type: "button", className: "cmenu-i cmenu-del" });
+  del.setAttribute("role", "menuitem");
+  del.innerHTML = `${TRASH}<span>${arm ? "¿Eliminar? Tocá de nuevo" : "Eliminar"}</span>`;
+  if (arm) del.dataset.arm = "1";
+  del.addEventListener("click", async () => {
+    clearTimeout(cardMenu.timer);
+    if (!cardMenu.arm) {                                   // primer toque: pide confirmar (se desarma a los 6 s)
+      cardMenu.arm = true;
+      cardMenu.timer = setTimeout(() => { if (cardMenu.open) { cardMenu.arm = false; paintCardMenu(); } }, 6000);
+      paintCardMenu();
+      cardMenu.el.querySelector(".cmenu-del")?.focus({ preventScroll: true });
+      return;
+    }
+    const where = cardMenu.where;
+    closeCardMenu(false);
+    try {
+      await deleteChart(it.id, { active: saved.activeId, values: readForm() });
+      if (where === "home" || page === "home") renderHomeCharts();
+    } catch (err) {
+      if (page === "charts") $("#mcCount").textContent = `No se pudo eliminar: ${err.message}`;
+    }
+  });
+  cardMenu.el.replaceChildren(pin, del);
+}
+function placeCardMenu() {
+  const m = cardMenu.el, b = cardMenu.open;
+  if (!m || !b) return;
+  const r = b.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w));
+  const below = r.bottom + 6 + h < innerHeight - 8;
+  m.style.left = `${left + scrollX}px`;
+  m.style.top = `${(below ? r.bottom + 6 : r.top - 6 - h) + scrollY}px`;
+}
+function closeCardMenu(refocus) {
+  clearTimeout(cardMenu.timer);
+  const b = cardMenu.open;
+  if (cardMenu.el) cardMenu.el.hidden = true;
+  cardMenu.open = null; cardMenu.arm = false;
+  if (b) { b.setAttribute("aria-expanded", "false"); if (refocus && b.isConnected) b.focus({ preventScroll: true }); }
+}
+document.addEventListener("click", (e) => { if (cardMenu.open && !e.composedPath().includes(cardMenu.el)) closeCardMenu(false); });
+addEventListener("resize", () => closeCardMenu(false));
+addEventListener("hashchange", () => closeCardMenu(false));
+/** La flecha › de la fila de grupos: aparece si quedan grupos a la derecha (y desaparece al llegar al final). */
+function paintGMore() {
+  const g = $("#mcGroups"), b = $("#mcGMore");
+  b.hidden = g.scrollWidth - g.clientWidth - g.scrollLeft < 4;
+  $("#mcGWrap").classList.toggle("more", !b.hidden);
 }
 // «Editar» grupos: cada uno con una ✕; el primer toque pide confirmar (dice de cuántas cartas sale), el segundo lo quita.
 let gArm = null;              // el grupo armado para quitar (gkey)
@@ -3953,7 +4070,8 @@ function paintGroupEdit(gBox, gCount) {
       b.append(n ? `¿Quitar «${g}» de ${n} ${n === 1 ? "carta" : "cartas"}?` : `¿Quitar «${g}»?`);
       b.setAttribute("aria-label", `${b.textContent} Tocá de nuevo para confirmar`);
     } else {
-      b.append(g);
+      b.append(elx("span", { className: "gdot", ariaHidden: "true" }), g);
+      b.style.setProperty("--gh", groupHue(g));
       if (n) b.append(elx("span", { className: "gn", textContent: String(n) }));
       b.insertAdjacentHTML("beforeend", XMARK);
       b.setAttribute("aria-label", `Quitar el grupo ${g}`);
@@ -3973,30 +4091,32 @@ function paintGroupEdit(gBox, gCount) {
       b.disabled = true;
       try { await removeGroup(g); }
       catch (err) { $("#mcCount").textContent = `No se pudo quitar el grupo: ${err.message}`; renderMyCharts(); }
-      $("#mcGroups .gdone")?.focus({ preventScroll: true });
+      $("#mcGEdit")?.focus({ preventScroll: true });
     });
     return b;
   });
   const off = curCfg?.groupsOff || [];
   const back = off.length ? [elx("button", { type: "button", className: "gchip gback", textContent: `Volver a poner ${off.join(", ")}`, title: "Los grupos de fábrica que quitaste" }, () => { setGroupsOff([]); })] : [];
-  const done = elx("button", { type: "button", className: "gchip gdone", textContent: "Listo" }, () => { mc.gEdit = false; gArm = null; renderMyCharts(); $("#mcGroups .gedit")?.focus({ preventScroll: true }); });
-  gBox.replaceChildren(done, ...chips, ...back);
+  gBox.replaceChildren(...chips, ...back);
   if (!chips.length && !back.length) gBox.append(elx("span", { className: "gnone", textContent: "No hay grupos." }));
 }
 function renderMyCharts() {
   const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-  $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta" : "cartas"}, en orden alfabético.` : "";
+  $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta guardada" : "cartas guardadas"} · orden alfabético` : "";
   $("#navChartsN").textContent = items.length ? String(items.length) : "";
-  // por inicial: las letras que tienen alguna carta se pueden tocar
+  if (cardMenu.open && !cardMenu.open.isConnected) closeCardMenu(false);
+  // por inicial: un desplegable; las letras sin cartas no se pueden elegir
   const have = new Set(items.map((it) => initialOf(it.name)));
   const letters = ["", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), ...(have.has("#") ? ["#"] : [])];
   if (mc.letter && !have.has(mc.letter)) mc.letter = "";
-  $("#mcAz").replaceChildren(...letters.map((l) => {
-    const b = elx("button", { type: "button", textContent: l || "Todas", disabled: !!l && !have.has(l) }, () => { mc.letter = l; mc.page = 1; renderMyCharts(); });
-    b.setAttribute("aria-pressed", String(mc.letter === l));
-    if (l) b.setAttribute("aria-label", `Cartas que empiezan con ${l === "#" ? "otro carácter" : l}`);
-    return b;
+  const ini = $("#mcIni");
+  ini.replaceChildren(...letters.map((l) => {
+    const o = elx("option", { value: l, textContent: l ? (l === "#" ? "Otras" : l) : "Todas", disabled: !!l && !have.has(l) });
+    return o;
   }));
+  ini.value = mc.letter;
+  $("#mcIniBox").classList.toggle("on", !!mc.letter);
+  $("#mcIniBox").hidden = items.length < 2;
   // por grupo: aparece cuando alguna carta tiene grupo
   const gCount = new Map();
   let noGroup = 0;
@@ -4006,26 +4126,33 @@ function renderMyCharts() {
   }
   if (mc.group && (mc.group === NO_GROUP ? !noGroup : !gCount.has(mc.group))) mc.group = "";
   const gBox = $("#mcGroups");
-  gBox.hidden = !gCount.size && !mc.gEdit;
+  const showGroups = !!gCount.size || mc.gEdit;
+  $("#mcGWrap").hidden = !showGroups;
+  $("#mcGEdit").hidden = !showGroups;
   gBox.classList.toggle("editing", !!mc.gEdit);
+  const ge = $("#mcGEdit");
+  ge.classList.toggle("gdone", !!mc.gEdit);
+  ge.querySelector("span").textContent = mc.gEdit ? "Listo" : "Editar";
+  ge.setAttribute("aria-label", mc.gEdit ? "Terminar de editar los grupos" : "Editar los grupos");
+  ge.setAttribute("aria-pressed", String(!!mc.gEdit));
   if (mc.gEdit) { paintGroupEdit(gBox, gCount); }
   else {
   const gBtn = (key, label, n) => {
     const b = elx("button", { type: "button", className: "gchip", disabled: key !== "" && !n }, () => { mc.group = mc.group === key ? "" : key; mc.page = 1; renderMyCharts(); });
+    if (key && key !== NO_GROUP) { b.style.setProperty("--gh", groupHue(label)); b.append(elx("span", { className: "gdot", ariaHidden: "true" })); }
     b.append(label);
     if (n) b.append(elx("span", { className: "gn", textContent: String(n) }));
     b.setAttribute("aria-pressed", String(mc.group === key));
     return b;
   };
-  const edit = elx("button", { type: "button", className: "gchip gedit", title: "Quitar grupos" }, () => { mc.gEdit = true; gArm = null; renderMyCharts(); $("#mcGroups .gdone")?.focus({ preventScroll: true }); });
-  edit.innerHTML = `${PENCIL}<span>Editar</span>`;
-  edit.setAttribute("aria-label", "Editar los grupos");
-  gBox.replaceChildren(gBtn("", "Todos los grupos", 0),
+  gBox.replaceChildren(gBtn("", "Todos", 0),
     ...allGroups().map((g) => gBtn(gkey(g), g, gCount.get(gkey(g)) || 0)),
-    ...(noGroup && noGroup < items.length ? [gBtn(NO_GROUP, "Sin grupo", noGroup)] : []), edit);
+    ...(noGroup && noGroup < items.length ? [gBtn(NO_GROUP, "Sin grupo", noGroup)] : []));
   }
-  $("#mcFilters").hidden = !items.length;
-  $("#mcAz").hidden = items.length < 2;
+  requestAnimationFrame(paintGMore);
+  $("#mcPanel").hidden = !items.length;
+  $("#mcFilters").hidden = !items.length || !mc.posOpen;
+  $("#mcPosBtn").setAttribute("aria-expanded", String(!!mc.posOpen && !!items.length));
   // casa y signo no se combinan con el Ascendente y el Medio Cielo (siempre están en la I y la X)
   const angle = mc.pl === "asc" || mc.pl === "mc";
   $("#mcHouse").disabled = angle;
@@ -4041,11 +4168,13 @@ function renderMyCharts() {
   calc.hidden = !posOn || find.running || !missing.length;
   calc.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
   $("#mcProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
-  $("#mcNote").textContent = "Con «Entre casas», un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (los orbes de Reglas avanzadas). Los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
+  $("#mcNote").textContent = "Las posiciones y los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
     (isPublic() ? " Cada carta se calcula una vez: los datos de nacimiento se envían al servidor solo para eso; las posiciones quedan en este navegador." : "");
   const anyFilter = !!(mc.q.trim() || mc.letter || mc.group || mc.pl || mc.a);
-  $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "Planeta en signo o casa · planeta en aspecto duro";
+  $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "";
   $("#mcFilters").classList.toggle("on", posOn);
+  $("#mcPosBtn").classList.toggle("on", posOn);
+  $("#mcPosDot").hidden = !posOn;
   $("#mcClear").hidden = !anyFilter;
 
   // filtrar
@@ -4070,6 +4199,8 @@ function renderMyCharts() {
   else count.textContent = (anyFilter ? `${list.length} de ${items.length} ${items.length === 1 ? "carta" : "cartas"}` : `${list.length} ${list.length === 1 ? "carta" : "cartas"}`) +
     (pages > 1 ? ` · página ${mc.page} de ${pages}` : "") + (posOn && missing.length && !find.running ? ` · faltan calcular ${missing.length}` : "");
   $("#mcList").replaceChildren(...shown.map((it) => listItem(it, { hits: hitsOf.get(it.id) || [] })));
+  // en la versión local las posiciones (Sol, Luna y Ascendente de las tarjetas) se calculan solas
+  if (!isPublic() && !find.running && shown.some((it) => !posReady(it) && !find.errs.has(it.id))) runFind(false);
   if (failed.length && !find.running) {
     count.textContent += ` · No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
   }

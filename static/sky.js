@@ -1,4 +1,4 @@
-// El cielo de ahora visto desde la Tierra: el mapa del inicio. La Tierra está en el centro, los 12 signos alrededor
+// El cielo de ahora visto desde la Tierra: el mapa (redondo) del inicio. La Tierra está en el centro, los 12 signos alrededor
 // (Aries a la derecha y los signos van en contra de las agujas del reloj, como la eclíptica vista desde el norte) y el
 // Sol y los planetas en su longitud real. Sin DOM: las funciones reciben lo que calculó el servidor (/api/moon →
 // planets) y el ancho del mapa en píxeles, y devuelven posiciones o HTML; así también se pueden probar en node.
@@ -21,14 +21,14 @@ export function sizes(W) {
   };
 }
 
-/** Punto del borde del cuadrado (0–100) en la dirección `deg`, medido desde el centro. */
+const R = 49.4;                                          // el radio del círculo (el mapa es un cuadrado de 0 a 100)
+/** Punto del borde del círculo (0–100) en la dirección `deg`, medido desde el centro. */
 function edge(deg, inset = 0) {
-  const c = Math.cos(deg * RAD), s = Math.sin(deg * RAD);
-  const t = (50 - inset) / Math.max(Math.abs(c), Math.abs(s));
-  return [50 + t * c, 50 - t * s];
+  const t = R - inset;
+  return [50 + t * Math.cos(deg * RAD), 50 - t * Math.sin(deg * RAD)];
 }
-/** Donde va el rótulo del signo k: en el borde, en la mitad de su sector. */
-export const signPos = (k) => edge(30 * k + 15, 7);
+/** Donde va el rótulo del signo k: cerca del borde, en la mitad de su sector. */
+export const signPos = (k) => edge(30 * k + 15, 6.6);
 
 const f = (n) => Math.round(n * 100) / 100;
 
@@ -36,10 +36,8 @@ const f = (n) => Math.round(n * 100) / 100;
 export function skyShellHTML(W) {
   const wedges = [], rays = [];
   for (let k = 0; k < 12; k++) {
-    const pts = [[50, 50], edge(30 * k)];
-    for (const corner of [45, 135, 225, 315]) if (corner > 30 * k && corner < 30 * k + 30) pts.push(edge(corner));
-    pts.push(edge(30 * k + 30));
-    wedges.push(`<polygon class="sky-w ${ELEMENT[k % 4]}" points="${pts.map(([x, y]) => `${f(x)},${f(y)}`).join(" ")}"/>`);
+    const [x0, y0] = edge(30 * k), [x1, y1] = edge(30 * k + 30);
+    wedges.push(`<path class="sky-w ${ELEMENT[k % 4]}" d="M50 50L${f(x0)} ${f(y0)}A${R} ${R} 0 0 0 ${f(x1)} ${f(y1)}Z"/>`);
     const [x, y] = edge(30 * k);
     rays.push(`<line x1="50" y1="50" x2="${f(x)}" y2="${f(y)}"/>`);
   }
@@ -50,7 +48,7 @@ export function skyShellHTML(W) {
       `<span class="sky-sn">${n}</span></span>`;
   }).join("");
   return `<svg class="sky-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">` +
-    `${wedges.join("")}<g class="sky-rings">${rings}</g><g class="sky-rays">${rays.join("")}</g></svg>` +
+    `${wedges.join("")}<g class="sky-rings">${rings}</g><g class="sky-rays">${rays.join("")}</g><circle class="sky-rim" cx="50" cy="50" r="${R}"/></svg>` +
     `${signs}<span class="sky-earth" aria-hidden="true"><span class="sky-earth-nm">Tierra</span></span>`;
 }
 
@@ -137,6 +135,7 @@ export function layoutSky(planets, W, obstacles = []) {
     for (const s of pref) {
       const r = cand[s];
       if (r.x0 < 2 || r.x1 > W - 2 || r.y0 < 2 || r.y1 > W - 2) continue;
+      if ([[r.x0, r.y0], [r.x1, r.y0], [r.x0, r.y1], [r.x1, r.y1]].some(([cx, cy]) => Math.hypot(cx - half, cy - half) > (R / 100) * W - 2)) continue;   // dentro del círculo
       if (placed.some((o) => hit(r, o)) || badges.some((o, k) => k !== i && hit(r, o))) continue;
       side[i] = s; placed.push(r);
       break;
