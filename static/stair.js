@@ -13,7 +13,7 @@ export function aspectText(a) {
 export const STAIR_HINT = `Pasá el cursor por un aspecto para ver el orbe<span class="interp">; tocalo para leer qué significa</span>.`;
 
 /** Cómo se lee el orbe que va en cada celda (grados, A o S, minutos). */
-export const ORB_LEGEND = `<p class="fine tight orb-legend">El número de cada celda es el orbe: grados, <strong>A</strong> (aplicativo: se acerca al exacto) o <strong>S</strong> (separativo: se aleja) y minutos. Por ejemplo, <strong>0S41</strong> = 0°41′ separativo.</p>`;
+export const ORB_LEGEND = `<p class="fine tight orb-legend2">El número de cada celda es el orbe, en grados y minutos; si se acerca al exacto (aplicativo) o se aleja (separativo) se ve al pasar el cursor.</p><p class="fine tight orb-legend">El número de cada celda es el orbe: grados, <strong>A</strong> (aplicativo: se acerca al exacto) o <strong>S</strong> (separativo: se aleja) y minutos. Por ejemplo, <strong>0S41</strong> = 0°41′ separativo.</p>`;
 
 /**
  * @param chart carta natal ({bodies, aspects})
@@ -37,7 +37,7 @@ export function stairHTML(chart, orbMax) {
       const T = ASPECT[a.type];
       const text = esc(aspectText(a));
       html += `<div class="sc hit" role="cell" data-a="${ids[j]}" data-b="${row}" data-t="${a.type}" data-info="${text}" title="${text}">` +
-        `<span class="a-ic ${T.cls}">${T.icon}</span><span class="a-or">${orbCode(a.orb, a.applying)}</span></div>`;
+        `<span class="a-ic ${T.cls}">${T.icon}</span><span class="a-or">${orbCode(a.orb, a.applying)}</span><span class="a-or2">${fmtOrb(a.orb)}</span></div>`;
     }
     html += `<div class="sc diag" role="columnheader">${badge(row)}</div></div>`;
   });

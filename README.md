@@ -422,6 +422,17 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
+- **Estilo «Pergamino»** (Configuración → Apariencia → «Estilo de la app: Moderno / Pergamino»; viaja con la
+  sincronización): papel con textura, títulos y nombres en EB Garamond, botones en azul tinta con filete dorado. **No tiene
+  modo oscuro**: mientras está elegido la app va siempre clara (settings.js pone `data-theme="light"` sin tocar el tema
+  guardado, que vuelve al pasar a «Moderno») y se esconden el botón de la luna y la opción «Tema». En la **carta**: en
+  pantallas anchas la barra va en dos filas (el nombre y una constelación arriba; Natal / Tránsitos / Sinastría y los
+  botones con nombre abajo, centrados; con nombre desde 1280 px, antes solo el ícono), el nombre en grande arriba de la
+  rueda («Pepe · Carta natal», `#parchTitle`), la rueda y las tablas en cuadros de pergamino con doble filete dorado y
+  adornos en las esquinas, la banda de los signos en **acuarela** (el filtro `#wcTex` que pone wheel.js), todo en Garamond
+  y el cuadro de aspectos con grilla y el orbe como «6°49′» (aplicativo o separativo al pasar el cursor). Al elegirlo se
+  apaga el anillo de las cúspides (los grados quedan afuera de la rueda, como en el diseño); se puede volver a prender.
+  Todo bajo `:root[data-look="parch"]` en `@media screen`: **la hoja impresa sale como siempre**. Test: `parch_test`.
 - **«No sé la hora»** (casilla debajo de la fecha y la hora en el formulario): la hora queda deshabilitada y la carta se
   calcula a las **12:00** (el medio del día: el menor error posible), y se guarda así (`notime: true`; viaja en las copias y
   con la sincronización). La carta se ve **sin Ascendente, Medio Cielo ni casas**: la rueda va con 0° de Aries a la

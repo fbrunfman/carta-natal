@@ -1101,6 +1101,12 @@ const longDate = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long
 const dateOf = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
 
 function header(c) {
+  headerNow(c);
+  // pergamino, en pantallas anchas: el nombre en grande arriba de la rueda («Pepe · Carta natal»)
+  const t = $("#title").textContent;
+  $("#parchTitle").innerHTML = mode === "natal" ? `${esc(t)} <span>· Carta natal</span>` : esc(t);
+}
+function headerNow(c) {
   const name = c.input.name;
   const where = c.input.place || `${c.input.lat}°, ${c.input.lon}°`;
   if (mode === "transit" && transit) {
@@ -3026,6 +3032,7 @@ const cfg0 = initSettings((cfg, what) => {
   paintCfgSums();
   if (what === "groups") paintFormGroups();
   if (what === "sky" && page === "home" && moon.now) paintSky();
+  if (what === "look") { paintTheme(); if (chart) render(); }
   if (page === "charts") queueMicrotask(renderMyCharts);      // otros orbes o aspectos duros: la búsqueda cambia
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
@@ -3544,6 +3551,8 @@ function renderHome() {
   renderHomeCharts();
 }
 
+/** La Luna pintada (cielo ilustrado) con la sombra de la fase de ahora. */
+const moonArtHTML = (now) => `<span class="pb-art moon-art"><img src="cielo/planetas/moon.webp" alt="" draggable="false">${moonShade(now.elong, moon.south)}</span>`;
 /** Dibuja el mapa (los signos, la Tierra y los planetas en su lugar) y la Luna en su cuadro. */
 function paintSky() {
   const sky = $("#sky"), box = $("#skyMoon"), now = moon.now;
@@ -3553,6 +3562,7 @@ function paintSky() {
   if (now) {
     box.innerHTML = `<button type="button" class="sky-moon-btn" id="moonBtn" aria-haspopup="dialog">${moonCornerHTML(now, moon.south)}</button>` +
       `<a class="sky-moon-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">→</span></a>`;
+    if (curCfg?.sky === "art") box.querySelector(".sky-moon-ic").innerHTML = moonArtHTML(now);
   } else {
     box.innerHTML = `<span class="mc-wait">Calculando el cielo…</span>`;
   }
@@ -3611,7 +3621,7 @@ function openPoem() {
   if (!now) return;
   ensurePoem(now.sign);
   const box = $("#poemBody");
-  $("#poemIc").innerHTML = moonIcon(now.elong, moon.south);
+  $("#poemIc").innerHTML = curCfg?.sky === "art" ? moonArtHTML(now) : moonIcon(now.elong, moon.south);
   $("#poemTitle").textContent = `La Luna en ${SIGNS[now.sign]}`;
   $("#poemSub").replaceChildren(`${now.name} · `, Object.assign(document.createElement("span"), { className: "nowrap", textContent: `${Math.round(now.illum * 100)} % iluminada` }));
   if (moon.poem) {

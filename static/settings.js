@@ -115,6 +115,7 @@ const sameColors = (a, b) => JSON.stringify(cleanColors(a)) === JSON.stringify(c
 export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
   sky: "simple",     // el cielo de hoy del inicio: "simple" | "art" (ilustrado, con static/cielo/)
+  look: "modern",    // el estilo de la app: "modern" | "parch" (pergamino: siempre claro, ver style.css)
   tint: true,        // tinte por elemento en el anillo de signos
   font: "rounded",   // ver FONTS
   noteFont: "kalam", // la letra de las notas: ver NOTE_FONTS
@@ -194,6 +195,7 @@ export function load() {
   return {
     gfx: raw.gfx === "classic" ? "classic" : "new",
     sky: raw.sky === "art" ? "art" : "simple",
+    look: raw.look === "parch" ? "parch" : "modern",
     tint: typeof raw.tint === "boolean" ? raw.tint : DEFAULTS.tint,
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     noteFont: Object.hasOwn(NOTE_FONTS, raw.noteFont) ? raw.noteFont : DEFAULTS.noteFont,
@@ -250,6 +252,10 @@ export function setSyncedCfg(remote) {
 export function apply(cfg, root = document.documentElement) {
   root.dataset.gfx = cfg.gfx;
   root.dataset.sky = cfg.sky;
+  // pergamino: siempre claro (no tiene modo oscuro); al volver al moderno, el tema que estaba elegido
+  root.dataset.look = cfg.look;
+  if (cfg.look === "parch") root.dataset.theme = "light";
+  else { let t = null; try { t = localStorage.getItem("carta:theme"); } catch {} if (t) root.dataset.theme = t; else delete root.dataset.theme; }
   if (cfg.tint) root.dataset.tint = "on"; else delete root.dataset.tint;
   if (cfg.font !== "system") root.dataset.font = cfg.font; else delete root.dataset.font;
   root.dataset.nfont = cfg.noteFont;
@@ -277,6 +283,7 @@ export function initSettings(onChange) {
   const el = {
     gfx: [...document.querySelectorAll("#cfgGfx button")],
     sky: [...document.querySelectorAll("#cfgSky button")],
+    look: [...document.querySelectorAll("#cfgStyle button")],
     tint: $("#cfgTint"), font: $("#cfgFont"), noteFont: $("#cfgNoteFont"),
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
     big: $("#cfgBig"), cusp: $("#cfgCusp"),
@@ -366,6 +373,7 @@ export function initSettings(onChange) {
   function paint() {
     for (const b of el.gfx) b.setAttribute("aria-pressed", b.dataset.gfx === cfg.gfx);
     for (const b of el.sky) b.setAttribute("aria-pressed", b.dataset.sky === cfg.sky);
+    for (const b of el.look) b.setAttribute("aria-pressed", b.dataset.look === cfg.look);
     el.tint.checked = cfg.tint;
     el.cusp.checked = cfg.cuspRing;
     if (el.spill) el.spill.setAttribute("aria-pressed", cfg.spill);
@@ -421,6 +429,11 @@ export function initSettings(onChange) {
     if (b.dataset.gfx === cfg.gfx) return;
     // los dos estilos vienen con el tinte por elemento (se puede sacar después)
     change({ gfx: b.dataset.gfx, tint: true }, "gfx");
+  });
+  // pergamino: la rueda va con los grados de las cúspides afuera (sin el anillo), como en el diseño; se puede volver a prender
+  for (const b of el.look) b.addEventListener("click", () => {
+    if (b.dataset.look === cfg.look) return;
+    change(b.dataset.look === "parch" ? { look: "parch", cuspRing: false } : { look: "modern" }, "look");
   });
   for (const b of el.sky) b.addEventListener("click", () => { if (b.dataset.sky !== cfg.sky) change({ sky: b.dataset.sky }, "sky"); });
   for (const b of el.interp) b.addEventListener("click", () => {
@@ -492,6 +505,7 @@ export function initSettings(onChange) {
     const whats = [];
     if (diff("gfx") || diff("tint")) whats.push("gfx");
     if (diff("sky")) whats.push("sky");
+    if (diff("look")) whats.push("look");
     if (diff("orbs")) whats.push("orbs");
     if (diff("aspOff")) whats.push("asp");
     if (diff("spill")) whats.push("spill");

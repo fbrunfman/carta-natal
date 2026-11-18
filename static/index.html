@@ -26,6 +26,7 @@
         if (c.tint === false && c.gfx !== "classic") delete c.tint;
       }
       if (c.tint !== false) d.dataset.tint = "on";
+      if (c.look === "parch") { d.dataset.look = "parch"; d.dataset.theme = "light"; }     // pergamino: siempre claro
       var INTERP_ENABLED = false;            // lecturas apagadas a pedido; mismo valor que INTERP_ENABLED en settings.js
       if (!INTERP_ENABLED || c.interp === false) d.dataset.nointerp = "";
       var f = typeof c.font === "string" && /^[a-z]+$/.test(c.font) ? c.font : "rounded";
@@ -335,6 +336,7 @@
 
     <div class="calc-wait" id="chartWait" role="status" hidden><span class="spin" aria-hidden="true"></span>Calculando la carta…</div>
 
+    <p class="parch-title" id="parchTitle" aria-hidden="true"></p>
     <div class="stage" id="stage" hidden>
       <figure class="wheel-fig">
         <svg id="wheel" class="wheel" viewBox="-345 -345 690 690" role="img"></svg>
@@ -745,7 +747,13 @@
       <details class="cfgg" id="cfgLook">
         <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 7.5a4.5 4.5 0 0 1 0 9"/></svg></span><span class="cfgg-t"><b>Apariencia</b><small class="cfgg-sum" id="cfgLookSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div class="cfgg-b">
-          <div class="cfg-row"><span class="cfg-lab" id="cfgThemeLab">Tema</span>
+          <div class="cfg-row"><span class="cfg-lab" id="cfgStyleLab">Estilo de la app</span>
+            <div class="seg" id="cfgStyle" role="group" aria-labelledby="cfgStyleLab">
+              <button type="button" data-look="modern" aria-pressed="true">Moderno</button>
+              <button type="button" data-look="parch" aria-pressed="false">Pergamino</button>
+            </div>
+          </div>
+          <div class="cfg-row cfg-theme-row"><span class="cfg-lab" id="cfgThemeLab">Tema</span>
             <div class="seg" id="cfgTheme" role="group" aria-labelledby="cfgThemeLab">
               <button type="button" data-theme-set="light" aria-pressed="false">Claro</button>
               <button type="button" data-theme-set="dark" aria-pressed="false">Oscuro</button>

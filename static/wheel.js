@@ -136,7 +136,13 @@ export function renderWheel(svg, chart, hooks = {}) {
   const cusps = chart.houses.cusps;
   // Con anillo exterior solo se dibujan los aspectos cruzados; el exterior lleva prefijo.
   const aspects = outer ? outer.aspects.map((a) => ({ ...a, b: OUTER + a.b })) : chart.aspects;
-  let s = "";
+  // la textura de acuarela de la banda de los signos (la usa el estilo pergamino, style.css)
+  let s = `<defs><filter id="wcTex" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="4" seed="11" result="n"/>` +
+    `<feColorMatrix in="n" type="saturate" values="0" result="g"/><feComponentTransfer in="g" result="g2"><feFuncR type="linear" slope="1.1" intercept=".32"/>` +
+    `<feFuncG type="linear" slope="1.1" intercept=".32"/><feFuncB type="linear" slope="1.1" intercept=".32"/></feComponentTransfer>` +
+    `<feBlend in="SourceGraphic" in2="g2" mode="multiply" result="b"/><feTurbulence type="fractalNoise" baseFrequency=".07" numOctaves="3" seed="4" result="f"/>` +
+    `<feColorMatrix in="f" type="matrix" values="0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .88 0 0 0 .4 -.12" result="fg"/><feComposite in="fg" in2="b" operator="atop" result="c"/>` +
+    `<feComposite in="c" in2="SourceGraphic" operator="in"/></filter></defs>`;
 
   if (outer) {
     s += `<path class="oband" fill-rule="evenodd" d="${disc(OUT.edge)}${disc(R.out)}"/><circle class="ring thin" r="${OUT.edge}"/>`;

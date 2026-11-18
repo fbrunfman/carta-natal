@@ -2689,3 +2689,153 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-sky="art"] .sky-earth {
   width: clamp(22px, 5.2cqw, 40px); background: url(cielo/planetas/earth.webp) center / cover;
 }
+/* la Luna del inicio (y la del poema) con el cielo ilustrado: la pintada, y el cuadro de pergamino como el del cielo */
+.moon-art { display: block; width: 100%; height: 100%; box-shadow: 0 0 0 1.5px #3b2a17, 0 2px 8px rgba(0, 0, 0, .35); }
+:root[data-sky="art"] .home-moon {
+  border-color: #b99a63; color: #3b2a17;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(120, 80, 30, .22) 100%), linear-gradient(160deg, #efe0bd, #e2cb98);
+  box-shadow: inset 0 0 0 1px rgba(255, 245, 220, .5), 0 2px 10px rgba(60, 40, 20, .18);
+}
+:root[data-sky="art"] .home-moon .sky-moon-btn { color: #3b2a17; }
+:root[data-sky="art"] .home-moon .sky-moon-txt { border-left-color: rgba(59, 42, 23, .35); }
+:root[data-sky="art"] .home-moon .mc-kicker, :root[data-sky="art"] .home-moon .sky-moon-il, :root[data-sky="art"] .home-moon .mc-deg { color: #6b5234; }
+:root[data-sky="art"] .home-moon .sky-moon-sign { font-family: "IM Fell English", var(--serif); }
+:root[data-sky="art"] .home-moon .sky-moon-cal { color: #7a4a1c; }
+
+/* ======================================================================================================================
+   Estilo «Pergamino» (Configuración → Apariencia → Estilo de la app), :root[data-look="parch"]: papel con textura, títulos
+   y nombres en EB Garamond, azul tinta y dorado; siempre claro (settings.js pone data-theme="light"). En la carta: la barra
+   en dos filas con los botones con nombre, el nombre en grande, los cuadros con filete dorado y adornos, la banda de los
+   signos en acuarela (el filtro #wcTex de wheel.js) y todo en Garamond. Solo en pantalla: la hoja impresa sale como siempre.
+   ====================================================================================================================== */
+.parch-title { display: none; }
+.a-or2, .orb-legend2 { display: none; }
+@media screen {
+:root[data-look="parch"], html:root[data-look="parch"][data-theme] {
+  --bg: #F1E5C8; --surface: #FAF3E2; --field: #FFFBF1; --ink: #2B1D0E; --ink-2: #66533A; --line: #E0CEA6; --line-strong: #C4A872;
+  --hover: rgba(122, 86, 30, .08); --focus: #1E3A78; --accent: #1E3A78; --accent-2: #1E3A78; --accent-ink: #FAF3E2; --accent-soft: rgba(30, 58, 120, .12);
+  --hard: #C2432F; --soft: #2F5FB0; --minor: #B8862A; --ring-bg: #3A2A1C; --ring-ink: #FBF3E0;
+  --fire-solid: #B5432A; --earth-solid: #4F6B35; --air-solid: #9C741C; --water-solid: #2F5A8A;
+  --moon-lit: #F3E9C8; --moon-dark: #4A4B5E;
+  --garamond: "EB Garamond", Georgia, serif;
+  --paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .14 0 0 0 .2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+:root[data-look="parch"] { background: #EAD8B0; }
+:root[data-look="parch"] body { background: var(--paper), radial-gradient(130% 100% at 50% 0%, #F6ECD3, #EAD8B0); background-attachment: fixed; }
+:root[data-look="parch"] #theme, :root[data-look="parch"] .cfg-theme-row { display: none !important; }
+/* toda la app: títulos y nombres en Garamond, botones en azul tinta */
+:root[data-look="parch"] :is(.head h2, .hl-nm, .hc-nm, #title, .parch-title) { font-family: var(--garamond); font-weight: 600; letter-spacing: 0; }
+:root[data-look="parch"] .head h2 { font-size: clamp(34px, 3.8vw, 50px); }
+:root[data-look="parch"] .hc-nm { font-size: calc(21px * var(--fs)); }
+:root[data-look="parch"] .hbox, :root[data-look="parch"] .mc-panel { box-shadow: 0 1px 2px rgba(80, 55, 20, .08); }
+:root[data-look="parch"] .hbox-k { color: #1E3A78; }
+:root[data-look="parch"] .primary-pill { background: linear-gradient(180deg, #2A4A92, #1A2F66); color: #FAF3E2; box-shadow: inset 0 0 0 1.5px #C9A45C, 0 3px 10px rgba(26, 47, 102, .3); }
+:root[data-look="parch"] .head-deco :is(.hd-star, .hd-moon) { fill: #A07E46; }
+:root[data-look="parch"] .tb-logo path { fill: #8A5A1E; }
+:root[data-look="parch"] .topbar { background: var(--paper), color-mix(in srgb, #F1E5C8 94%, transparent); border-bottom-color: #C4A872; }
+:root[data-look="parch"] .home-moon { background: var(--surface); }
+
+/* ---------- la carta ---------- */
+:root[data-look="parch"] :is(.tabs button, .seg.modes button, .modeacts .with-ic, .legend, #panel-stair, #panel-pos, #panel-casas, #panel-viajes, #panel-asp, #panel-elem, #panel-tpos, #panel-over, #panel-sum, .seg.orb button) { font-family: var(--garamond); }
+:root[data-look="parch"] .seg.modes { border-radius: 99px; border-color: #C4A872; overflow: hidden; background: rgba(255, 251, 241, .7); }
+:root[data-look="parch"] .seg.modes button { font-size: calc(17px * var(--fs)); }
+:root[data-look="parch"] .seg.modes button[aria-pressed="true"] { background: linear-gradient(180deg, #2A4A92, #1A2F66); color: #FAF3E2; box-shadow: inset 0 0 0 1.5px #C9A45C; }
+:root[data-look="parch"] :is(.modeacts .secondary.compact, .title-acts button, .title-pick) { border-radius: 99px; border-color: #C4A872; background: rgba(255, 251, 241, .75); }
+:root[data-look="parch"] .modeacts .with-ic { font-size: calc(16.5px * var(--fs)); }
+:root[data-look="parch"] .modeacts [aria-pressed="true"] { background: #1E3A78; border-color: #1E3A78; color: #FAF3E2; }
+:root[data-look="parch"] .nb-count:not([hidden]) { background: #B07A1E; color: #FFF8EC; border-radius: 99px; padding: 0 7px; }
+/* pantallas anchas: la barra en dos filas (arriba el nombre y la constelación; abajo los modos y los botones, centrados) */
+@media (min-width: 821px) {
+  :root[data-look="parch"][data-tbmerge] { --tb-h: 124px; }
+  :root[data-look="parch"][data-tbmerge] .topbar {
+    align-items: flex-start; padding-top: 10px;
+    background:
+      radial-gradient(220px 46px at 72% 14%, rgba(110, 140, 185, .26), transparent 70%),
+      radial-gradient(280px 56px at 94% 34%, rgba(110, 140, 185, .24), transparent 70%),
+      radial-gradient(160px 40px at 36% 18%, rgba(120, 150, 190, .2), transparent 70%),
+      var(--paper), #F2E6C9;
+  }
+  :root[data-look="parch"][data-tbmerge] .topbar::after {
+    content: ""; position: absolute; left: 50%; top: 4px; width: 240px; height: 56px; margin-left: -120px; pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60'%3E%3Cpath d='M10 52 C 70 20, 190 12, 250 48' fill='none' stroke='%23A07E46' stroke-width='1.3' stroke-dasharray='1.5 5' stroke-linecap='round'/%3E%3Cpath d='M62 32 l2.6 7 7 2.6 -7 2.6 -2.6 7 -2.6 -7 -7 -2.6 7 -2.6Z' fill='%23A07E46'/%3E%3Cpath d='M210 30 l2 5.4 5.4 2 -5.4 2 -2 5.4 -2 -5.4 -5.4 -2 5.4 -2Z' fill='%23A07E46'/%3E%3Cpath d='M138 4 a14 14 0 1 0 14 19 a11 11 0 1 1 -14 -19Z' fill='%23A07E46'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  :root[data-look="parch"][data-tbmerge] #tbFind { display: none !important; }
+  :root[data-look="parch"][data-tbmerge] #chartPage > .head { height: 60px; right: calc(50% + 130px) !important; }
+  :root[data-look="parch"][data-tbmerge] #chartPage > .head h2 { font-size: calc(32px * var(--fs)); }
+  :root[data-look="parch"][data-tbmerge] #chartPage > .modebar {
+    top: 62px; height: 56px; left: 50% !important; right: auto !important; transform: translateX(-50%); width: max-content; gap: 0;
+  }
+  :root[data-look="parch"][data-tbmerge] .modebar .seg.modes { margin-right: 20px; }
+  :root[data-look="parch"][data-tbmerge] .modeacts { padding-left: 20px; border-left: 1px solid #C4A872; }
+  :root[data-look="parch"][data-tbmerge] #cfgBtn { position: fixed; top: 72px; right: 22px; }
+  :root[data-look="parch"][data-tbmerge] .parch-title { display: block; margin: 0 0 14px 6px; font-size: calc(40px * var(--fs)); line-height: 1.1; color: var(--ink); }
+  :root[data-look="parch"][data-tbmerge] .parch-title span { font-weight: 500; }
+}
+/* en las pantallas anchas pero no tanto, los botones de la carta solo con el ícono (como siempre) */
+@media (min-width: 821px) and (max-width: 1279px) {
+  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic { font-size: 0; gap: 0; padding: 0 11px; }
+}
+@media (min-width: 1280px) {
+  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic { font-size: calc(16.5px * var(--fs)); gap: 8px; padding: 0 15px; }
+  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic svg { margin: 0; }
+}
+/* los dos cuadros: pergamino, doble filete dorado y adornos en las esquinas */
+:root[data-look="parch"] .stage .wheel-fig, :root[data-look="parch"] .stage .data {
+  position: relative; border: 1.5px solid #C9A86A; border-radius: 12px;
+  background: var(--paper), radial-gradient(120% 100% at 50% 40%, #FCF5E4, #F2E5C6);
+  box-shadow: inset 0 0 0 5px #F9F1DD, inset 0 0 0 6px #D9C08B, 0 3px 12px rgba(80, 55, 20, .14);
+}
+:root[data-look="parch"] .stage .wheel-fig::before, :root[data-look="parch"] .stage .data::before {
+  content: ""; position: absolute; inset: 4px; pointer-events: none; z-index: 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.2'%3E%3Cpath d='M6 40 C6 18 18 6 40 6'/%3E%3Cpath d='M12 30 C14 18 18 14 30 12'/%3E%3Cpath d='M6 22 C10 22 14 18 14 14 C18 14 22 10 22 6'/%3E%3C/g%3E%3Cpath d='M14 14 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z' fill='%23A88347'/%3E%3C/svg%3E") left top / 50px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg transform='translate(60 0) scale(-1 1)'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.2'%3E%3Cpath d='M6 40 C6 18 18 6 40 6'/%3E%3Cpath d='M12 30 C14 18 18 14 30 12'/%3E%3Cpath d='M6 22 C10 22 14 18 14 14 C18 14 22 10 22 6'/%3E%3C/g%3E%3Cpath d='M14 14 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E") right top / 50px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg transform='translate(0 60) scale(1 -1)'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.2'%3E%3Cpath d='M6 40 C6 18 18 6 40 6'/%3E%3Cpath d='M12 30 C14 18 18 14 30 12'/%3E%3Cpath d='M6 22 C10 22 14 18 14 14 C18 14 22 10 22 6'/%3E%3C/g%3E%3Cpath d='M14 14 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E") left bottom / 50px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg transform='translate(60 60) scale(-1 -1)'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.2'%3E%3Cpath d='M6 40 C6 18 18 6 40 6'/%3E%3Cpath d='M12 30 C14 18 18 14 30 12'/%3E%3Cpath d='M6 22 C10 22 14 18 14 14 C18 14 22 10 22 6'/%3E%3C/g%3E%3Cpath d='M14 14 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E") right bottom / 50px no-repeat;
+}
+:root[data-look="parch"] .stage .data > * { position: relative; z-index: 1; }
+:root[data-look="parch"] .stage .wheel-fig > #wheel { position: relative; z-index: 1; }
+:root[data-look="parch"] .stage .wheel-fig { padding: 18px 18px 14px; margin: 0; }
+:root[data-look="parch"] .stage .data { padding: 18px 24px 22px; }
+@media (max-width: 640px) {
+  :root[data-look="parch"] .stage .wheel-fig { padding: 10px 8px 10px; }
+  :root[data-look="parch"] .stage .data { padding: 12px 12px 16px; }
+}
+/* la rueda */
+:root[data-look="parch"] .wheel:not(.classic) .sg-fire { fill: #8B3D3D; }
+:root[data-look="parch"] .wheel:not(.classic) .sg-earth { fill: #586647; }
+:root[data-look="parch"] .wheel:not(.classic) .sg-air { fill: #957338; }
+:root[data-look="parch"] .wheel:not(.classic) .sg-water { fill: #2E4B84; }
+:root[data-look="parch"] .wheel:not(.classic) .sg { filter: url(#wcTex); }
+:root[data-look="parch"] .wheel .sgline { stroke: rgba(40, 25, 10, .45); stroke-width: 1.2; }
+:root[data-look="parch"] .wheel .sgn { stroke: #FBF3E0; stroke-width: 2.6; filter: drop-shadow(0 0 1.2px rgba(40, 22, 8, .55)); }
+:root[data-look="parch"] .wheel .hwedge { fill: rgba(255, 251, 240, .5); }
+:root[data-look="parch"] .wheel .ring { stroke: #4A3A22; }
+:root[data-look="parch"] .wheel .tick { stroke: #6B5234; }
+:root[data-look="parch"] .wheel :is(.cusp, .cusp-in) { stroke: #4A3A22; }
+:root[data-look="parch"] .wheel :is(text, .cusplbl, .axis-label) { font-family: var(--garamond); fill: #2B1D0E; }
+:root[data-look="parch"] .wheel .axis-label { font-weight: 700; font-size: 17px; }
+:root[data-look="parch"] .wheel .cusplbl { font-size: 15px; }
+:root[data-look="parch"] .wheel .pd-bg { stroke: #3B2A17; stroke-width: 3.2; }
+:root[data-look="parch"] .wheel-fig .legend .key { font-size: calc(15.5px * var(--fs)); color: var(--ink); }
+/* pestañas, botones y el cuadro de aspectos */
+:root[data-look="parch"] .tabs { border-bottom-color: #D9C08A; }
+:root[data-look="parch"] .tabs button { font-size: calc(19px * var(--fs)); color: #3B2A17; }
+:root[data-look="parch"] .tabs button[aria-selected="true"] { color: #1E3A78; font-weight: 600; }
+:root[data-look="parch"] .tabs button[aria-selected="true"]::after { background: #1E3A78; height: 3px; border-radius: 2px; }
+:root[data-look="parch"] .seg:not(.modes) { border-color: #C4A872; background: rgba(255, 251, 241, .6); }
+:root[data-look="parch"] .seg:not(.modes) button[aria-pressed="true"] { background: linear-gradient(180deg, #2A4A92, #1A2F66); color: #FAF3E2; }
+:root[data-look="parch"] #panel-stair .sc { border: 1px solid #DCC79C; margin: -1px 0 0 -1px; background: rgba(255, 251, 240, .35); }
+:root[data-look="parch"] #panel-stair .sc.diag { border-color: transparent; background: none; }
+:root[data-look="parch"] #panel-stair .a-or { display: none; }
+:root[data-look="parch"] #panel-stair .a-or2 { display: block; font: 500 clamp(11px, calc(100cqw / var(--n) * .27), 15.5px)/1.1 var(--garamond); color: #2B1D0E; font-variant-numeric: tabular-nums; }
+:root[data-look="parch"] #panel-stair .orb-legend { display: none; }
+:root[data-look="parch"] #panel-stair .orb-legend2 { display: block; }
+:root[data-look="parch"] .data :is(table, th, td) { border-color: #E0CEA6; }
+}
+@media screen {
+:root[data-look="parch"] .stage .data .fine { font-size: calc(15px * var(--fs)); line-height: 1.45; color: var(--ink-2); }
+:root[data-look="parch"] .stage .data .seg button { font-size: calc(16px * var(--fs)); }
+:root[data-look="parch"] .stage .data :is(td, th) { font-family: var(--garamond); font-size: calc(16px * var(--fs)); }
+}
