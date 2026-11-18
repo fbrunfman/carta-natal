@@ -2256,6 +2256,16 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .gfield > span { display: block; }
 .mc-groups { margin-top: 14px; }
 #mcGroups .gchip[aria-pressed="true"]::before { content: none; }
+/* Mis cartas → grupos: «Editar» (quitar grupos) */
+.gedit svg, .gdel svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.gchip.gedit { border-style: dashed; color: var(--ink-2); }
+.gchip.gdone { background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); font-weight: 600; }
+.gchip.gdone:hover { filter: brightness(1.06); background: var(--accent-2); }
+.gchip.gdel svg { color: var(--ink-2); margin-right: -3px; }
+.gchip.gdel:hover:not([data-arm]) svg { color: var(--hard); }
+.gchip.gdel[data-arm="1"] { background: var(--hard); border-color: var(--hard); color: #fff; font-weight: 600; }
+.gchip.gback { border-style: dashed; color: var(--accent-2); }
+.gnone { align-self: center; font-size: calc(13px * var(--fs)); color: var(--ink-2); }
 .hc-groups { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .hc-g { padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line-strong); font-size: calc(11.5px * var(--fs)); color: var(--ink-2); white-space: nowrap; }
 @media (pointer: coarse) { .gchip { min-height: 38px; padding: 6px 14px; } .gnew { min-height: 38px; font-size: 16px; } }
@@ -2331,9 +2341,39 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .place-list li .pl-orig { color: var(--ink-2); font-size: .92em; }
 .place-list li small { flex-basis: 100%; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); }
 .place-list li:hover, .place-list li[aria-selected="true"] { background: var(--accent-soft); }
-.place-pick { display: block; margin-top: 5px; color: var(--ink-2); font-size: calc(12px * var(--fs)); font-variant-numeric: tabular-nums; }
+.place-pick { display: flex; align-items: center; gap: 12px; margin-top: 8px; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); line-height: 1.45; font-variant-numeric: tabular-nums; }
 .place-pick[hidden] { display: none; }
+.pp-globe { flex: none; width: 72px; height: 72px; border-radius: 50%; opacity: 0; transition: opacity .25s; }
+.pp-globe.on { opacity: 1; }
+.pp-txt { display: flex; flex-direction: column; min-width: 0; }
+.pp-txt b { color: var(--ink); font-weight: 600; font-size: calc(13px * var(--fs)); }
+.pp-tz:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .pp-globe { transition: none; } }
 @media (pointer: coarse) { .place-list li { padding: 11px 12px; } }
 .place-field > label { display: block; margin-bottom: 5px; font-size: calc(13px * var(--fs)); font-weight: 500; color: var(--ink-2); }
 .place-list li.pl-note { display: block; cursor: default; padding: 8px 10px 6px; border-top: 1px solid var(--line); border-radius: 0; color: var(--ink-2); font-size: calc(12px * var(--fs)); background: none; }
 .place-list li.pl-note:hover { background: none; }
+
+/* Mis cartas en el celular y en tablets: buscar y «Nueva» en una fila; grupos e iniciales en una fila cada uno, que se
+   desliza de costado (con los bordes esfumados), en vez de 4 o 5 renglones de botones */
+main { --gut: clamp(20px, 2.6vw, 40px); }
+@media (max-width: 480px) { main { --gut: 16px; } }
+@media (max-width: 760px), (pointer: coarse) and (max-width: 1180px) {
+  .mc-top { flex-wrap: nowrap; gap: 8px; }
+  .mc-q { flex: 1 1 auto; width: auto; max-width: 420px; min-width: 0; }
+  #mcNew { flex: none; }
+  .mc-groups, .mc-az {
+    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    margin-inline: calc(-1 * var(--gut)); padding: 2px var(--gut); scroll-padding-inline: var(--gut);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--gut), #000 calc(100% - var(--gut)), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 var(--gut), #000 calc(100% - var(--gut)), transparent);
+  }
+  .mc-groups::-webkit-scrollbar, .mc-az::-webkit-scrollbar { display: none; }
+  .mc-groups > *, .mc-az > * { flex: none; white-space: nowrap; }
+  .mc-groups { margin-top: 12px; }
+  .mc-az { margin-top: 8px; }
+  .mc-az button { min-width: 34px; height: 34px; }
+  .mc-filters { margin-top: 12px; }
+  .mc-count { margin-top: 12px; }
+}
+@media (max-width: 420px) { .mc-new-x { display: none; } }

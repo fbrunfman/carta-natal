@@ -98,7 +98,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     (con el marcador; si fijás más de 6, se ven todas): se fijan con el **marcador** al lado del nombre de la carta, que se
     vuelve a tocar para soltarla (`carta:pins`, en este navegador). El Sol, la Luna y el Ascendente aparecen cuando ya se conocen sus posiciones
     (en la versión local se calculan solas; en la pública, apenas se abre o se crea la carta —ya está calculada, no hace
-    otro pedido— o después de calcularlas en Mis cartas). Tocar una la abre; al
+    otro pedido— o después de calcularlas en Mis cartas). Tocar una la abre; cada una tiene **editar** (lápiz) y
+    **eliminar** (tacho, dos toques: el primero pide confirmar), como en Mis cartas; al
     final, **«+ Nueva carta»**, y con más de 6, **«Ver todas (N) ›»**, que lleva a **Mis cartas**. Sin cartas: «Crear mi
     primera carta». Debajo, el mapa con la Luna en su rincón (en el celular, debajo), y al pie, en una línea, dónde se
     guardan las cartas y «Privacidad y copias» (abre la Configuración en *Datos*). No se abre ninguna carta hasta entrar
@@ -106,8 +107,11 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›). Se buscan:
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
     - **por grupo**: una fila con los grupos (con cuántas cartas tiene cada uno) y «Sin grupo»; aparece cuando alguna
-      carta tiene grupo. Ver «Grupos», abajo;
+      carta tiene grupo. Al final, **«Editar»** para quitar grupos. Ver «Grupos», abajo;
     - **por inicial**: una fila de letras (las que no tienen cartas no se pueden tocar; «Ágata» va en la A);
+    - **en el celular y en tablets** (hasta 760 px, o pantalla táctil hasta 1180 px) los filtros ocupan menos: buscar y
+      «+ Nueva» en una fila, y los grupos y las iniciales en **una fila cada uno que se desliza de costado** (con los
+      bordes esfumados), en vez de varios renglones de botones. En la compu siguen envolviendo;
     - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
       signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo; con **«con Entre casas»** la casa se
       cuenta con la lógica del botón «Entre casas»: un planeta cerca de la cúspide de la casa que sigue cuenta también en
@@ -402,11 +406,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
-- **Grupos**: cada carta puede estar en **varios grupos**. **Amigos, Familia, Consultantes y Famosos** están siempre;
+- **Grupos**: cada carta puede estar en **varios grupos**. **Amigos, Familia, Consultantes y Famosos** vienen de fábrica;
   **«+ Grupo»** crea otro (Enter lo crea ya marcado, Esc lo deja) y queda mientras alguna carta lo tenga. Se marcan en el
   formulario de la carta (debajo del nombre); las tarjetas los muestran y Mis cartas filtra por grupo. Se guardan con la
   carta (`groups`: hasta 12 nombres de hasta 30 caracteres, sin repetir sin importar mayúsculas ni tildes; los valida
   `store.clean_groups`), viajan al exportar y, al importar una carta que ya está, se le suman los grupos que trae.
+  **Quitar un grupo**: Mis cartas → «Editar» al final de la fila de grupos; cada grupo lleva una ✕. El primer toque pide
+  confirmar («¿Quitar «Famosos» de 3 cartas?», se desarma a los 6 s), el segundo lo saca de todas sus cartas (las demás
+  etiquetas quedan). Si es de fábrica deja de aparecer también en el formulario: queda en la configuración (`groupsOff`,
+  viaja con la sincronización) y **«Volver a poner …»** lo trae de nuevo. «Listo» vuelve al filtro. Test: `gedit_test`.
 - **Lugar** (en el formulario): un **autocompletado** con las localidades de todo el mundo de la **API de geocodificación de
   [Open-Meteo](https://open-meteo.com)** (gratis y sin clave para uso no comercial; datos de [GeoNames](https://www.geonames.org)):
   cada resultado trae provincia o estado, país en castellano, coordenadas y zona horaria. Encima de eso, la app entiende
@@ -420,6 +428,13 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   pública cuesta 0,2 pedidos de los límites. **Sin Open-Meteo** (sin internet, caído) se usa la lista corta de
   `static/places.json`. Open-Meteo pide no pasar de ~10.000 búsquedas por día y nombrarlo (está en Configuración → Datos).
   `CARTA_NATAL_GEOCODER` cambia la dirección de la API (para pruebas). Test: `e2e_lugar`.
+- **El globito**: debajo de «Lugar» se ve un globo terráqueo chico girado hacia el lugar (el punto en el centro), con las
+  coordenadas y la zona horaria con su diferencia con UTC **en la fecha de la carta** (Madrid: GMT+1 en enero, GMT+2 en
+  julio). Se actualiza al elegir un lugar y al cambiar a mano latitud, longitud, zona, offset o fecha; si la zona está mal
+  escrita dice «zona desconocida». Sirve para darse cuenta de que el lugar no es el que se quería (otro Rosario, signos
+  cambiados en las coordenadas). Se dibuja punto por punto en un `<canvas>` (`static/globe.js`) sobre `static/land.png`
+  (tierra/agua de 1024×512, Natural Earth 1:50m, dominio público; 26 KB que se bajan la primera vez que se abre el
+  formulario). Funciona sin internet y sigue el tema claro u oscuro. Test: `globo_test`.
 - **Crear y editar cartas**: el formulario se abre en una **ventana en el centro** al tocar **«Nueva carta»** (en la
   lista de la lupa, en «Buscar o cambiar de carta…» o en el inicio; en blanco) o **«Editar los datos»** (en la ⓘ de la
   carta, con sus datos). Abajo de todo, con una carta guardada abierta, **«Eliminar esta carta»** (dos toques; la
@@ -776,6 +791,7 @@ static/           interfaz
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
   places.json                       la lista corta de lugares (si el servidor no tiene el buscador)
+  globe.js, land.png                el globito de «Lugar» (y el mapa de tierra/agua del que sale)
 importar_conjugarnos.py  trae el export de Conjugarnos a la pestaña Combinar (genera static/combos-conjugarnos.js)
 verificar.py      prueba contra una carta conocida
 ```

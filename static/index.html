@@ -132,7 +132,7 @@
       </header>
       <div class="mc-top">
         <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="mcQ" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></label>
-        <button type="button" class="primary-pill with-ic" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
+        <button type="button" class="primary-pill with-ic" id="mcNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva<span class="mc-new-x">&nbsp;carta</span></button>
       </div>
       <div class="mc-groups gchips" id="mcGroups" role="group" aria-label="Por grupo"></div>
       <nav class="mc-az" id="mcAz" aria-label="Por inicial"></nav>
@@ -666,7 +666,7 @@
           <input id="placeIn" name="place" type="text" placeholder="Escribí la ciudad (por ejemplo: Rosario)" autocomplete="off" autocorrect="off" spellcheck="false"
                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="placeList">
           <ul class="place-list" id="placeList" role="listbox" aria-label="Lugares" hidden></ul>
-          <small class="place-pick" id="placePick" hidden></small>
+          <div class="place-pick" id="placePick" hidden><canvas class="pp-globe" aria-hidden="true"></canvas><div class="pp-txt"><b class="pp-coord"></b><span class="pp-tz"></span></div></div>
         </div>
 
         <div class="row2">
@@ -833,7 +833,7 @@
         <div class="cfgg-b">
           <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato de las cartas a internet.</p>
           <p class="where" id="savedWhere"></p>
-          <p class="fine tight">El buscador de «Lugar» le pregunta a <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> (con datos de <a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a>): solo viaja el nombre de la ciudad que escribís, desde el servidor de la app.</p>
+          <p class="fine tight">El buscador de «Lugar» le pregunta a <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> (con datos de <a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a>): solo viaja el nombre de la ciudad que escribís, desde el servidor de la app. El globito usa el mapa de <a href="https://www.naturalearthdata.com" target="_blank" rel="noopener">Natural Earth</a>.</p>
           <div class="backup" id="backup" hidden>
           <button type="button" class="ghost" id="exportCharts">Exportar cartas</button>
           <button type="button" class="ghost" id="importCharts">Importar cartas…</button>

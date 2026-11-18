@@ -205,8 +205,19 @@ export function load() {
     aspOff: Array.isArray(raw.aspOff) ? [...new Set(raw.aspOff.filter((t) => Object.hasOwn(ASPECT, t)))] : [],
     interp: INTERP_ENABLED && raw.interp !== false,
     colors: cleanColors(raw.colors),
+    groupsOff: cleanGroupsOff(raw.groupsOff),
   };
 }
+/** Los grupos de fábrica (Amigos, Familia…) que se quitaron: nombres cortos, sin repetir. */
+export function cleanGroupsOff(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const g of raw) if (typeof g === "string" && g.trim() && g.length <= 30 && !out.includes(g.trim()) && out.length < 20) out.push(g.trim());
+  return out;
+}
+let groupsOffFn = null;
+/** Quita (o vuelve a poner) grupos de fábrica: viaja con la configuración a los otros dispositivos. */
+export function setGroupsOff(list) { groupsOffFn?.(cleanGroupsOff(list)); }
 
 export function save(cfg) {
   try { localStorage.setItem(KEY, JSON.stringify({ v: VERSION, ...cfg })); } catch { /* sin almacenamiento: queda solo en esta sesión */ }
@@ -399,6 +410,7 @@ export function initSettings(onChange) {
     apply(cfg); save(cfg); paint();
     onChange(cfg, what);
   }
+  groupsOffFn = (list) => change({ groupsOff: list }, "groups");
 
   for (const b of el.gfx) b.addEventListener("click", () => {
     if (b.dataset.gfx === cfg.gfx) return;
@@ -479,6 +491,7 @@ export function initSettings(onChange) {
     if (diff("trips") || diff("tripsOn")) whats.push("trips");
     if (diff("cuspRing")) whats.push("cusp");
     if (diff("interp")) whats.push("interp");
+    if (diff("groupsOff")) whats.push("groups");
     if (!whats.length) whats.push("look");
     for (const w of whats) onChange(cfg, w);
   };

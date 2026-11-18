@@ -5,7 +5,7 @@ import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
 import { charts, compute, config, isPublic } from "./api.js";
 import { setupPrint } from "./print.js";
-import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg } from "./settings.js";
+import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg, setGroupsOff } from "./settings.js";
 import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState, normCode, codeProblem, codeOk } from "./sync.js";
 import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
@@ -16,6 +16,7 @@ import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
 import { keyPl, keyAsp, keyHouse, parseKey, snapOf, changeOf, aspectBetween, noteCount, cleanNotes, touches, refExists, detectRefs, newId, REF_MAX, toSymbols } from "./notes.js";
+import { drawGlobe } from "./globe.js";
 import { computeTrips, groupTrips, groupWords, tripNotation, tripWords, tripPlain, TRIP_TYPES, TRIP_TITLES, TRIP_PLANETS, roman } from "./trips.js";
 
 const $ = (s) => document.querySelector(s);
@@ -73,8 +74,6 @@ function readForm() {
 
 function fillForm(v) {
   formGroups = Array.isArray(v.groups) ? v.groups.filter((g) => typeof g === "string") : [];
-  const pp = document.getElementById("placePick");
-  if (pp) pp.hidden = true;
   paintFormGroups();
   for (const [k, val] of Object.entries(v)) {
     if (k === "manual" || k === "active" || k === "groups") continue;
@@ -83,6 +82,7 @@ function fillForm(v) {
   }
   $("#manual").checked = !!v.manual;
   $("#offsetField").hidden = !v.manual;
+  paintWhere();
 }
 
 /** Solo los datos de nacimiento; sistema de casas y nodo son preferencias de vista. */
@@ -96,8 +96,9 @@ function birthFromForm() {
 }
 
 // ---------- grupos ----------------------------------------------------------
-// Una carta puede estar en varios grupos: Amigos, Familia, Consultantes y Famosos están siempre; «+ Grupo» crea otro
-// (queda mientras alguna carta lo tenga). En el formulario se marcan; en Mis cartas se filtra por grupo.
+// Una carta puede estar en varios grupos: Amigos, Familia, Consultantes y Famosos vienen de fábrica; «+ Grupo» crea otro
+// (queda mientras alguna carta lo tenga). En el formulario se marcan; en Mis cartas se filtra por grupo, y con «Editar» se
+// quita un grupo de todas sus cartas (si es de fábrica, deja de aparecer: queda en la configuración, `groupsOff`).
 const GROUP_DEFAULTS = ["Amigos", "Familia", "Consultantes", "Famosos"];
 const gkey = (g) => String(g).toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 const hasGroup = (list, g) => (list || []).some((x) => gkey(x) === gkey(g));
@@ -106,7 +107,8 @@ let extraGroups = [];         // creados con «+ Grupo» y todavía sin carta gu
 function allGroups() {
   const out = [], seen = new Set();
   const add = (g) => { const k = gkey(g); if (k && !seen.has(k)) { seen.add(k); out.push(g); } };
-  GROUP_DEFAULTS.forEach(add);
+  const off = curCfg?.groupsOff || [];
+  GROUP_DEFAULTS.filter((g) => !hasGroup(off, g)).forEach(add);
   (saved?.items || []).flatMap((it) => it.groups || []).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })).forEach(add);
   extraGroups.forEach(add);
   formGroups.forEach(add);
@@ -170,6 +172,25 @@ function newGroup() {
   inp.focus();
 }
 
+/** Quita un grupo de todas las cartas que lo tienen; si es de fábrica, además deja de aparecer. */
+async function removeGroup(g) {
+  const k = gkey(g);
+  const has = saved.items.filter((it) => (it.groups || []).some((x) => gkey(x) === k));
+  for (const it of has) {
+    const { id, created, updated, notes, ...data } = it;
+    await saved.update(id, { ...data, groups: (it.groups || []).filter((x) => gkey(x) !== k) });
+  }
+  extraGroups = extraGroups.filter((x) => gkey(x) !== k);
+  formGroups = formGroups.filter((x) => gkey(x) !== k);
+  if (mc.group === k) mc.group = "";
+  const def = GROUP_DEFAULTS.find((x) => gkey(x) === k);
+  if (def) setGroupsOff([...(curCfg?.groupsOff || []), def]);       // vuelve a dibujar todo (la configuración cambió)
+  paintFormGroups();
+  if (page === "charts") renderMyCharts();
+  else if (page === "home") paintHomeCards();
+  return has.length;
+}
+
 function remember() {
   try { localStorage.setItem(STORE, JSON.stringify({ ...readForm(), active: saved.activeId })); } catch {}
 }
@@ -218,12 +239,51 @@ function setPlace(p) {
   form.elements.lon.value = p.lon;
   form.elements.tz.value = p.tz;
   if ($("#manual").checked) { $("#manual").checked = false; $("#offsetField").hidden = true; }
-  const pick = $("#placePick");
-  pick.textContent = `${Math.abs(p.lat).toFixed(2)}° ${p.lat < 0 ? "S" : "N"}, ${Math.abs(p.lon).toFixed(2)}° ${p.lon < 0 ? "O" : "E"} · ${p.tz}`;
-  pick.hidden = false;
   closePlaces();
+  paintWhere();
   form.dispatchEvent(new Event("input", { bubbles: true }));
 }
+// Debajo de «Lugar»: el globito girado hacia el lugar, con el nombre, las coordenadas y la zona horaria (y su
+// diferencia con UTC en la fecha de la carta). Se actualiza al elegir un lugar o al cambiar latitud, longitud o zona.
+let whereSeq = 0;
+function gmtOffset(tz, date, time) {
+  try {
+    const at = new Date(`${/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().slice(0, 10)}T${/^\d{2}:\d{2}/.test(time) ? time.slice(0, 5) : "12:00"}:00Z`);
+    const part = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(at).find((x) => x.type === "timeZoneName");
+    return part ? part.value.replace("-", "−") : "";
+  } catch { return null; }                                    // zona que no existe
+}
+function paintWhere() {
+  const pick = $("#placePick");
+  const f = form.elements;
+  const lat = parseFloat(f.lat.value), lon = parseFloat(f.lon.value);
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) || f.lat.value === "" || f.lon.value === "") { pick.hidden = true; return; }
+  pick.querySelector(".pp-coord").textContent = `${Math.abs(lat).toFixed(2)}° ${lat < 0 ? "S" : "N"}, ${Math.abs(lon).toFixed(2)}° ${lon < 0 ? "O" : "E"}`;
+  const tz = f.tz.value.trim();
+  let tzTxt = "";
+  if ($("#manual").checked) {
+    const o = parseFloat(f.offset.value);
+    tzTxt = Number.isFinite(o) ? `UTC${o < 0 ? "−" : "+"}${Math.abs(o)} (a mano)` : "UTC a mano";
+  } else if (tz) {
+    const off = gmtOffset(tz, f.date.value, f.time.value);
+    tzTxt = off === null ? `${tz} · zona desconocida` : off ? `${tz} · ${off}` : tz;
+  }
+  pick.querySelector(".pp-tz").textContent = tzTxt;
+  pick.hidden = false;
+  const my = ++whereSeq;
+  const cv = pick.querySelector(".pp-globe");
+  if (!formDlg.open) { cv.classList.remove("on"); delete cv.dataset.at; return; }   // se dibuja al abrir el formulario
+  cv.dataset.at = `${lat},${lon}`;
+  drawGlobe(cv, lat, lon, 72).then(() => { if (my === whereSeq) cv.classList.add("on"); }).catch(() => cv.classList.remove("on"));
+}
+let whereTimer = 0;
+for (const k of ["lat", "lon", "tz", "offset", "date", "time"]) {
+  form.elements[k].addEventListener("input", () => { clearTimeout(whereTimer); whereTimer = setTimeout(paintWhere, 120); });
+}
+$("#manual").addEventListener("change", () => setTimeout(paintWhere, 0));
+new MutationObserver(() => { if (!$("#placePick").hidden) paintWhere(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "style", "class"] });
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { if (!$("#placePick").hidden) paintWhere(); });
+
 function closePlaces() {
   placeItems = []; placeSel = -1; placeShort = "";
   placeList.hidden = true;
@@ -287,7 +347,7 @@ async function findPlaces(q) {
 placeIn.addEventListener("input", () => {
   $("#placePick").hidden = true;
   const hit = PLACES.find((p) => placeLabel(p) === placeIn.value);      // lo que se escribió entero igual a uno de la lista corta
-  if (hit) { form.elements.lat.value = hit.lat; form.elements.lon.value = hit.lon; form.elements.tz.value = hit.tz; }
+  if (hit) { form.elements.lat.value = hit.lat; form.elements.lon.value = hit.lon; form.elements.tz.value = hit.tz; paintWhere(); }
   clearTimeout(placeTimer);
   const q = placeIn.value.trim();
   if (q.length < 2) { placeSeq++; closePlaces(); return; }
@@ -310,7 +370,7 @@ placeIn.addEventListener("keydown", (e) => {
     setPlace(placeItems[placeSel]);
   }
 });
-placeIn.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== placeIn) { placeSeq++; closePlaces(); } }, 120));
+placeIn.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== placeIn) { placeSeq++; closePlaces(); paintWhere(); } }, 120));
 
 $("#manual").addEventListener("change", (e) => {
   $("#offsetField").hidden = !e.target.checked;
@@ -561,6 +621,7 @@ function openForm(kind, item = null) {
   delArmChart(false);
   $("#formDel").hidden = !saved.activeId;
   if (!formDlg.open) formDlg.showModal();
+  paintWhere();
   syncActions();
   form.elements.name.focus({ preventScroll: true });
 }
@@ -2860,6 +2921,7 @@ setupPrint({ root, getMode: () => mode });
 const cfg0 = initSettings((cfg, what) => {
   curCfg = cfg;
   paintCfgSums();
+  if (what === "groups") paintFormGroups();
   if (page === "charts") queueMicrotask(renderMyCharts);      // otros orbes o aspectos duros: la búsqueda cambia
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
@@ -3651,7 +3713,7 @@ function paintHomeCards() {
   const rest = byRecent(items).filter((it) => !pinned.includes(it));
   const list = [...pinned, ...(act && !pinned.includes(act) ? [act] : []), ...rest.filter((it) => it !== act)];
   const grid = elx("div", { className: "hc-cards" });
-  grid.append(...list.slice(0, nShow).map((it) => chartCard(it, { cur: it === act })));
+  grid.append(...list.slice(0, nShow).map((it) => listItem(it, { cur: it === act, where: "home" })));
   const add = elx("button", { type: "button", className: "hc-card hc-new", id: "homeNew", title: "Cargar una carta nueva" }, () => openForm("new"));
   add.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta`;
   grid.append(add);
@@ -3775,7 +3837,7 @@ function paintFindState() {
 // -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
 // un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
 const MC_PAGE = 24;
-const mc = { q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
+const mc = { gEdit: false, q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
 const NO_GROUP = "\u0000sin";
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
@@ -3839,11 +3901,13 @@ function posHits(it) {
   }
   return hits;
 }
-// En Mis cartas cada tarjeta lleva «Editar» y «Eliminar» (este, con dos toques: el primero pide confirmar).
+// En Mis cartas y en el inicio cada tarjeta lleva «Editar» y «Eliminar» (este, con dos toques: el primero pide confirmar).
 const PENCIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>`;
 const TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/></svg>`;
 let mcArm = { id: null, timer: 0 };
-function listItem(it, hits) {
+function listItem(it, { hits = [], cur = false, where = "mc" } = {}) {
+  const redraw = () => (where === "home" ? paintHomeCards() : renderMyCharts());
+  const box = where === "home" ? "#homeChartBody" : "#mcList";
   const wrap = elx("div", { className: "hc-item" });
   const acts = elx("div", { className: "hc-acts" });
   const ed = elx("button", { type: "button", className: "hc-act", title: "Editar los datos" }, () => openForm("edit", it));
@@ -3857,18 +3921,67 @@ function listItem(it, hits) {
   del.addEventListener("click", async () => {
     clearTimeout(mcArm.timer);
     if (mcArm.id !== it.id) {                       // primer toque: pide confirmar (se desarma a los 6 s)
-      mcArm = { id: it.id, timer: setTimeout(() => { mcArm = { id: null, timer: 0 }; renderMyCharts(); }, 6000) };
-      renderMyCharts();
-      $(`#mcList .hc-del[data-arm="1"]`)?.focus();
+      mcArm = { id: it.id, timer: setTimeout(() => { mcArm = { id: null, timer: 0 }; redraw(); }, 6000) };
+      redraw();
+      $(`${box} .hc-del[data-arm="1"]`)?.focus();
       return;
     }
     mcArm = { id: null, timer: 0 };
-    try { await deleteChart(it.id, { active: saved.activeId, values: readForm() }); }
-    catch (err) { $("#mcCount").textContent = `No se pudo eliminar: ${err.message}`; }
+    try {
+      await deleteChart(it.id, { active: saved.activeId, values: readForm() });
+      if (where === "home") renderHomeCharts();
+    } catch (err) {
+      if (where === "home") { del.title = `No se pudo eliminar: ${err.message}`; redraw(); }
+      else $("#mcCount").textContent = `No se pudo eliminar: ${err.message}`;
+    }
   });
   acts.append(ed, del);
-  wrap.append(chartCard(it, { hits }), acts);
+  wrap.append(chartCard(it, { hits, cur }), acts);
   return wrap;
+}
+// «Editar» grupos: cada uno con una ✕; el primer toque pide confirmar (dice de cuántas cartas sale), el segundo lo quita.
+let gArm = null;              // el grupo armado para quitar (gkey)
+let gArmTimer = 0;
+const XMARK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>`;
+function paintGroupEdit(gBox, gCount) {
+  const chips = allGroups().map((g) => {
+    const k = gkey(g), n = gCount.get(k) || 0, armed = gArm === k;
+    const b = elx("button", { type: "button", className: "gchip gdel" });
+    b.dataset.g = k;
+    if (armed) {
+      b.dataset.arm = "1";
+      b.append(n ? `¿Quitar «${g}» de ${n} ${n === 1 ? "carta" : "cartas"}?` : `¿Quitar «${g}»?`);
+      b.setAttribute("aria-label", `${b.textContent} Tocá de nuevo para confirmar`);
+    } else {
+      b.append(g);
+      if (n) b.append(elx("span", { className: "gn", textContent: String(n) }));
+      b.insertAdjacentHTML("beforeend", XMARK);
+      b.setAttribute("aria-label", `Quitar el grupo ${g}`);
+    }
+    b.addEventListener("click", async () => {
+      clearTimeout(gArmTimer);
+      if (gArm !== k) {
+        gArm = k;
+        gArmTimer = setTimeout(() => { gArm = null; if (page === "charts") renderMyCharts(); }, 6000);
+        renderMyCharts();
+        const armed = $(`#mcGroups .gdel[data-arm="1"]`);
+        armed?.focus({ preventScroll: true });
+        armed?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        return;
+      }
+      gArm = null;
+      b.disabled = true;
+      try { await removeGroup(g); }
+      catch (err) { $("#mcCount").textContent = `No se pudo quitar el grupo: ${err.message}`; renderMyCharts(); }
+      $("#mcGroups .gdone")?.focus({ preventScroll: true });
+    });
+    return b;
+  });
+  const off = curCfg?.groupsOff || [];
+  const back = off.length ? [elx("button", { type: "button", className: "gchip gback", textContent: `Volver a poner ${off.join(", ")}`, title: "Los grupos de fábrica que quitaste" }, () => { setGroupsOff([]); })] : [];
+  const done = elx("button", { type: "button", className: "gchip gdone", textContent: "Listo" }, () => { mc.gEdit = false; gArm = null; renderMyCharts(); $("#mcGroups .gedit")?.focus({ preventScroll: true }); });
+  gBox.replaceChildren(done, ...chips, ...back);
+  if (!chips.length && !back.length) gBox.append(elx("span", { className: "gnone", textContent: "No hay grupos." }));
 }
 function renderMyCharts() {
   const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
@@ -3893,7 +4006,10 @@ function renderMyCharts() {
   }
   if (mc.group && (mc.group === NO_GROUP ? !noGroup : !gCount.has(mc.group))) mc.group = "";
   const gBox = $("#mcGroups");
-  gBox.hidden = !gCount.size;
+  gBox.hidden = !gCount.size && !mc.gEdit;
+  gBox.classList.toggle("editing", !!mc.gEdit);
+  if (mc.gEdit) { paintGroupEdit(gBox, gCount); }
+  else {
   const gBtn = (key, label, n) => {
     const b = elx("button", { type: "button", className: "gchip", disabled: key !== "" && !n }, () => { mc.group = mc.group === key ? "" : key; mc.page = 1; renderMyCharts(); });
     b.append(label);
@@ -3901,9 +4017,13 @@ function renderMyCharts() {
     b.setAttribute("aria-pressed", String(mc.group === key));
     return b;
   };
+  const edit = elx("button", { type: "button", className: "gchip gedit", title: "Quitar grupos" }, () => { mc.gEdit = true; gArm = null; renderMyCharts(); $("#mcGroups .gdone")?.focus({ preventScroll: true }); });
+  edit.innerHTML = `${PENCIL}<span>Editar</span>`;
+  edit.setAttribute("aria-label", "Editar los grupos");
   gBox.replaceChildren(gBtn("", "Todos los grupos", 0),
     ...allGroups().map((g) => gBtn(gkey(g), g, gCount.get(gkey(g)) || 0)),
-    ...(noGroup && noGroup < items.length ? [gBtn(NO_GROUP, "Sin grupo", noGroup)] : []));
+    ...(noGroup && noGroup < items.length ? [gBtn(NO_GROUP, "Sin grupo", noGroup)] : []), edit);
+  }
   $("#mcFilters").hidden = !items.length;
   $("#mcAz").hidden = items.length < 2;
   // casa y signo no se combinan con el Ascendente y el Medio Cielo (siempre están en la I y la X)
@@ -3949,7 +4069,7 @@ function renderMyCharts() {
   else if (!list.length) count.textContent = posOn && missing.length === items.length ? "Para buscar por posición hace falta calcular las posiciones." : "Ninguna carta cumple la búsqueda.";
   else count.textContent = (anyFilter ? `${list.length} de ${items.length} ${items.length === 1 ? "carta" : "cartas"}` : `${list.length} ${list.length === 1 ? "carta" : "cartas"}`) +
     (pages > 1 ? ` · página ${mc.page} de ${pages}` : "") + (posOn && missing.length && !find.running ? ` · faltan calcular ${missing.length}` : "");
-  $("#mcList").replaceChildren(...shown.map((it) => listItem(it, hitsOf.get(it.id) || [])));
+  $("#mcList").replaceChildren(...shown.map((it) => listItem(it, { hits: hitsOf.get(it.id) || [] })));
   if (failed.length && !find.running) {
     count.textContent += ` · No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
   }
