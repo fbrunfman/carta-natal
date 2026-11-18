@@ -162,10 +162,10 @@ export const FONT_FAMILY = {
   garamond: '"EB Garamond", Georgia, serif',
 };
 // La letra de las notas (manuscritas, incluidas en la app), o la misma de la app.
-export const NOTE_FONTS = { kalam: "Kalam", patrick: "Patrick Hand", mali: "Mali", shantell: "Shantell Sans", app: "La misma de la app" };
+export const NOTE_FONTS = { kalam: "Kalam", patrick: "Patrick Hand", mali: "Mali", shantell: "Shantell Sans", pluma: "Pluma (antigua)", app: "La misma de la app" };
 export const NOTE_FONT_FAMILY = {
   kalam: '"Kalam", system-ui, sans-serif', patrick: '"Patrick Hand", system-ui, sans-serif', mali: '"Mali", system-ui, sans-serif',
-  shantell: '"Shantell Sans", system-ui, sans-serif', app: "var(--sans)",
+  shantell: '"Shantell Sans", system-ui, sans-serif', pluma: '"IM Fell English Italic", Georgia, serif', app: "var(--sans)",
 };
 
 export const LIMITS = { fs: [0.85, 1.3], wheel: [0.6, 1.4] };
@@ -433,7 +433,8 @@ export function initSettings(onChange) {
   // pergamino: la rueda va con los grados de las cúspides afuera (sin el anillo), como en el diseño; se puede volver a prender
   for (const b of el.look) b.addEventListener("click", () => {
     if (b.dataset.look === cfg.look) return;
-    change(b.dataset.look === "parch" ? { look: "parch", cuspRing: false } : { look: "modern" }, "look");
+    // pergamino: también el cielo ilustrado y la letra «Pluma» para las notas (todo se puede volver a cambiar)
+    change(b.dataset.look === "parch" ? { look: "parch", cuspRing: false, sky: "art", noteFont: "pluma" } : { look: "modern" }, "look");
   });
   for (const b of el.sky) b.addEventListener("click", () => { if (b.dataset.sky !== cfg.sky) change({ sky: b.dataset.sky }, "sky"); });
   for (const b of el.interp) b.addEventListener("click", () => {

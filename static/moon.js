@@ -58,7 +58,14 @@ const R = 44;
  * `south`: en el hemisferio sur la parte iluminada de la Luna creciente queda a la izquierda (al norte, a la derecha).
  * Los colores salen de la CSS (--moon-lit, --moon-dark), así sigue el tema claro u oscuro.
  */
+let moonArt = false;
+/** Estilo pergamino: las lunas del calendario (y de todos lados) son la Luna pintada con la sombra de la fase encima. */
+export function setMoonArt(on) { moonArt = !!on; }
 export function moonIcon(elong, south = true) {
+  if (moonArt) {
+    const sh = moonShade(elong, south).replace('class="moon-shade"', 'class="moon-shade" x="0" y="0"');
+    return `<span class="moon moon-pic" aria-hidden="true"><img src="cielo/planetas/moon.webp" alt="" draggable="false">${sh}</span>`;
+  }
   const e = ((elong % 360) + 360) % 360;
   const k = Math.cos((e * Math.PI) / 180);               // 1 en la nueva, −1 en la llena
   const rx = Math.round(Math.abs(k) * R * 100) / 100;

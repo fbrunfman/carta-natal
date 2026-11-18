@@ -431,7 +431,12 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   rueda («Pepe · Carta natal», `#parchTitle`), la rueda y las tablas en cuadros de pergamino con doble filete dorado y
   adornos en las esquinas, la banda de los signos en **acuarela** (el filtro `#wcTex` que pone wheel.js), todo en Garamond
   y el cuadro de aspectos con grilla y el orbe como «6°49′» (aplicativo o separativo al pasar el cursor). Al elegirlo se
-  apaga el anillo de las cúspides (los grados quedan afuera de la rueda, como en el diseño); se puede volver a prender.
+  apaga el anillo de las cúspides (los grados quedan afuera de la rueda, como en el diseño), el cielo de hoy pasa a
+  **Ilustrado** y las notas a la letra **«Pluma (antigua)»** (IM Fell English Italic, en `static/fonts`); todo se puede
+  volver a cambiar. La barra de la carta va en **una fila**, como en el estilo moderno (sin la constelación). En vez del
+  lápiz, **una pluma** para editar (el SVG lleva los dos, `.ic-pencil` y `.ic-quill`). Las tarjetas y los cuadros llevan
+  **ribetes**: doble filete dorado, rulos en las esquinas y un adorno arriba al medio. El **calendario lunar** (y todas
+  las lunas que dibuja `moonIcon`) usa la Luna pintada con la sombra de la fase (`setMoonArt` en moon.js).
   Todo bajo `:root[data-look="parch"]` en `@media screen`: **la hoja impresa sale como siempre**. Test: `parch_test`.
 - **«No sé la hora»** (casilla debajo de la fecha y la hora en el formulario): la hora queda deshabilitada y la carta se
   calcula a las **12:00** (el medio del día: el menor error posible), y se guarda así (`notime: true`; viaja en las copias y

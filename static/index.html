@@ -149,7 +149,7 @@
             <div class="mc-groups gchips" id="mcGroups" role="group" aria-label="Por grupo"></div>
             <button type="button" class="mc-gmore" id="mcGMore" aria-label="Ver más grupos" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
-          <button type="button" class="gchip gedit" id="mcGEdit" aria-label="Editar los grupos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg><span>Editar</span></button>
+          <button type="button" class="gchip gedit" id="mcGEdit" aria-label="Editar los grupos"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="ic-pencil"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></g><g class="ic-quill"><path d="M19.6 4.4a5.6 5.6 0 0 0-7.9 0L6.4 9.7a1.6 1.6 0 0 0-.5 1.2v7.2h7.2a1.6 1.6 0 0 0 1.2-.5l5.3-5.3a5.6 5.6 0 0 0 0-7.9Z"/><path d="M16 8 3 21"/><path d="M17.2 14.3H10"/></g></svg><span>Editar</span></button>
         </div>
         <div class="mc-row mc-row2">
           <label class="mc-ini" id="mcIniBox"><span>Inicial:</span><select id="mcIni" aria-label="Por inicial"></select></label>
@@ -212,7 +212,7 @@
     <header class="head">
       <h2><span id="title">Carta natal</span><span class="title-acts"><button type="button" id="titlePick" class="iconbtn title-pick" aria-label="Cambiar de carta" title="Cambiar de carta" aria-haspopup="dialog" aria-expanded="false" aria-controls="cpick" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></button><button type="button" id="titlePin" class="iconbtn title-pick title-pin" aria-pressed="false" aria-label="Fijar en el inicio" title="Fijar en el inicio" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg></button><button type="button" id="titleInfo" class="iconbtn title-pick title-info" aria-label="Datos de nacimiento" title="Datos de nacimiento" aria-haspopup="dialog" aria-expanded="false" aria-controls="cinfo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".6" fill="currentColor"/></svg></button></span></h2>
       <!-- celular: los datos de nacimiento (el subtítulo y la hora UTC) van acá, detrás del ícono de info -->
-      <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden><div id="cinfoText"></div><button type="button" class="secondary compact with-ic" id="edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>Editar los datos</button></div>
+      <div class="cinfo" id="cinfo" role="dialog" aria-label="Datos de nacimiento" hidden><div id="cinfoText"></div><button type="button" class="secondary compact with-ic" id="edit"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="ic-pencil"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></g><g class="ic-quill"><path d="M19.6 4.4a5.6 5.6 0 0 0-7.9 0L6.4 9.7a1.6 1.6 0 0 0-.5 1.2v7.2h7.2a1.6 1.6 0 0 0 1.2-.5l5.3-5.3a5.6 5.6 0 0 0 0-7.9Z"/><path d="M16 8 3 21"/><path d="M17.2 14.3H10"/></g></svg>Editar los datos</button></div>
       <p id="sub"></p>
     </header>
 
@@ -336,7 +336,6 @@
 
     <div class="calc-wait" id="chartWait" role="status" hidden><span class="spin" aria-hidden="true"></span>Calculando la carta…</div>
 
-    <p class="parch-title" id="parchTitle" aria-hidden="true"></p>
     <div class="stage" id="stage" hidden>
       <figure class="wheel-fig">
         <svg id="wheel" class="wheel" viewBox="-345 -345 690 690" role="img"></svg>

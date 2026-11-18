@@ -2708,7 +2708,6 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
    en dos filas con los botones con nombre, el nombre en grande, los cuadros con filete dorado y adornos, la banda de los
    signos en acuarela (el filtro #wcTex de wheel.js) y todo en Garamond. Solo en pantalla: la hoja impresa sale como siempre.
    ====================================================================================================================== */
-.parch-title { display: none; }
 .a-or2, .orb-legend2 { display: none; }
 @media screen {
 :root[data-look="parch"], html:root[data-look="parch"][data-theme] {
@@ -2725,7 +2724,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-look="parch"] body { background: var(--paper), radial-gradient(130% 100% at 50% 0%, #F6ECD3, #EAD8B0); background-attachment: fixed; }
 :root[data-look="parch"] #theme, :root[data-look="parch"] .cfg-theme-row { display: none !important; }
 /* toda la app: títulos y nombres en Garamond, botones en azul tinta */
-:root[data-look="parch"] :is(.head h2, .hl-nm, .hc-nm, #title, .parch-title) { font-family: var(--garamond); font-weight: 600; letter-spacing: 0; }
+:root[data-look="parch"] :is(.head h2, .hl-nm, .hc-nm, #title) { font-family: var(--garamond); font-weight: 600; letter-spacing: 0; }
 :root[data-look="parch"] .head h2 { font-size: clamp(34px, 3.8vw, 50px); }
 :root[data-look="parch"] .hc-nm { font-size: calc(21px * var(--fs)); }
 :root[data-look="parch"] .hbox, :root[data-look="parch"] .mc-panel { box-shadow: 0 1px 2px rgba(80, 55, 20, .08); }
@@ -2745,41 +2744,16 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-look="parch"] .modeacts .with-ic { font-size: calc(16.5px * var(--fs)); }
 :root[data-look="parch"] .modeacts [aria-pressed="true"] { background: #1E3A78; border-color: #1E3A78; color: #FAF3E2; }
 :root[data-look="parch"] .nb-count:not([hidden]) { background: #B07A1E; color: #FFF8EC; border-radius: 99px; padding: 0 7px; }
-/* pantallas anchas: la barra en dos filas (arriba el nombre y la constelación; abajo los modos y los botones, centrados) */
+/* pantallas anchas: la barra de la carta en una fila, como en el estilo moderno, con nubes pintadas de fondo */
 @media (min-width: 821px) {
-  :root[data-look="parch"][data-tbmerge] { --tb-h: 124px; }
   :root[data-look="parch"][data-tbmerge] .topbar {
-    align-items: flex-start; padding-top: 10px;
     background:
-      radial-gradient(220px 46px at 72% 14%, rgba(110, 140, 185, .26), transparent 70%),
-      radial-gradient(280px 56px at 94% 34%, rgba(110, 140, 185, .24), transparent 70%),
-      radial-gradient(160px 40px at 36% 18%, rgba(120, 150, 190, .2), transparent 70%),
+      radial-gradient(220px 40px at 62% 30%, rgba(110, 140, 185, .22), transparent 70%),
+      radial-gradient(280px 46px at 92% 40%, rgba(110, 140, 185, .2), transparent 70%),
       var(--paper), #F2E6C9;
   }
-  :root[data-look="parch"][data-tbmerge] .topbar::after {
-    content: ""; position: absolute; left: 50%; top: 4px; width: 240px; height: 56px; margin-left: -120px; pointer-events: none;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60'%3E%3Cpath d='M10 52 C 70 20, 190 12, 250 48' fill='none' stroke='%23A07E46' stroke-width='1.3' stroke-dasharray='1.5 5' stroke-linecap='round'/%3E%3Cpath d='M62 32 l2.6 7 7 2.6 -7 2.6 -2.6 7 -2.6 -7 -7 -2.6 7 -2.6Z' fill='%23A07E46'/%3E%3Cpath d='M210 30 l2 5.4 5.4 2 -5.4 2 -2 5.4 -2 -5.4 -5.4 -2 5.4 -2Z' fill='%23A07E46'/%3E%3Cpath d='M138 4 a14 14 0 1 0 14 19 a11 11 0 1 1 -14 -19Z' fill='%23A07E46'/%3E%3C/svg%3E") center / contain no-repeat;
-  }
-  :root[data-look="parch"][data-tbmerge] #tbFind { display: none !important; }
-  :root[data-look="parch"][data-tbmerge] #chartPage > .head { height: 60px; right: calc(50% + 130px) !important; }
-  :root[data-look="parch"][data-tbmerge] #chartPage > .head h2 { font-size: calc(32px * var(--fs)); }
-  :root[data-look="parch"][data-tbmerge] #chartPage > .modebar {
-    top: 62px; height: 56px; left: 50% !important; right: auto !important; transform: translateX(-50%); width: max-content; gap: 0;
-  }
-  :root[data-look="parch"][data-tbmerge] .modebar .seg.modes { margin-right: 20px; }
-  :root[data-look="parch"][data-tbmerge] .modeacts { padding-left: 20px; border-left: 1px solid #C4A872; }
-  :root[data-look="parch"][data-tbmerge] #cfgBtn { position: fixed; top: 72px; right: 22px; }
-  :root[data-look="parch"][data-tbmerge] .parch-title { display: block; margin: 0 0 14px 6px; font-size: calc(40px * var(--fs)); line-height: 1.1; color: var(--ink); }
-  :root[data-look="parch"][data-tbmerge] .parch-title span { font-weight: 500; }
 }
-/* en las pantallas anchas pero no tanto, los botones de la carta solo con el ícono (como siempre) */
-@media (min-width: 821px) and (max-width: 1279px) {
-  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic { font-size: 0; gap: 0; padding: 0 11px; }
-}
-@media (min-width: 1280px) {
-  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic { font-size: calc(16.5px * var(--fs)); gap: 8px; padding: 0 15px; }
-  :root[data-look="parch"][data-tbmerge] .modeacts .with-ic svg { margin: 0; }
-}
+:root[data-look="parch"] #spillBtn[aria-pressed="true"], :root[data-look="parch"] .modeacts [aria-pressed="true"] { background: #1E3A78; border-color: #1E3A78; color: #FAF3E2; }
 /* los dos cuadros: pergamino, doble filete dorado y adornos en las esquinas */
 :root[data-look="parch"] .stage .wheel-fig, :root[data-look="parch"] .stage .data {
   position: relative; border: 1.5px solid #C9A86A; border-radius: 12px;
@@ -2818,7 +2792,10 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-look="parch"] .wheel .axis-label { font-weight: 700; font-size: 17px; }
 :root[data-look="parch"] .wheel .cusplbl { font-size: 15px; }
 :root[data-look="parch"] .wheel .pd-bg { stroke: #3B2A17; stroke-width: 3.2; }
-:root[data-look="parch"] .wheel-fig .legend .key { font-size: calc(15.5px * var(--fs)); color: var(--ink); }
+:root[data-look="parch"] .wheel-fig .legend .key { font-size: calc(13px * var(--fs)); color: var(--ink); }
+:root[data-look="parch"][data-legend-side] .wheel-fig .legend { left: 28px; bottom: 26px; max-width: 180px; gap: 5px; }
+:root[data-look="parch"] .wheel-fig .legend { padding: 0 18px; }
+:root[data-look="parch"][data-legend-side] .wheel-fig .legend { padding: 0; }
 /* pestañas, botones y el cuadro de aspectos */
 :root[data-look="parch"] .tabs { border-bottom-color: #D9C08A; }
 :root[data-look="parch"] .tabs button { font-size: calc(19px * var(--fs)); color: #3B2A17; }
@@ -2838,4 +2815,36 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-look="parch"] .stage .data .fine { font-size: calc(15px * var(--fs)); line-height: 1.45; color: var(--ink-2); }
 :root[data-look="parch"] .stage .data .seg button { font-size: calc(16px * var(--fs)); }
 :root[data-look="parch"] .stage .data :is(td, th) { font-family: var(--garamond); font-size: calc(16px * var(--fs)); }
+}
+
+/* la letra «Pluma» para las notas, el ícono de la pluma en vez del lápiz y la Luna pintada (estilo pergamino) */
+@font-face { font-family: "IM Fell English Italic"; font-display: swap; src: url(fonts/imfell-latin-italic.woff2) format("woff2"); }
+:root[data-nfont="pluma"] { --note-font: "Pluton", "IM Fell English Italic", Georgia, serif; }
+.ic-quill { display: none; }
+:root[data-look="parch"] .ic-pencil { display: none; }
+:root[data-look="parch"] .ic-quill { display: inline; }
+.moon-pic { position: relative; display: block; width: 100%; height: 100%; aspect-ratio: 1; border-radius: 50%; }
+.moon-pic img { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 1px rgba(59, 42, 23, .55); }
+.moon-pic .moon-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* pergamino: los ribetes de las tarjetas y los cuadros (doble filete dorado, rulos en las esquinas y un adorno arriba al medio) */
+@media screen {
+:root[data-look="parch"] { --rb-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform=''%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M4 30C4 14 14 4 30 4'/%3E%3Cpath d='M4 18c3 0 7-2 8-6 4-1 6-5 6-8'/%3E%3Cpath d='M12 12c2 1 3 3 2 5'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E"); --rb-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate%2840 0%29 scale%28-1 1%29'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M4 30C4 14 14 4 30 4'/%3E%3Cpath d='M4 18c3 0 7-2 8-6 4-1 6-5 6-8'/%3E%3Cpath d='M12 12c2 1 3 3 2 5'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E"); --rb-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate%280 40%29 scale%281 -1%29'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M4 30C4 14 14 4 30 4'/%3E%3Cpath d='M4 18c3 0 7-2 8-6 4-1 6-5 6-8'/%3E%3Cpath d='M12 12c2 1 3 3 2 5'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E"); --rb-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='translate%2840 40%29 scale%28-1 -1%29'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M4 30C4 14 14 4 30 4'/%3E%3Cpath d='M4 18c3 0 7-2 8-6 4-1 6-5 6-8'/%3E%3Cpath d='M12 12c2 1 3 3 2 5'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23A88347'/%3E%3C/g%3E%3C/svg%3E"); --rb-fl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 16'%3E%3Cg fill='none' stroke='%23A88347' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M6 8h52M102 8h52'/%3E%3Cpath d='M58 8c6-6 12-6 16 0M86 8c4-6 10-6 16 0M58 8c6 6 12 6 16 0M86 8c4 6 10 6 16 0'/%3E%3C/g%3E%3Cpath d='M80 2l4 6-4 6-4-6Z' fill='%23A88347'/%3E%3Ccircle cx='6' cy='8' r='1.4' fill='%23A88347'/%3E%3Ccircle cx='154' cy='8' r='1.4' fill='%23A88347'/%3E%3C/svg%3E"); }
+:root[data-look="parch"] :is(.hc-card, .home-last, .home-charts, .mc-panel, .home-moon, .mc-filters) {
+  border-color: #C9A86A;
+  background:
+    var(--rb-tl) left 3px top 3px / var(--rb-c) no-repeat, var(--rb-tr) right 3px top 3px / var(--rb-c) no-repeat,
+    var(--rb-bl) left 3px bottom 3px / var(--rb-c) no-repeat, var(--rb-br) right 3px bottom 3px / var(--rb-c) no-repeat,
+    var(--rb-fl) center top 6px / var(--rb-f) no-repeat,
+    var(--paper), linear-gradient(170deg, #FCF5E4, #F3E6C8);
+  box-shadow: inset 0 0 0 4px #FBF3E1, inset 0 0 0 5px #DCC390, 0 2px 6px rgba(80, 55, 20, .1);
+}
+:root[data-look="parch"] .hc-card { --rb-c: 22px; --rb-f: 92px; padding-top: 18px; border-radius: 10px; }
+:root[data-look="parch"] :is(.home-last, .home-charts, .mc-panel, .home-moon, .mc-filters) { --rb-c: 30px; --rb-f: 130px; border-radius: 12px; }
+:root[data-look="parch"] :is(.mc-panel, .mc-filters) { --rb-f: 0px; }
+:root[data-look="parch"] .hc-card:hover { border-color: #A88347; }
+:root[data-look="parch"] .hc-card.cur { box-shadow: inset 0 0 0 4px #FBF3E1, inset 0 0 0 5.5px #1E3A78; }
+:root[data-look="parch"] .hc-acts { top: 13px; right: 14px; }
+:root[data-look="parch"] .hc-card::before { top: 18px; left: 4px; }
+:root[data-look="parch"] .home-last .hbox-k, :root[data-look="parch"] .home-charts .hbox-k { font-family: var(--garamond); font-size: calc(15px * var(--fs)); letter-spacing: .14em; }
 }

@@ -11,7 +11,7 @@ import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
-import { moonCornerHTML, moonLinesHTML, moonIcon, moonShade, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
+import { moonCornerHTML, moonLinesHTML, moonIcon, moonShade, setMoonArt, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
@@ -1101,12 +1101,6 @@ const longDate = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long
 const dateOf = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
 
 function header(c) {
-  headerNow(c);
-  // pergamino, en pantallas anchas: el nombre en grande arriba de la rueda («Pepe · Carta natal»)
-  const t = $("#title").textContent;
-  $("#parchTitle").innerHTML = mode === "natal" ? `${esc(t)} <span>· Carta natal</span>` : esc(t);
-}
-function headerNow(c) {
   const name = c.input.name;
   const where = c.input.place || `${c.input.lat}°, ${c.input.lon}°`;
   if (mode === "transit" && transit) {
@@ -1304,7 +1298,8 @@ function paintMerge() {
   root.toggleAttribute("data-tbmerge", on);
   if (!on) return;
   const l = $("#appMenuBtn").getBoundingClientRect().right + 14;
-  const r = innerWidth - $("#theme").getBoundingClientRect().left + 12;
+  const right = [$("#theme"), $("#cfgBtn")].find((e) => e.offsetParent);       // (en pergamino no está el botón del tema)
+  const r = innerWidth - right.getBoundingClientRect().left + 12;
   root.style.setProperty("--tb-l", `${Math.round(l)}px`);
   root.style.setProperty("--tb-r", `${Math.round(r)}px`);
   root.style.setProperty("--tb-mb", `${Math.round($("#chartPage > .modebar").offsetWidth)}px`);
@@ -3032,7 +3027,12 @@ const cfg0 = initSettings((cfg, what) => {
   paintCfgSums();
   if (what === "groups") paintFormGroups();
   if (what === "sky" && page === "home" && moon.now) paintSky();
-  if (what === "look") { paintTheme(); if (chart) render(); }
+  if (what === "look") {
+    paintTheme(); setMoonArt(cfg.look === "parch");
+    if (chart) render();
+    if (page === "lunar" && lunarData) paintMonth(lunarData);
+    if (page === "home" && moon.now) paintSky();
+  }
   if (page === "charts") queueMicrotask(renderMyCharts);      // otros orbes o aspectos duros: la búsqueda cambia
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
@@ -3070,6 +3070,7 @@ const cfg0 = initSettings((cfg, what) => {
 setClassic(cfg0.gfx === "classic");
 setCuspRing(cfg0.cuspRing);
 curCfg = cfg0;
+setMoonArt(cfg0.look === "parch");
 // las letras, con vista previa (cada una escrita con la suya)
 fontPicker($("#cfgFont"), (v) => FONT_FAMILY[v], (v) => FONT_NOTE[v] || "");
 fontPicker($("#cfgNoteFont"), (v) => NOTE_FONT_FAMILY[v]);
@@ -4054,7 +4055,7 @@ function posHits(it) {
 }
 // En Mis cartas y en el inicio cada tarjeta lleva «Editar» (el lápiz) y «⋮», un menú con «Fijar en el inicio» y
 // «Eliminar» (este, con dos toques: el primero pide confirmar). Las fijadas muestran el marcador.
-const PENCIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></svg>`;
+const PENCIL = `<svg viewBox="0 0 24 24" aria-hidden="true"><g class="ic-pencil"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></g><g class="ic-quill"><path d="M19.6 4.4a5.6 5.6 0 0 0-7.9 0L6.4 9.7a1.6 1.6 0 0 0-.5 1.2v7.2h7.2a1.6 1.6 0 0 0 1.2-.5l5.3-5.3a5.6 5.6 0 0 0 0-7.9Z"/><path d="M16 8 3 21"/><path d="M17.2 14.3H10"/></g></svg>`;
 const TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6"/></svg>`;
 const DOTS = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>`;
 const MARK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15.5L12 16l-5.5 4Z"/></svg>`;
@@ -4336,7 +4337,9 @@ function renderMyCharts() {
 function paintHemi() {
   document.querySelectorAll("#hemi button").forEach((b) => b.setAttribute("aria-pressed", (b.dataset.h === "s") === moon.south));
 }
+let lunarData = null;
 function paintMonth(data) {
+  lunarData = data;
   $("#mPhases").innerHTML = phasesHTML(data, moon.south);
   $("#mGrid").innerHTML = calendarHTML(data, moon.south, todayIn(moonTz()));
 }
