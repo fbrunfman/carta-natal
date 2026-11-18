@@ -74,7 +74,8 @@ def clean(data) -> dict:
     except ValueError:
         raise StoreError("Completá la fecha de nacimiento.")
 
-    time_ = str(data.get("time") or "")
+    notime = bool(data.get("notime"))           # «No sé la hora»: se calcula a las 12:00, sin Ascendente ni casas
+    time_ = str(data.get("time") or "") or ("12:00" if notime else "")
     if not re.fullmatch(r"\d{2}:\d{2}(:\d{2})?", time_) or int(time_[:2]) > 23 or int(time_[3:5]) > 59:
         raise StoreError("Completá la hora de nacimiento (HH:MM).")
 
@@ -99,6 +100,8 @@ def clean(data) -> dict:
         "place": str(data.get("place") or "").strip()[:120],
         "lat": lat, "lon": lon, "tz": tz, "manual": manual, "offset": offset,
     }
+    if notime:
+        rec["notime"] = True
     groups = clean_groups(data.get("groups"))
     if groups:
         rec["groups"] = groups

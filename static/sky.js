@@ -32,8 +32,50 @@ export const signPos = (k) => edge(30 * k + 15, 6.6);
 
 const f = (n) => Math.round(n * 100) / 100;
 
-/** Lo que no cambia: sectores de color, las 12 líneas que pasan por la Tierra, los signos y la Tierra. */
-export function skyShellHTML(W) {
+// el cielo ilustrado: una imagen por signo (static/cielo/), cada una recortada en su porción de 30°
+export const ART = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"];
+// El encuadre de cada ilustración en su porción (que es un triángulo angosto): sin nada, la imagen va derecha y centrada.
+// Con `fit`, el punto (ax, ay) de la imagen (0–1 desde arriba a la izquierda) queda en la línea del medio de la porción a
+// `r` del centro (en las mismas unidades que el mapa: el borde está a 49,4), girada `rot` grados (a favor del reloj) y
+// agrandada `s` veces: así la figura (la cabeza del carnero, por ejemplo) entra en la porción en vez de quedar cortada.
+export const ART_FIT = {
+  aries: { ax: 0.72, ay: 0.22, r: 37, dt: 4, rot: 28, s: 1.25 },
+  tauro: { ax: 0.64, ay: 0.33, r: 32, rot: 10, s: 1.2 },
+  geminis: { ax: 0.5, ay: 0.24, r: 36, rot: 15, s: 1.05 },
+  cancer: { ax: 0.5, ay: 0.52, r: 29, rot: -15, s: 0.95 },
+  leo: { ax: 0.36, ay: 0.32, r: 31, dt: -2, rot: -8, s: 1.15 },          // (la imagen va espejada: el león mira hacia afuera)
+  virgo: { ax: 0.5, ay: 0.22, r: 33, dt: -2, rot: -8, s: 1.35 },
+  libra: { ax: 0.625, ay: 0.32, r: 35, rot: 0, s: 1.45 },       // (espejada) la balanza, grande, en el medio de la porción
+  escorpio: { ax: 0.45, ay: 0.6, r: 32, rot: 0, s: 1.1 },
+  sagitario: { ax: 0.5, ay: 0.22, r: 17, dt: -5, rot: -15, s: 0.95 },
+  capricornio: { ax: 0.76, ay: 0.15, r: 13, dt: 6, rot: -10, s: 1.1 },     // la cabeza y el pecho, sin la cola de pez
+  acuario: { ax: 0.58, ay: 0.36, r: 30, dt: 6, rot: 0, s: 0.85 },          // (espejada: el agua cae hacia afuera)
+  piscis: { ax: 0.48, ay: 0.47, r: 28, rot: 10, s: 0.9 },            // los dos peces enteros, uno frente al otro
+};
+function artHTML() {
+  let defs = "", imgs = "";
+  const h = 0.57 * R;                                    // medio lado del cuadrado que cubre toda la porción
+  for (let k = 0; k < 12; k++) {
+    const [x0, y0] = edge(30 * k), [x1, y1] = edge(30 * k + 30);
+    defs += `<clipPath id="skyc${k}"><path d="M50 50L${f(x0)} ${f(y0)}A${R} ${R} 0 0 0 ${f(x1)} ${f(y1)}Z"/></clipPath>`;
+    const a = (30 * k + 15) * RAD, fit = ART_FIT[ART[k]];
+    let side = 2 * h, px = 50 + 0.56 * R * Math.cos(a), py = 50 - 0.56 * R * Math.sin(a), rot = 0;
+    if (fit) {
+      side *= fit.s || 1; rot = fit.rot || 0;
+      const vx = (fit.ax - 0.5) * side, vy = (fit.ay - 0.5) * side, c = Math.cos(rot * RAD), sn = Math.sin(rot * RAD);
+      const at = a + (fit.dt || 0) * RAD;             // `dt`: grados hacia un costado de la línea del medio
+      px = 50 + fit.r * Math.cos(at) - (vx * c - vy * sn);
+      py = 50 - fit.r * Math.sin(at) - (vx * sn + vy * c);
+    }
+    imgs += `<g clip-path="url(#skyc${k})"><image href="cielo/${ART[k]}.webp" x="${f(px - side / 2)}" y="${f(py - side / 2)}" width="${f(side)}" height="${f(side)}"` +
+      ` preserveAspectRatio="xMidYMid slice"${rot ? ` transform="rotate(${rot} ${f(px)} ${f(py)})"` : ""}/></g>`;
+  }
+  return `<defs>${defs}<radialGradient id="skyHub"><stop offset="0" stop-color="#fff6dc" stop-opacity=".95"/><stop offset=".55" stop-color="#f3e2b6" stop-opacity=".7"/><stop offset="1" stop-color="#e9d3a0" stop-opacity="0"/></radialGradient></defs>` +
+    `<g class="sky-art">${imgs}</g><circle class="sky-hub" cx="50" cy="50" r="15"/>`;
+}
+
+/** Lo que no cambia: sectores de color (o las ilustraciones), las 12 líneas que pasan por la Tierra, los signos y la Tierra. */
+export function skyShellHTML(W, art = false) {
   const wedges = [], rays = [];
   for (let k = 0; k < 12; k++) {
     const [x0, y0] = edge(30 * k), [x1, y1] = edge(30 * k + 30);
@@ -48,7 +90,7 @@ export function skyShellHTML(W) {
       `<span class="sky-sn">${n}</span></span>`;
   }).join("");
   return `<svg class="sky-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">` +
-    `${wedges.join("")}<g class="sky-rings">${rings}</g><g class="sky-rays">${rays.join("")}</g><circle class="sky-rim" cx="50" cy="50" r="${R}"/></svg>` +
+    `${wedges.join("")}${art ? artHTML() : ""}<g class="sky-rings">${rings}</g><g class="sky-rays">${rays.join("")}</g><circle class="sky-rim" cx="50" cy="50" r="${R}"/></svg>` +
     `${signs}<span class="sky-earth" aria-hidden="true"><span class="sky-earth-nm">Tierra</span></span>`;
 }
 
@@ -156,12 +198,14 @@ export const planetLabel = (p) => `${BODY[p.id].name}, ${p.deg}°${pad(p.min)}�
  * Un planeta como botón: el círculo de color y, si hay lugar, su nombre al lado. La Luna se dibuja con su fase
  * (`moonArt`, el SVG de moon.js) y, en vez de marcarse, abre el poema.
  */
-export function planetHTML(p, selected = false, moonArt = "") {
+export function planetHTML(p, selected = false, moonArt = "", art = false) {
   const name = BODY[p.id].name;
   const isMoon = p.id === "moon" && moonArt;
+  // cielo ilustrado: el planeta pintado (static/cielo/planetas/); la Luna lleva encima la sombra de la fase del día
+  const pic = art ? `<span class="pb pb-art${isMoon ? " pb-ph" : ""}"><img src="cielo/planetas/${p.id}.webp" alt="" draggable="false">${isMoon ? moonArt : ""}</span>` : "";
   return `<button type="button" class="sky-pl${isMoon ? " sky-pl-moon" : ""}${p.side ? " lab-" + p.side : ""}" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%;--sd:${p.d}px"` +
     (isMoon ? ` aria-haspopup="dialog"` : ` aria-pressed="${selected}"`) + ` aria-label="${planetLabel(p)}">` +
-    (isMoon ? `<span class="pb pb-ph">${moonArt}</span>` : badge(p.id)) +
+    (pic || (isMoon ? `<span class="pb pb-ph">${moonArt}</span>` : badge(p.id))) +
     (p.side ? `<span class="sky-nm">${name}${p.retro ? `<i class="rx" title="Retrógrado">R</i>` : ""}</span>` : "") + `</button>`;
 }
 

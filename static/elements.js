@@ -26,8 +26,8 @@ const elementIcon = (el) => `<svg class="eicon" viewBox="0 0 24 24" aria-hidden=
 /** Qué hay que mostrar para una carta: los elementos de cada cuerpo y el regente del Ascendente. */
 export function balance(chart) {
   const at = (lon) => { const s = split(lon); return { sign: s.sign, element: ELEMENT_OF_SIGN[s.sign % 4] }; };
-  const asc = { id: "asc", lon: chart.angles.asc, ...at(chart.angles.asc) };
-  const rulerId = RULER[asc.sign];
+  const asc = chart.notime ? null : { id: "asc", lon: chart.angles.asc, ...at(chart.angles.asc) };     // sin hora: sin Ascendente
+  const rulerId = asc ? RULER[asc.sign] : null;
   const planets = PERSONAL.map((id) => {
     const b = chart.bodies.find((x) => x.id === id);
     return { id, lon: b.lon, ...at(b.lon), ruler: id === rulerId };
@@ -48,7 +48,7 @@ export function elementsHTML(chart) {
   };
 
   const box = ([el, name]) => {
-    const items = [bal.asc, ...bal.planets].filter((it) => it.element === el);
+    const items = [...(bal.asc ? [bal.asc] : []), ...bal.planets].filter((it) => it.element === el);
     const list = items.length
       ? items.map((it) => chip(it, it.ruler ? `<span class="rl">regente del Asc</span>` : "")).join("")
       : `<li class="none">—</li>`;
@@ -56,8 +56,8 @@ export function elementsHTML(chart) {
   };
 
   const R = bal.ruler;
-  let note = `Ascendente en ${SIGNS[bal.asc.sign]} ${signHTML(bal.asc.sign)}. `;
-  note += R.shown
+  let note = bal.asc ? `Ascendente en ${SIGNS[bal.asc.sign]} ${signHTML(bal.asc.sign)}. ` : "Sin hora de nacimiento no se conoce el Ascendente. ";
+  if (bal.asc) note += R.shown
     ? `Regente del Ascendente: ${BODY[R.id].name}, marcado en su cuadrante.`
     : `Regente del Ascendente: ${BODY[R.id].name}, transpersonal, por eso no se incluye.`;
   note += " Se muestran el Sol, la Luna y los planetas hasta Saturno.";

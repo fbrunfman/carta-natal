@@ -83,6 +83,14 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     cuadro; a la derecha **«Última carta abierta»** (grande, con Sol, Luna y Asc y **«Continuar con esta carta →»**; todo
     el cuadro la abre) y **«Últimas cartas»** en dos columnas. En el celular y el iPad vertical, una columna: la última
     abierta, las últimas cartas (en el celular, **una fila que se desliza** con la que sigue asomando), el cielo y la Luna.
+    **Cielo ilustrado** (Configuración → Apariencia → «Cielo de hoy: Simple / Ilustrado»; viaja con la sincronización): el
+    cuadro pasa a pergamino (con su propia paleta, igual en claro y en oscuro), con el título en Uncial Antiqua y los
+    textos en IM Fell English (incluidas en `static/fonts`, OFL); cada signo lleva **su ilustración** (`static/cielo/aries.webp` …
+    `piscis.webp`, cuadradas, recortadas por código en su porción exacta de 30°, así un planeta nunca cae sobre el dibujo de
+    otro signo), alrededor el marco pintado (`static/cielo/marco.webp`) y al centro un brillo detrás de la Tierra; los
+    planetas van encima pintados (`static/cielo/planetas/*.webp`, recortados en círculo de una plantilla; la Luna lleva
+    encima la sombra de la fase del día, `moonShade` en moon.js, y la Tierra del centro también es pintada), con los nombres con un halo claro.
+    Las ilustraciones de cada signo tienen su encuadre en `ART_FIT` (sky.js): dónde va la figura, giro y zoom, cubriendo toda la porción.
     El mapa: **el cielo de hoy visto desde la Tierra**. En el centro está la Tierra, alrededor los 12 signos (Aries a
     la derecha y siguiendo en contra de las agujas del reloj, como en la eclíptica) con el color de su elemento, y el Sol,
     la Luna y los planetas en la longitud que tienen ahora (la «R» marca a los retrógrados). La Luna se dibuja con su fase.
@@ -414,6 +422,17 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
+- **«No sé la hora»** (casilla debajo de la fecha y la hora en el formulario): la hora queda deshabilitada y la carta se
+  calcula a las **12:00** (el medio del día: el menor error posible), y se guarda así (`notime: true`; viaja en las copias y
+  con la sincronización). La carta se ve **sin Ascendente, Medio Cielo ni casas**: la rueda va con 0° de Aries a la
+  izquierda y sin cúspides ni ejes, Posiciones sin Asc/MC ni columna Casa, sin las pestañas Casas, Viajes y Superposición,
+  sin «Entre casas» ni los viajes, Elementos sin el Ascendente, el Resumen sin la profección ni las entradas a casas. Un
+  aviso arriba de la carta dice **«Hora desconocida: sin Ascendente ni casas»** y dónde está la Luna ese día (todo el día en
+  un signo, o «cambia de signo ese día: puede estar en Aries o en Tauro»). **«Probar horas»** (o «Mover la hora») muestra
+  la carta entera con una hora de prueba que se mueve de a 1 hora (o el paso que se elija): el Ascendente y las casas cambian;
+  **«Guardar esta hora…»** abre los datos con esa hora y la casilla destildada, y **«Volver a sin hora»** la deja como
+  estaba. En las tarjetas: «sin hora» en vez de la hora y **«Asc ?»**; en «Buscar por posición» cuentan para signos y
+  aspectos, no para casas ni Ascendente. Test: `notime_test`.
 - **Grupos**: cada carta puede estar en **varios grupos**. **Amigos, Familia, Consultantes y Famosos** vienen de fábrica;
   **«+ Grupo»** crea otro (Enter lo crea ya marcado, Esc lo deja) y queda mientras alguna carta lo tenga. Se marcan en el
   formulario de la carta (debajo del nombre); las tarjetas los muestran y Mis cartas filtra por grupo. Se guardan con la

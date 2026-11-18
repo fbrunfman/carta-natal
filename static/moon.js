@@ -74,6 +74,21 @@ export function moonIcon(elong, south = true) {
     `<circle class="mo-ring" r="${R}"/></svg>`;
 }
 
+/** Solo la sombra de la fase (para ponerla encima de una Luna pintada): lo oscuro, con lo iluminado recortado. */
+export function moonShade(elong, south = true) {
+  const e = ((elong % 360) + 360) % 360;
+  const k = Math.cos((e * Math.PI) / 180);
+  const rx = Math.round(Math.abs(k) * R * 100) / 100;
+  const litRight = (e < 180) !== south;
+  const lit = `M0 ${-R}A${R} ${R} 0 0 1 0 ${R}A${rx} ${R} 0 0 ${k > 0 ? 0 : 1} 0 ${-R}Z`;
+  if (k < -0.9995) return "";
+  const id = `msh${Math.round(e * 10)}`;
+  return `<svg class="moon-shade" viewBox="-47 -47 94 94" aria-hidden="true" focusable="false"><defs><mask id="${id}">` +
+    `<rect x="-50" y="-50" width="100" height="100" fill="#fff"/>` +
+    (k > 0.9995 ? "" : `<path d="${lit}" fill="#000"${litRight ? "" : ' transform="scale(-1 1)"'}/>`) +
+    `</mask></defs><circle r="47" fill="rgba(18,22,38,.74)" mask="url(#${id})"/></svg>`;
+}
+
 const pct = (illum) => `${Math.round(illum * 100)} %`;
 const sg = (sign) => `<span class="g">${signHTML(sign)}</span>`;
 const degMin = (p) => `${p.deg}°${pad(p.min)}′`;

@@ -114,6 +114,7 @@ const sameColors = (a, b) => JSON.stringify(cleanColors(a)) === JSON.stringify(c
 
 export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
+  sky: "simple",     // el cielo de hoy del inicio: "simple" | "art" (ilustrado, con static/cielo/)
   tint: true,        // tinte por elemento en el anillo de signos
   font: "rounded",   // ver FONTS
   noteFont: "kalam", // la letra de las notas: ver NOTE_FONTS
@@ -192,6 +193,7 @@ export function load() {
   }
   return {
     gfx: raw.gfx === "classic" ? "classic" : "new",
+    sky: raw.sky === "art" ? "art" : "simple",
     tint: typeof raw.tint === "boolean" ? raw.tint : DEFAULTS.tint,
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     noteFont: Object.hasOwn(NOTE_FONTS, raw.noteFont) ? raw.noteFont : DEFAULTS.noteFont,
@@ -247,6 +249,7 @@ export function setSyncedCfg(remote) {
 /** Pone la configuración en <html>: atributos para la CSS y variables de escala. */
 export function apply(cfg, root = document.documentElement) {
   root.dataset.gfx = cfg.gfx;
+  root.dataset.sky = cfg.sky;
   if (cfg.tint) root.dataset.tint = "on"; else delete root.dataset.tint;
   if (cfg.font !== "system") root.dataset.font = cfg.font; else delete root.dataset.font;
   root.dataset.nfont = cfg.noteFont;
@@ -273,6 +276,7 @@ export function initSettings(onChange) {
   const $ = (s) => document.querySelector(s);
   const el = {
     gfx: [...document.querySelectorAll("#cfgGfx button")],
+    sky: [...document.querySelectorAll("#cfgSky button")],
     tint: $("#cfgTint"), font: $("#cfgFont"), noteFont: $("#cfgNoteFont"),
     fs: $("#cfgFs"), fsV: $("#cfgFsV"), wheel: $("#cfgWheel"), wheelV: $("#cfgWheelV"),
     big: $("#cfgBig"), cusp: $("#cfgCusp"),
@@ -361,6 +365,7 @@ export function initSettings(onChange) {
 
   function paint() {
     for (const b of el.gfx) b.setAttribute("aria-pressed", b.dataset.gfx === cfg.gfx);
+    for (const b of el.sky) b.setAttribute("aria-pressed", b.dataset.sky === cfg.sky);
     el.tint.checked = cfg.tint;
     el.cusp.checked = cfg.cuspRing;
     if (el.spill) el.spill.setAttribute("aria-pressed", cfg.spill);
@@ -417,6 +422,7 @@ export function initSettings(onChange) {
     // los dos estilos vienen con el tinte por elemento (se puede sacar después)
     change({ gfx: b.dataset.gfx, tint: true }, "gfx");
   });
+  for (const b of el.sky) b.addEventListener("click", () => { if (b.dataset.sky !== cfg.sky) change({ sky: b.dataset.sky }, "sky"); });
   for (const b of el.interp) b.addEventListener("click", () => {
     const on = b.dataset.interp === "on";
     if (on !== cfg.interp) change({ interp: on }, "interp");
@@ -485,6 +491,7 @@ export function initSettings(onChange) {
     const diff = (k) => JSON.stringify(old[k]) !== JSON.stringify(cfg[k]);
     const whats = [];
     if (diff("gfx") || diff("tint")) whats.push("gfx");
+    if (diff("sky")) whats.push("sky");
     if (diff("orbs")) whats.push("orbs");
     if (diff("aspOff")) whats.push("asp");
     if (diff("spill")) whats.push("spill");

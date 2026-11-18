@@ -171,7 +171,7 @@ function eventRow(e, interp) {
     sub = `<span class="g">${signHTML(e.sign)}</span>${esc(elementName(e.sign))}`;
   } else if (e.kind === "station") {
     title = `${name} estaciona ${e.to === "retro" ? "retrógrado" : "directo"}`;
-    sub = `en ${esc(SIGNS[e.sign])} · casa ${e.house}`;
+    sub = `en ${esc(SIGNS[e.sign])}${e.house ? ` · casa ${e.house}` : ""}`;
   } else {
     title = `${name} entra en tu casa ${e.house}${rx}`;
     sub = interp ? esc(cap(HOUSE_THEME[e.house - 1])) : "";

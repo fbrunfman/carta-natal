@@ -217,6 +217,7 @@
 
     <div id="timeNote" class="note" hidden></div>
     <div id="warnings" class="note warn" hidden></div>
+    <div id="noTimeBar" class="notime-bar" role="status" hidden></div>
 
     <div class="modebar">
       <div class="seg modes" id="modes" role="group" aria-label="Vista">
@@ -683,6 +684,11 @@
             <input name="time" type="time" required>
           </label>
         </div>
+        <label class="check notime-chk">
+          <input type="checkbox" id="noTime" aria-describedby="noTimeHint">
+          <span>No sé la hora</span>
+          <small id="noTimeHint">Se calcula a las 12:00, sin Ascendente ni casas.</small>
+        </label>
 
         <div class="field place-field">
           <label for="placeIn">Lugar</label>
@@ -762,6 +768,12 @@
             <div class="seg" id="cfgGfx" role="group" aria-labelledby="cfgGfxLab">
             <button type="button" data-gfx="new" aria-pressed="true">Nuevo</button>
             <button type="button" data-gfx="classic" aria-pressed="false">Clásico</button>
+            </div>
+          </div>
+          <div class="cfg-row"><span class="cfg-lab" id="cfgSkyLab">Cielo de hoy (inicio)</span>
+            <div class="seg" id="cfgSky" role="group" aria-labelledby="cfgSkyLab">
+            <button type="button" data-sky="simple" aria-pressed="true">Simple</button>
+            <button type="button" data-sky="art" aria-pressed="false">Ilustrado</button>
             </div>
           </div>
           <details class="how"><summary>¿Cómo funciona?</summary>

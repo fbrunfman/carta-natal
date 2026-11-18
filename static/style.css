@@ -102,6 +102,8 @@
 
 /* tipo de letra elegido en Configuración (también cambia los títulos). Las «incluidas» vienen con la app (static/fonts,
    licencia OFL, los textos de las licencias están al lado): no se pide nada a internet. Las de las notas también. */
+@font-face { font-family: "Uncial Antiqua"; font-display: swap; src: url(fonts/uncial-latin.woff2) format("woff2"); }
+@font-face { font-family: "IM Fell English"; font-display: swap; src: url(fonts/imfell-latin.woff2) format("woff2"); }
 @font-face { font-family: "Inter"; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Inter"; font-display: swap; font-weight: 100 900; src: url(fonts/inter-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: "Source Sans 3"; font-display: swap; font-weight: 200 900; src: url(fonts/source-sans-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -2612,3 +2614,78 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .home-cards .hc-pos:not(:last-child) > .g { display: none; }
 .home-cards .hc-trio { gap: 5px; }
 .home-last:hover { border-color: var(--line-strong); }
+
+/* «No sé la hora»: la casilla del formulario y la carta sin Ascendente ni casas (`data-notime` en <html>) */
+.check.notime-chk { flex-wrap: wrap; row-gap: 2px; margin: -4px 0 14px; }
+.check.notime-chk small { flex-basis: 100%; padding-left: 24px; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); }
+.field.off input { opacity: .45; }
+:root[data-notime] #wheel :is(.cusp, .cusp-in, .cusp-o, .cusp-b, .hnum, .cuspl, .cuspt, .cusplbl, .axis-label) { display: none; }
+:root[data-notime] .hcol { display: none; }
+.notime-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent-2); border-radius: 10px; background: var(--surface); font-size: calc(14px * var(--fs)); color: var(--ink-2);
+}
+.notime-bar[hidden] { display: none; }
+.notime-bar > span { flex: 1 1 300px; min-width: 0; }
+.notime-bar strong { color: var(--ink); }
+.sub-btn {
+  display: inline-flex; align-items: center; height: 28px; margin: 2px 0; padding: 0 12px; border: 1px solid var(--accent-2); border-radius: 99px;
+  background: none; color: var(--accent-2); font-size: calc(13px * var(--fs)); font-weight: 600; vertical-align: middle;
+}
+.sub-btn:hover { background: var(--accent-soft); }
+.hc-pos.hc-pos-na { color: var(--ink-2); border-style: dashed; }
+:root[data-notime] :is(#panel-casas, #panel-viajes, #panel-over) { display: none !important; }
+
+/* ---------- el cielo ilustrado (Configuración → Cielo de hoy: Ilustrado) ----------
+   Pergamino con su propia paleta (igual en claro y en oscuro); las ilustraciones de cada signo (static/cielo/) recortadas
+   en su porción, el marco pintado alrededor (cielo/marco.webp) y los planetas como sellos encima. */
+:root[data-sky="art"] .home-sky {
+  --parch: #efe0bd; --parch-2: #e2cb98; --ink-old: #3b2a17; --ink-old-2: #6b5234;
+  position: relative; border-color: #b99a63; color: var(--ink-old);
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(120, 80, 30, .28) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .32 0 0 0 0 .15 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, var(--parch), var(--parch-2));
+  box-shadow: inset 0 0 0 1px rgba(255, 245, 220, .5), 0 2px 10px rgba(60, 40, 20, .18);
+}
+:root[data-sky="art"] .home-sky .hbox-k {
+  margin-bottom: 12px; text-align: center; font: 400 calc(clamp(22px, 3.2vw, 34px) * var(--fs))/1.1 "Uncial Antiqua", var(--serif);
+  letter-spacing: .04em; text-transform: none; color: var(--ink-old);
+}
+:root[data-sky="art"] .home-sky .sky-wrap { width: min(100%, 720px, max(300px, calc(100dvh - 180px))); }
+:root[data-sky="art"] .home-sky .sky {
+  border-radius: 6px; overflow: hidden;
+  background: url(cielo/marco.webp) center / cover, #1f2c45;
+  box-shadow: inset 0 0 0 2px rgba(59, 42, 23, .55), 0 1px 4px rgba(60, 40, 20, .3);
+}
+:root[data-sky="art"] .sky-art image { filter: saturate(.95) contrast(1.02); }
+:root[data-sky="art"] .sky-hub { fill: url(#skyHub); }
+:root[data-sky="art"] .sky-rim { stroke: #3b2a17; stroke-width: 2.2; }
+:root[data-sky="art"] .sky-rays line { stroke: #3b2a17; opacity: .7; }
+:root[data-sky="art"] .sky-rings circle { stroke: #3b2a17; opacity: .35; }
+:root[data-sky="art"] .sky-sign .g { filter: drop-shadow(0 0 2px #f6ead0) drop-shadow(0 0 4px #f6ead0); }
+:root[data-sky="art"] .sky-sn {
+  font: 400 calc(clamp(10px, 2.1cqw, 15px) * var(--fs))/1.1 "IM Fell English", var(--serif); color: var(--ink-old, #3b2a17);
+  letter-spacing: 0; text-shadow: 0 0 3px #f6ead0, 0 0 6px #f6ead0, 0 0 8px #f6ead0;
+}
+:root[data-sky="art"] .sky-nm {
+  font: 400 calc(clamp(11px, 2cqw, 15px) * var(--fs))/1.15 "IM Fell English", var(--serif); color: #2b1d0e;
+  text-shadow: 0 0 2px #f6ead0, 0 0 4px #f6ead0, 0 0 7px #f6ead0, 0 0 10px #f6ead0;
+}
+:root[data-sky="art"] .sky-pl .pb { box-shadow: 0 0 0 1.5px #3b2a17, 0 0 0 3.5px rgba(246, 234, 208, .85), 0 2px 6px rgba(0, 0, 0, .45); border-radius: 50%; }
+:root[data-sky="art"] .sky-earth { box-shadow: 0 0 0 2px #f6ead0, 0 0 0 3.5px #3b2a17, 0 0 18px 6px rgba(255, 246, 220, .7); }
+:root[data-sky="art"] .sky-earth-nm { font-family: "IM Fell English", var(--serif); color: #2b1d0e; text-shadow: 0 0 3px #f6ead0, 0 0 6px #f6ead0; }
+:root[data-sky="art"] .home-sky .sky-info { font-family: "IM Fell English", var(--serif); font-size: calc(16px * var(--fs)); color: var(--ink-old-2); text-align: center; }
+:root[data-sky="art"] .home-sky .sky-info-pl { justify-content: center; color: var(--ink-old); }
+:root[data-sky="art"] .home-sky .sky-info .rx { color: #9b2a17; }
+:root[data-sky="art"] .home-sky { --fire-solid: #B5432A; --earth-solid: #4F6B35; --air-solid: #9C741C; --water-solid: #2F5A8A; }
+:root[data-sky="art"] .sky-nm .rx { color: #9B2A17; }
+:root[data-sky="art"] .home-sky .sky-w { fill: #e6d2a6; }        /* debajo de las ilustraciones: si una no llega a cubrir su porción, se ve pergamino */
+/* los planetas pintados del cielo ilustrado (static/cielo/planetas/) */
+.pb-art { position: relative; border-radius: 50%; }
+.pb-art img { display: block; width: 100%; height: 100%; border-radius: 50%; user-select: none; -webkit-user-drag: none; }
+.pb-art .moon-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
+:root[data-sky="art"] .sky-pl-moon .pb-ph { filter: none; }
+:root[data-sky="art"] .sky-earth {
+  width: clamp(22px, 5.2cqw, 40px); background: url(cielo/planetas/earth.webp) center / cover;
+}

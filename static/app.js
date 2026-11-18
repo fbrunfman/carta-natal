@@ -11,7 +11,7 @@ import { fontPicker } from "./fontpick.js";
 import { initPlanetDialog } from "./planet-dialog.js";
 import { initAspectDialog } from "./aspect-dialog.js";
 import { profection, profectionHTML, featuredHTML, upcomingHTML, SOON_PERIODS } from "./summary.js";
-import { moonCornerHTML, moonLinesHTML, moonIcon, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
+import { moonCornerHTML, moonLinesHTML, moonIcon, moonShade, phasesHTML, calendarHTML, monthTitle, todayIn } from "./moon.js";
 import { layoutSky, planetHTML, skyInfoHTML, skyShellHTML } from "./sky.js";
 import { pickPoem, poemHTML } from "./poems.js";
 import { showCombine, refreshCombine } from "./combinar.js";
@@ -31,7 +31,7 @@ let PUBLIC_URL = "";          // la dirección de la versión web (para el link 
 // Punto de partida de «Nueva carta»: vacío, salvo el lugar más común.
 const BLANK = {
   name: "", date: "", time: "", place: "Buenos Aires, Argentina", lat: "-34.6", lon: "-58.4167",
-  tz: "America/Argentina/Buenos_Aires", manual: false, offset: "",
+  tz: "America/Argentina/Buenos_Aires", manual: false, offset: "", notime: false,
 };
 
 let PLACES = [];
@@ -68,6 +68,8 @@ let mview = "carta";       // celular, carta natal: la rueda sola («carta») o 
 function readForm() {
   const v = Object.fromEntries(new FormData(form).entries());
   v.manual = $("#manual").checked;
+  v.notime = $("#noTime").checked;
+  if (v.notime) v.time = "12:00";              // (el campo está deshabilitado: FormData no lo trae)
   v.groups = [...formGroups];
   return v;
 }
@@ -76,12 +78,13 @@ function fillForm(v) {
   formGroups = Array.isArray(v.groups) ? v.groups.filter((g) => typeof g === "string") : [];
   paintFormGroups();
   for (const [k, val] of Object.entries(v)) {
-    if (k === "manual" || k === "active" || k === "groups") continue;
+    if (k === "manual" || k === "active" || k === "groups" || k === "notime") continue;
     const el = form.elements[k];
     if (el) el.value = val ?? "";
   }
   $("#manual").checked = !!v.manual;
   $("#offsetField").hidden = !v.manual;
+  setNoTime(!!v.notime, false);
   paintWhere();
 }
 
@@ -91,9 +94,28 @@ function birthFromForm() {
   return {
     name: v.name.trim(), date: v.date, time: v.time, place: v.place.trim(),
     lat: v.lat, lon: v.lon, tz: v.tz.trim(), manual: v.manual, offset: v.manual ? v.offset : null,
-    groups: [...formGroups],
+    groups: [...formGroups], ...(v.notime ? { notime: true } : {}),
   };
 }
+
+// «No sé la hora»: el campo de la hora se deshabilita y la carta se calcula a las 12:00 (el medio del día: el error en la
+// Luna y los planetas es el menor posible), sin Ascendente ni casas. Al destildarla vuelve la hora que había.
+let timeBefore = "";
+function setNoTime(on, keep = true) {
+  const t = form.elements.time, chk = $("#noTime");
+  if (on && !t.disabled && keep) timeBefore = t.value;
+  chk.checked = on;
+  t.disabled = on;
+  t.required = !on;
+  if (on) t.value = "12:00";
+  else if (keep && timeBefore) { t.value = timeBefore; timeBefore = ""; }
+  t.closest(".field").classList.toggle("off", on);
+}
+$("#noTime").addEventListener("change", (e) => {
+  setNoTime(e.target.checked);
+  form.dispatchEvent(new Event("input", { bubbles: true }));
+  if (!e.target.checked) form.elements.time.focus();
+});
 
 // ---------- grupos ----------------------------------------------------------
 // Una carta puede estar en varios grupos: Amigos, Familia, Consultantes y Famosos vienen de fábrica; «+ Grupo» crea otro
@@ -889,8 +911,10 @@ function paintShift() {
   const w = shiftAt || b;
   $("#nShift").innerHTML = shiftAt
     ? `<strong>${esc(whenShort(w))}</strong><span class="nshift-by">${esc(shiftText())}</span>`
-    : `<strong>${esc(whenShort(w))}</strong> · la hora de nacimiento`;
-  $("#nBack").disabled = $("#nSave").disabled = !shiftAt;
+    : `<strong>${esc(whenShort(w))}</strong> · ${birth?.notime ? "hora de prueba" : "la hora de nacimiento"}`;
+  $("#nBack").disabled = !shiftAt;
+  $("#nBack").textContent = birth?.notime ? "Volver a las 12:00" : "Volver a la de nacimiento";
+  $("#nSave").disabled = !shiftAt && !birth?.notime;
   $("#npWhen").textContent = whenShort(w);
   $("#npBy").textContent = shiftAt ? `${shiftText()} · de a ${step}` : `de a ${step}`;
   for (const [id, dir] of [["#nPrev", "Retroceder"], ["#nNext", "Avanzar"], ["#npPrev", "Retroceder"], ["#npNext", "Avanzar"]]) $(id).setAttribute("aria-label", `${dir} ${step}`);
@@ -913,6 +937,7 @@ function clearShift(reload = true) {
 }
 $("#shiftBtn").addEventListener("click", () => {
   setFab(false);
+  if (birth?.notime) { if (shiftOn) endProbe(); else startProbe(); return; }     // sin hora: es «Probar horas»
   shiftOn = !shiftOn;
   if (!shiftOn) { if (document.documentElement.hasAttribute("data-tsheet")) setTsheet(false); clearShift(); }
   else paintShift();
@@ -924,16 +949,33 @@ $("#npNext").addEventListener("click", () => stepNatal(1));
 $("#nStep").addEventListener("change", paintShift);
 $("#nBack").addEventListener("click", () => clearShift());
 $("#nSave").addEventListener("click", () => {
-  if (!shiftAt) return;
-  const at = shiftAt;
+  if (!shiftAt && !birth?.notime) return;
+  const at = shiftAt || birthAt();
   setTsheet(false);
   openForm("edit");
+  setNoTime(false, false);                       // guardar una hora: ya se sabe (o se elige) la hora
   form.elements.date.value = at.date;
   form.elements.time.value = at.time;
   form.elements.time.dispatchEvent(new Event("input", { bubbles: true }));
 });
 $("#npOpen").addEventListener("click", () => setTsheet(!document.documentElement.hasAttribute("data-tsheet")));
 $("#nsheetX").addEventListener("click", () => setTsheet(false, true));
+
+/** El aviso de «sin hora» arriba de la carta (en todas las pantallas), con «Probar horas» o «Volver a sin hora». */
+function paintNoTimeBar(c) {
+  const bar = $("#noTimeBar");
+  bar.hidden = !birth?.notime;
+  if (bar.hidden) return;
+  bar.innerHTML = c.notime
+    ? `<span><strong>Hora desconocida:</strong> sin Ascendente ni casas. ${esc(moonRange(c))}</span>` +
+      (mode === "natal" ? `<button type="button" class="sub-btn" id="probeBtn">Probar horas</button>` : "")
+    : `<span><strong>Probando horas:</strong> ${esc(String(c.input.time).slice(0, 5))}. La de nacimiento no se sabe; el Ascendente y las casas cambian con la hora.</span>` +
+      `<button type="button" class="sub-btn" id="probeEnd">Volver a sin hora</button>`;
+}
+$("#noTimeBar").addEventListener("click", (e) => {
+  if (e.target.closest("#probeBtn")) startProbe();
+  else if (e.target.closest("#probeEnd")) endProbe();
+});
 
 // ---------- cálculo -------------------------------------------------------
 let seq = 0;
@@ -962,6 +1004,39 @@ async function load() {
   chartBusy(true);
   try { await loadNow(my); } finally { if (my === seq) chartBusy(false); }
 }
+// Sin hora de nacimiento: la carta se calcula a las 12:00 y se muestra sin Ascendente, Medio Cielo ni casas. La rueda se
+// orienta con 0° de Aries a la izquierda (la «rueda natural»): cada planeta queda en el sector de su signo. «Probar horas»
+// (o «Mover la hora») muestra la carta entera con la hora que se va eligiendo.
+const signHouse = (lon) => Math.floor((((lon % 360) + 360) % 360) / 30) + 1;
+const hideHouses = () => !!birth?.notime && !(mode === "natal" && shiftOn);
+function maskChart(c) {
+  return {
+    ...c, notime: true, angles: { asc: 0, mc: 270 },
+    houses: { ...c.houses, cusps: Array.from({ length: 12 }, (_, i) => i * 30) },
+    bodies: c.bodies.map((b) => ({ ...b, house: signHouse(b.lon) })), house_reach: [],
+  };
+}
+/** Dónde puede estar la Luna en un día sin hora (se mueve unos 13° por día): en un signo o entre dos. */
+function moonRange(c) {
+  const m = c.bodies.find((b) => b.id === "moon");
+  if (!m) return "";
+  const v = Math.abs(m.speed || 13.2) / 2;
+  const a = signHouse(m.lon - v) - 1, b = signHouse(m.lon + v) - 1;
+  return a === b ? `La Luna está en ${SIGNS[a]} todo el día.` : `La Luna cambia de signo ese día: puede estar en ${SIGNS[a]} o en ${SIGNS[b]}.`;
+}
+function startProbe() {
+  shiftOn = true;
+  if ([...$("#nStep").options].some((o) => o.value === "h")) $("#nStep").value = "h";
+  paintShift();
+  run(load);
+}
+function endProbe() {
+  shiftOn = false; shiftAt = null;
+  if (document.documentElement.hasAttribute("data-tsheet")) setTsheet(false);
+  paintShift();
+  run(load);
+}
+
 async function loadNow(my) {
   const v = birth;
   let next;
@@ -977,6 +1052,10 @@ async function loadNow(my) {
   if (my !== seq) return;                 // mientras tanto se pidió otra cosa
   ({ chart, transit, syn } = next);
   if (!next.transit && !next.syn) rememberPos(chart);
+  if (hideHouses()) {
+    chart = maskChart(chart);
+    if (transit) transit = { ...transit, bodies: transit.bodies.map((b) => ({ ...b, house: signHouse(b.lon) })) };
+  }
   render();
 }
 
@@ -1042,6 +1121,12 @@ function header(c) {
     $("#title").textContent = name || "Carta natal";
     const moved = shiftAt && c.input.date === shiftAt.date && String(c.input.time).slice(0, 5) === shiftAt.time;
     const b = birthAt();
+    if (birth?.notime) {
+      const day = longDate.format(new Date(y, m - 1, d));
+      $("#sub").textContent = c.notime ? `${day}, hora desconocida, en ${where}.` : `${day}, ${String(c.input.time).slice(0, 5)} (hora de prueba), en ${where}.`;
+      document.title = name ? `${name} · Carta natal` : "Carta natal";
+      return;
+    }
     $("#sub").innerHTML = esc(`${longDate.format(new Date(y, m - 1, d))}, ${c.input.time} en ${where}. `) +
       (moved ? `<span class="sub-shift">Hora movida ${esc(shiftText())}</span> ${esc(`(la de nacimiento: ${b.date === shiftAt.date ? b.time : whenShort(b)}). `)}` : "") +
       esc(`Casas ${c.houses.system_name}${c.bodies.some((b) => b.id === "node") ? `, nodo ${c.node_kind === "mean" ? "medio" : "verdadero"}` : ""}.`);
@@ -1062,8 +1147,8 @@ function outerRing() {
     const houseIn = Object.fromEntries(syn.overlay.b_in_a.map((o) => [o.id, o.house]));
     const A = syn.a.input.name || "Carta A", B = syn.b.input.name || "Carta B";
     return {
-      bodies: syn.b.bodies.map((b) => ({ ...b, house: houseIn[b.id] })),
-      angles: syn.b.angles,
+      bodies: syn.b.bodies.map((b) => ({ ...b, house: chart?.notime ? signHouse(b.lon) : houseIn[b.id] })),
+      angles: partnerItem()?.notime ? undefined : syn.b.angles,
       aspects: vis(syn.aspects).filter((a) => a.orb <= orbMax),
       short: B, houseWord: `casa de ${A}`, label: B,
     };
@@ -1237,19 +1322,21 @@ function render() {
   $("#intro").hidden = true;
   $("#stage").hidden = false;
   $("#printBtn").hidden = false;
-  $("#spillBtn").hidden = mode !== "natal";
+  root.toggleAttribute("data-notime", !!c.notime);
+  $("#spillBtn").hidden = mode !== "natal" || !!c.notime;
   $("#notesBtn").hidden = mode !== "natal";
   $("#shiftBtn").hidden = mode !== "natal";
-  $("#tripBtn").hidden = mode !== "natal";
+  $("#tripBtn").hidden = mode !== "natal" || !!c.notime;
   paintShift();
   header(c);
+  paintNoTimeBar(c);
   paintBar();
   paintTitlePick();
   closeCinfo(false);
 
   const t = c.time;
   const timeNote = $("#timeNote");
-  timeNote.textContent =
+  timeNote.textContent = c.notime ? `Sin hora de nacimiento: calculada a las 12:00 (${t.offset_label}).` :
     `${c.input.time} locales equivalen a ${t.utc.slice(11, 16)} UTC (${t.offset_label}).` +
     (t.manual ? " Offset fijado a mano." : t.dst ? " Horario de verano vigente." : "");
   timeNote.hidden = false;
@@ -1294,12 +1381,12 @@ function renderPositions(c) {
       <td>${mark(id)}${BODY[id].name}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
       <td class="num">${fmtPos(lon)}${retro ? '<span class="rx-t" title="Retrógrado">R</span>' : ""}</td>
-      <td class="num">${house}${reachChip(reach.get(id))}</td>${notes ? `<td class="ncell">${noteBtn(id === "asc" || id === "mc" ? id : keyPl(id), BODY[id].name)}</td>` : ""}</tr>`;
+      <td class="num hcol">${house}${reachChip(reach.get(id))}</td>${notes ? `<td class="ncell">${noteBtn(id === "asc" || id === "mc" ? id : keyPl(id), BODY[id].name)}</td>` : ""}</tr>`;
   };
-  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num">Casa</th>${notes ? '<th class="ncell"><span class="sr">Nota</span></th>' : ""}</tr></thead><tbody>`;
-  html += row("asc", c.angles.asc, "—") + row("mc", c.angles.mc, "—");
+  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num hcol">Casa</th>${notes ? '<th class="ncell"><span class="sr">Nota</span></th>' : ""}</tr></thead><tbody>`;
+  if (!c.notime) html += row("asc", c.angles.asc, "—") + row("mc", c.angles.mc, "—");
   c.bodies.forEach((b, i) => {
-    html += row(b.id, b.lon, b.house, b.retro).replace("<tr ", i === 0 ? '<tr class="sep" ' : "<tr ");
+    html += row(b.id, b.lon, b.house, b.retro).replace("<tr ", i === 0 && !c.notime ? '<tr class="sep" ' : "<tr ");
   });
   $("#panel-pos").innerHTML = html + "</tbody></table>" + (reach.size ? reachNote() : "");
 }
@@ -1375,16 +1462,16 @@ const retroTag = (on) => (on ? '<span class="rx-t" title="Retrógrado">R</span>'
 function renderTransitList() {
   const el = $("#panel-tpos");
   if (!transit) { el.innerHTML = ""; return; }
-  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num">Casa</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>Cuerpo</th><th>Signo</th><th class="num">Posición</th><th class="num hcol">Casa</th></tr></thead><tbody>`;
   for (const b of transit.bodies) {
     const s = split(b.lon);
     html += `<tr data-id="o:${b.id}">
       <td>${mark(b.id)}${BODY[b.id].name}</td>
       <td><span class="g">${signHTML(s.sign)}</span>${SIGNS[s.sign]}</td>
       <td class="num">${fmtPos(b.lon)}${retroTag(b.retro)}</td>
-      <td class="num">${b.house}</td></tr>`;
+      <td class="num hcol">${b.house}</td></tr>`;
   }
-  el.innerHTML = html + `</tbody></table><p class="fine tight">Casa: la de la carta natal que cada planeta recorre en este momento.</p>`;
+  el.innerHTML = html + `</tbody></table>` + (chart?.notime ? "" : `<p class="fine tight">Casa: la de la carta natal que cada planeta recorre en este momento.</p>`);
 }
 
 // -- aspectos: natal, tránsito→natal o carta A↔B
@@ -1597,7 +1684,7 @@ for (const [sel, key, attr] of [["#calMonths", "months", "m"], ["#calScope", "sc
 const sum = { view: "feat", days: 30, feat: null, featKey: "", featSeq: 0, soon: null, soonKey: "", soonSeq: 0, err: null };
 
 function sumProfection() {
-  if (!chart || !transit) return "";
+  if (!chart || !transit || chart.notime) return "";
   const p = profection(chart.input.date, transit.at.date, Math.floor(chart.angles.asc / 30) % 12);
   return profectionHTML(p, transit.bodies, interpOn);
 }
@@ -1622,7 +1709,7 @@ function renderSummary() {
     html = sumProfection() + `<h3 class="sum-h sum-h2">Tránsitos destacados</h3>` + list;
   } else {
     html = sum.err ? `<p class="muted pad">${esc(sumError(sum.err))}</p>`
-      : sum.soon ? upcomingHTML(sum.soon, sum.days, interpOn)
+      : sum.soon ? upcomingHTML(chart?.notime ? { ...sum.soon, events: sum.soon.events.filter((e) => e.kind !== "house").map((e) => ({ ...e, house: null })) } : sum.soon, sum.days, interpOn)
       : `<p class="muted pad">Calculando…</p>`;
     if (sum.err || !sum.soon) {          // el selector de período se ve igual mientras carga
       html = `<div class="seg soonseg" role="group" aria-label="Período">${SOON_PERIODS.map(([d, label]) =>
@@ -2514,7 +2601,7 @@ function showFicha(id, note = "", trip = false) {
     return { b, html: esc(BODY[b]?.name || b) + (ring ? ` <span class="pfi-tag">${esc(o ? ring.short : "natal")}</span>` : "") };
   };
   const s = split(body.lon), me = nm(id);
-  const house = body.house ? `${out ? cap(ring.houseWord) : "Casa"} ${body.house}` : "";
+  const house = body.house && !chart?.notime ? `${out ? cap(ring.houseWord) : "Casa"} ${body.house}` : "";
   const asps = wheel.aspectsOf(id).map((a) => ({ ...a, other: a.a === id ? a.b : a.a })).sort((x, y) => x.orb - y.orb);
   const rows = asps.map((a) => {
     const A = ASPECT[a.type], o = nm(a.other);
@@ -2751,7 +2838,9 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
 const tabs = [...document.querySelectorAll("[role=tab]")];
 const lastTab = { natal: "tab-stair", transit: "tab-sum", syn: "tab-asp" };    // en la carta natal se abre en el Cuadro
 // (la de Notas no va en la fila: se abre con el botón «Notas» de arriba, o desde el botón flotante en el celular)
-const visibleTabs = () => tabs.filter((t) => t.id !== "tab-notas" && t.dataset.modes.split(" ").includes(mode));
+const NOTIME_TABS = new Set(["tab-casas", "tab-viajes", "tab-over"]);
+const visibleTabs = () => tabs.filter((t) => t.id !== "tab-notas" && t.dataset.modes.split(" ").includes(mode) &&
+  !(NOTIME_TABS.has(t.id) && (chart?.notime || (t.id === "tab-over" && partnerItem()?.notime))));
 
 function selectTab(tab) {
   if (tab.id === "tab-notas" && lastTab[mode] !== "tab-notas") tabBeforeNotes = lastTab[mode];
@@ -2936,6 +3025,7 @@ const cfg0 = initSettings((cfg, what) => {
   curCfg = cfg;
   paintCfgSums();
   if (what === "groups") paintFormGroups();
+  if (what === "sky" && page === "home" && moon.now) paintSky();
   if (page === "charts") queueMicrotask(renderMyCharts);      // otros orbes o aspectos duros: la búsqueda cambia
   setCuspRing(cfg.cuspRing);
   const interpChanged = cfg.interp !== interpOn;
@@ -3034,7 +3124,7 @@ const syncHost = {
   onRemote: (what) => syncArrived(what),
   onState: (st) => paintSync(st),
 };
-const birthKey = (v) => JSON.stringify([v.name, v.date, String(v.time).slice(0, 5), v.place, +v.lat, +v.lon, v.tz, !!v.manual, v.manual ? +v.offset : null]);
+const birthKey = (v) => JSON.stringify([v.name, v.date, String(v.time).slice(0, 5), v.place, +v.lat, +v.lon, v.tz, !!v.manual, v.manual ? +v.offset : null, !!v.notime]);
 /** Llegaron cambios de otro dispositivo: se redibuja lo que se ve (la carta abierta se recalcula si cambiaron sus datos). */
 async function syncArrived(what) {
   if (what.charts) {
@@ -3459,7 +3549,7 @@ function paintSky() {
   const sky = $("#sky"), box = $("#skyMoon"), now = moon.now;
   const W = Math.round(sky.clientWidth) || 640;
   skyState.w = W;
-  sky.innerHTML = skyShellHTML(W);
+  sky.innerHTML = skyShellHTML(W, curCfg?.sky === "art");
   if (now) {
     box.innerHTML = `<button type="button" class="sky-moon-btn" id="moonBtn" aria-haspopup="dialog">${moonCornerHTML(now, moon.south)}</button>` +
       `<a class="sky-moon-cal sky-cal" href="#luna">Calendario lunar <span aria-hidden="true">→</span></a>`;
@@ -3470,7 +3560,9 @@ function paintSky() {
   const bodies = now?.planets ? [{ id: "moon", lon: now.lon, sign: now.sign, deg: now.deg, min: now.min, retro: false }, ...now.planets] : [];
   const moonArt = now ? moonIcon(now.elong, moon.south) : "";
   skyState.layout = layoutSky(bodies, W);
-  sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel, moonArt)).join(""));
+  const art = curCfg?.sky === "art";
+  const shade = art && now ? moonShade(now.elong, moon.south) || " " : "";
+  sky.insertAdjacentHTML("beforeend", skyState.layout.map((p) => planetHTML(p, p.id === skyState.sel, art ? shade : moonArt, art)).join(""));
   paintSkyInfo();
 }
 
@@ -3621,7 +3713,7 @@ function chartCard(it, { cur = false, hits = [] } = {}) {
   if (cur) card.classList.add("cur");
   if (it.groups?.length) card.style.setProperty("--gh", groupHue(it.groups[0]));
   card.append(elx("b", { className: "hc-nm", textContent: it.name }));
-  const sub = elx("small", { className: "hc-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
+  const sub = elx("small", { className: "hc-sub", textContent: [dmyOf(it.date), it.notime ? "sin hora" : it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
   card.append(sub);
   if (it.groups?.length) {
     const gs = elx("span", { className: "hc-groups" });
@@ -3635,13 +3727,7 @@ function chartCard(it, { cur = false, hits = [] } = {}) {
   const pos = posReady(it) ? find.pos.get(it.id).lon : null;
   if (pos && !hits.length) {
     const trio = elx("span", { className: "hc-trio" });
-    for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
-      const k = split(pos[id]).sign;
-      const t = elx("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[k]}` });
-      t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(k)}</span>`;
-      t.append(SIGNS[k]);
-      trio.append(t);
-    }
+    trio.append(...trioPills(it, pos));
     card.append(trio);
   }
   if (hits.length) {
@@ -3652,6 +3738,21 @@ function chartCard(it, { cur = false, hits = [] } = {}) {
   return card;
 }
 
+/** El Sol, la Luna y el Ascendente de una tarjeta; sin hora, el Ascendente va como «Asc ?». */
+function trioPills(it, pos) {
+  return [["sun", null], ["moon", null], ["asc", "Asc"]].map(([id, lab]) => {
+    if (id === "asc" && it.notime) {
+      const t = elx("span", { className: "hc-pos hc-pos-na", title: "Sin hora de nacimiento: no se conoce el Ascendente" });
+      t.innerHTML = `<em>Asc</em>?`;
+      return t;
+    }
+    const k = split(pos[id]).sign;
+    const t = elx("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[k]}` });
+    t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(k)}</span>`;
+    t.append(SIGNS[k]);
+    return t;
+  });
+}
 function renderHomeCharts() {
   paintHomeCards();
   $("#homePrivTxt").textContent = isPublic() ? "Tus cartas se guardan solo en este navegador." : "Tus cartas se guardan en esta computadora.";
@@ -3732,7 +3833,7 @@ function paintHomeLast(it) {
   if (it.groups?.length) box.style.setProperty("--gh", groupHue(it.groups[0])); else box.style.removeProperty("--gh");
   const k = elx("p", { className: "hbox-k", id: "homeLastK", textContent: "Última carta abierta" });
   const nm = elx("h3", { className: "hl-nm", textContent: it.name });
-  const sub = elx("p", { className: "hl-sub", textContent: [dmyOf(it.date), it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
+  const sub = elx("p", { className: "hl-sub", textContent: [dmyOf(it.date), it.notime ? "sin hora" : it.time || "", (it.place || "").split(",")[0]].filter(Boolean).join(" · ") });
   const parts = [k, nm, sub];
   if (it.groups?.length) {
     const gs = elx("span", { className: "hc-groups" });
@@ -3742,13 +3843,7 @@ function paintHomeLast(it) {
   const pos = posReady(it) ? find.pos.get(it.id).lon : null;
   if (pos) {
     const trio = elx("span", { className: "hc-trio" });
-    for (const [id, lab] of [["sun", null], ["moon", null], ["asc", "Asc"]]) {
-      const s = split(pos[id]).sign;
-      const t = elx("span", { className: "hc-pos", title: `${BODY[id].name} en ${SIGNS[s]}` });
-      t.innerHTML = `<em>${lab || mark(id)}</em><span class="g" aria-hidden="true">${signHTML(s)}</span>`;
-      t.append(SIGNS[s]);
-      trio.append(t);
-    }
+    trio.append(...trioPills(it, pos));
     parts.push(trio);
   }
   const go_ = elx("button", { type: "button", className: "hl-go", id: "homeContinue" }, () => openSaved(it));
@@ -3912,6 +4007,8 @@ const plTxt = (id) => `${mark(id)} ${esc(BODY[id].name)}`;
 const signTxt = (lon) => { const s = split(lon); return `<span class="g" aria-hidden="true">${signHTML(s.sign)}</span>${SIGNS[s.sign]} ${s.deg}°${String(s.min).padStart(2, "0")}′`; };
 /** ¿La carta cumple la búsqueda por posición? Devuelve lo encontrado (para mostrarlo en la tarjeta) o null. */
 function posHits(it) {
+  // sin hora: no hay Ascendente, Medio Cielo ni casas (sí signos y aspectos entre planetas)
+  if (it.notime && mc.pl && (mc.pl === "asc" || mc.pl === "mc" || mc.house !== "all")) return null;
   const hits = [];
   const P = find.pos.get(it.id);
   // las casas de un planeta: la suya o, con «Entre casas», también (o solo) la que sigue si está cerca de su cúspide
