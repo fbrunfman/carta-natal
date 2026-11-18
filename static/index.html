@@ -661,11 +661,13 @@
           </label>
         </div>
 
-        <label class="field">
-          <span>Lugar</span>
-          <input name="place" type="text" list="places" placeholder="Ciudad, país">
-        </label>
-        <datalist id="places"></datalist>
+        <div class="field place-field">
+          <label for="placeIn">Lugar</label>
+          <input id="placeIn" name="place" type="text" placeholder="Escribí la ciudad (por ejemplo: Rosario)" autocomplete="off" autocorrect="off" spellcheck="false"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="placeList">
+          <ul class="place-list" id="placeList" role="listbox" aria-label="Lugares" hidden></ul>
+          <small class="place-pick" id="placePick" hidden></small>
+        </div>
 
         <div class="row2">
           <label class="field">
@@ -829,8 +831,9 @@
       <details class="cfgg" id="cfgDataG">
         <summary><span class="cfgg-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10.5l4 4 4-4M5 19.5h14"/></svg></span><span class="cfgg-t"><b>Datos</b><small class="cfgg-sum" id="cfgDataGSum"></small></span><svg class="cfgg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div class="cfgg-b">
-          <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato a internet.</p>
+          <p class="fine" id="privacyNote">Zodíaco tropical. El cálculo se hace en tu computadora con Swiss Ephemeris (Moshier); no se envía ningún dato de las cartas a internet.</p>
           <p class="where" id="savedWhere"></p>
+          <p class="fine tight">El buscador de «Lugar» le pregunta a <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> (con datos de <a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a>): solo viaja el nombre de la ciudad que escribís, desde el servidor de la app.</p>
           <div class="backup" id="backup" hidden>
           <button type="button" class="ghost" id="exportCharts">Exportar cartas</button>
           <button type="button" class="ghost" id="importCharts">Importar cartas…</button>

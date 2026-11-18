@@ -24,6 +24,7 @@ from limits import Busy, RateLimiter, Slots
 from presence import Presence
 from store import ChartStore, NotFound, StoreError, clean as clean_chart
 from sync import SyncError, SyncOff, SyncStore, db_url
+from places import Places, Unavailable
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 STORE = ChartStore()
@@ -33,6 +34,7 @@ MAX_BODY = 64 * 1024
 MAX_BODY_NOTES = 2 * 1024 * 1024     # las notas de una carta, o un archivo importado con notas
 MAX_BODY_SYNC = 8 * 1024 * 1024      # la sincronización: varias cartas (cifradas) con sus notas
 SYNC = None                          # SyncStore si hay una base de sincronización configurada (ver sync.py)
+PLACES = Places()                    # el buscador de «Lugar»: le pregunta a Open-Meteo (ver places.py)
 
 # Ventanas abiertas. Solo decide algo con --idle-exit (lo usa «Carta natal.app»); sin esa opción
 # el servidor corre hasta que lo cierres vos.
@@ -50,7 +52,7 @@ HEAVY = Slots(3)               # cálculos pesados a la vez
 TRUSTED_PROXIES = 1            # cuántos proxies hay delante; la IP es la que anotó el último
 COST = {"/api/chart": 1, "/api/transits": 2, "/api/synastry": 2, "/api/transit-calendar": 20, "/api/validate-chart": 0.5,
         "/api/featured": 6, "/api/upcoming": 8, "/api/moon": 1, "/api/moon-calendar": 3,
-        "/api/sync/pull": 0.5, "/api/sync/push": 1}
+        "/api/sync/pull": 0.5, "/api/sync/push": 1, "/api/places": 0.2}
 HEAVY_PATHS = {"/api/transit-calendar", "/api/featured", "/api/upcoming"}     # los que recorren años o meses
 
 
@@ -336,12 +338,32 @@ class Handler(SimpleHTTPRequestHandler):
             # en la compu se dice qué pasó (es tu máquina y ayuda a arreglarlo); en internet, solo en el registro
             self._json({"error": msg if PUBLIC else f"{msg} [{detail}]"}, 503)
 
+    def _places(self):
+        """El autocompletado de «Lugar»: las localidades que empiezan con lo escrito, de Open-Meteo (ver places.py)."""
+        if not self._guard(writing=True) or not self._throttle("/api/places"):
+            return
+        try:
+            data = self._read_json()
+            q = data.get("q")
+            limit = data.get("limit", 12)
+            limit = limit if isinstance(limit, int) and 1 <= limit <= 30 else 12
+            self._json({"items": PLACES.search(q if isinstance(q, str) else "", limit), "ready": True})
+        except Unavailable as e:             # Open-Meteo no responde: la página usa la lista corta (y en la compu dice por qué)
+            print(f"lugares: {e}", flush=True)
+            self._json({"items": [], "ready": False, **({} if PUBLIC else {"error": str(e)})})
+        except StoreError as e:
+            self._json({"error": str(e)}, 400)
+        except Exception as e:  # no tirar el servidor por un caso raro
+            self._json({"error": f"Error interno: {e}"}, 500)
+
     def do_POST(self):
         path = urlparse(self.path).path
         if path in COMPUTE:
             self._compute(COMPUTE[path], path)
         elif path in ("/api/sync/pull", "/api/sync/push"):
             self._sync(path)
+        elif path == "/api/places":
+            self._places()
         elif path == "/api/charts/import":          # sumar las cartas de un archivo exportado
             self._charts_write("import")
         elif path == "/api/charts/put":
@@ -446,6 +468,7 @@ def main():
         print(f"Carta natal en {url}  (Ctrl+C para salir)", flush=True)
         print(f"Cartas guardadas en: {STORE.file}", flush=True)
 
+    PLACES.start()
     sync_url = db_url()
     if sync_url:
         SYNC = SyncStore(sync_url)

@@ -2,7 +2,8 @@
 
 App local para calcular y ver cartas natales, tránsitos y sinastría: rueda en SVG, posiciones, casas y aspectos.
 Cálculo con Swiss Ephemeris (Moshier) por `pyswisseph`, zodiaco tropical. Todo corre en tu
-computadora; no usa internet.
+computadora; solo usa internet para buscar la ciudad en «Lugar» (Open-Meteo: viaja el nombre de la ciudad, nada más) y,
+si la configurás, para la sincronización entre dispositivos (cifrada).
 
 ## Instalar como app en el Mac (ícono propio, sin Terminal)
 
@@ -406,6 +407,19 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   formulario de la carta (debajo del nombre); las tarjetas los muestran y Mis cartas filtra por grupo. Se guardan con la
   carta (`groups`: hasta 12 nombres de hasta 30 caracteres, sin repetir sin importar mayúsculas ni tildes; los valida
   `store.clean_groups`), viajan al exportar y, al importar una carta que ya está, se le suman los grupos que trae.
+- **Lugar** (en el formulario): un **autocompletado** con las localidades de todo el mundo de la **API de geocodificación de
+  [Open-Meteo](https://open-meteo.com)** (gratis y sin clave para uso no comercial; datos de [GeoNames](https://www.geonames.org)):
+  cada resultado trae provincia o estado, país en castellano, coordenadas y zona horaria. Encima de eso, la app entiende
+  abreviaturas («gral», «pto», «sta», «cnel»…), números («9 de julio», «25 de mayo») y algunos apodos («caba», «capital
+  federal», «mdq», «cdmx»); después de una coma filtra por provincia o país («san martín, mendoza»; sin coma, si no aparece
+  nada, prueba igual: «rosario santa fe»), y ordena por qué tan bien coincide y por población (las de Argentina pesan más).
+  Se elige con ↑ ↓ y Enter (Enter no envía el formulario; Esc cierra solo la lista), con el mouse o con el dedo, y llena
+  latitud, longitud y zona horaria, que se ven debajo para revisarlas. **Quién le pregunta a Open-Meteo es el servidor de la
+  app** (`POST /api/places` → `places.py`), no el navegador: Open-Meteo no ve la IP de nadie, solo recibe el nombre de la
+  ciudad que se escribe, y lo ya buscado queda en memoria (una semana; lo que no encontró nada, una hora). En la versión
+  pública cuesta 0,2 pedidos de los límites. **Sin Open-Meteo** (sin internet, caído) se usa la lista corta de
+  `static/places.json`. Open-Meteo pide no pasar de ~10.000 búsquedas por día y nombrarlo (está en Configuración → Datos).
+  `CARTA_NATAL_GEOCODER` cambia la dirección de la API (para pruebas). Test: `e2e_lugar`.
 - **Crear y editar cartas**: el formulario se abre en una **ventana en el centro** al tocar **«Nueva carta»** (en la
   lista de la lupa, en «Buscar o cambiar de carta…» o en el inicio; en blanco) o **«Editar los datos»** (en la ⓘ de la
   carta, con sus datos). Abajo de todo, con una carta guardada abierta, **«Eliminar esta carta»** (dos toques; la
@@ -718,6 +732,7 @@ astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, trá
                   cambios de signo y fases principales del mes) y dónde están el Sol y los planetas ahora (el mapa del inicio)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
 sync.py           sincronizar entre dispositivos (opcional): Postgres/Neon, lo cifrado de cada dispositivo
+places.py         el buscador de «Lugar»: le pregunta a Open-Meteo (con abreviaturas, apodos, filtro y orden propios)
 sincronizar.command  conecta la app de la compu con la base de Neon (guarda la conexión e instala psycopg)
 app.py            servidor (local: solo 127.0.0.1; con --public, para alojarla): /api/chart, /api/timezones,
                   /api/charts, /api/transits, /api/featured, /api/upcoming, /api/synastry, /api/transit-calendar,
@@ -760,7 +775,7 @@ static/           interfaz
   combos-conjugarnos.js             lo del grupo de Conjugarnos (generado por importar_conjugarnos.py: no se edita a mano)
   presence.js                       avisa al servidor que la ventana está abierta; avisa si el servidor se cierra
   icon.svg, icon-*.png, manifest.webmanifest   ícono y datos de instalación como app web
-  places.json                       lugares incluidos
+  places.json                       la lista corta de lugares (si el servidor no tiene el buscador)
 importar_conjugarnos.py  trae el export de Conjugarnos a la pestaña Combinar (genera static/combos-conjugarnos.js)
 verificar.py      prueba contra una carta conocida
 ```
@@ -782,8 +797,8 @@ y en `sync-db.txt` de la compu (fuera del repositorio).
 
 ## Límites
 
-- Lista de lugares incluida: Argentina (capitales provinciales y ciudades grandes) y ~45 ciudades
-  del mundo. Para otro lugar, escribí latitud y longitud.
+- Lugares: los que tiene Open-Meteo (GeoNames). Para un paraje que no aparezca, elegí el pueblo más cercano o escribí latitud
+  y longitud. Sin internet, solo la lista corta.
 - Efemérides Moshier: no incluye Quirón ni asteroides (requieren los archivos `.se1`).
 - Tránsitos: los planetas en tránsito son Sol a Plutón (el nodo está apagado); el calendario y «Próximamente» dejan afuera
   la Luna (cambia de aspecto y de signo cada pocas horas). Los destacados son solo de Júpiter a Plutón.

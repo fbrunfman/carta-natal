@@ -73,6 +73,8 @@ function readForm() {
 
 function fillForm(v) {
   formGroups = Array.isArray(v.groups) ? v.groups.filter((g) => typeof g === "string") : [];
+  const pp = document.getElementById("placePick");
+  if (pp) pp.hidden = true;
   paintFormGroups();
   for (const [k, val] of Object.entries(v)) {
     if (k === "manual" || k === "active" || k === "groups") continue;
@@ -206,14 +208,109 @@ function partnerBody(item, v) {
 
 const placeLabel = (p) => `${p.name}, ${p.country}`;
 
-form.elements.place.addEventListener("input", (e) => {
-  const hit = PLACES.find((p) => placeLabel(p) === e.target.value);
-  if (hit) {
-    form.elements.lat.value = hit.lat;
-    form.elements.lon.value = hit.lon;
-    form.elements.tz.value = hit.tz;
+// -- «Lugar»: autocompletado. Lo busca el servidor en ~235.000 localidades (places.py); sin servidor nuevo, la lista corta
+// de places.json. Al elegir una, se llenan latitud, longitud y zona horaria (y se ve debajo, por si hay que revisarlas).
+const placeIn = form.elements.place, placeList = $("#placeList");
+let placeItems = [], placeSel = -1, placeSeq = 0, placeTimer = 0, placeRemote = true, placeShort = "";
+function setPlace(p) {
+  placeIn.value = p.label || placeLabel(p);
+  form.elements.lat.value = p.lat;
+  form.elements.lon.value = p.lon;
+  form.elements.tz.value = p.tz;
+  if ($("#manual").checked) { $("#manual").checked = false; $("#offsetField").hidden = true; }
+  const pick = $("#placePick");
+  pick.textContent = `${Math.abs(p.lat).toFixed(2)}° ${p.lat < 0 ? "S" : "N"}, ${Math.abs(p.lon).toFixed(2)}° ${p.lon < 0 ? "O" : "E"} · ${p.tz}`;
+  pick.hidden = false;
+  closePlaces();
+  form.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function closePlaces() {
+  placeItems = []; placeSel = -1; placeShort = "";
+  placeList.hidden = true;
+  placeList.replaceChildren();
+  placeIn.setAttribute("aria-expanded", "false");
+  placeIn.removeAttribute("aria-activedescendant");
+}
+function paintPlaces() {
+  if (!placeItems.length && !placeShort) { closePlaces(); return; }
+  placeList.replaceChildren(...placeItems.map((p, i) => {
+    const li = document.createElement("li");
+    li.id = `place-${i}`;
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", String(i === placeSel));
+    const where = [p.admin, p.country].filter(Boolean).join(", ");
+    li.append(Object.assign(document.createElement("b"), { textContent: p.name }));
+    if (p.original) li.append(Object.assign(document.createElement("span"), { className: "pl-orig", textContent: ` (${p.original})` }));
+    if (where) li.append(Object.assign(document.createElement("small"), { textContent: where }));
+    // pointerdown (no click): se elige antes de que el campo pierda el foco
+    li.addEventListener("pointerdown", (e) => { e.preventDefault(); setPlace(p); });
+    return li;
+  }));
+  if (placeShort) {                     // sin el buscador completo: se dice, y por qué (en la compu)
+    const note = document.createElement("li");
+    note.className = "pl-note";
+    note.setAttribute("aria-disabled", "true");
+    note.textContent = placeShort;
+    note.addEventListener("pointerdown", (e) => e.preventDefault());
+    placeList.append(note);
+  }
+  placeList.hidden = false;
+  placeIn.setAttribute("aria-expanded", "true");
+  if (placeSel >= 0) {
+    placeIn.setAttribute("aria-activedescendant", `place-${placeSel}`);
+    $(`#place-${placeSel}`)?.scrollIntoView({ block: "nearest" });
+  } else placeIn.removeAttribute("aria-activedescendant");
+}
+const placeFold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9ñ]+/g, " ").trim();
+function localPlaces(q) {
+  const f = placeFold(q);
+  return PLACES.filter((p) => placeFold(placeLabel(p)).split(" ").some((_, i, w) => w.slice(i).join(" ").startsWith(f)))
+    .slice(0, 12).map((p) => ({ ...p, label: placeLabel(p), admin: "" }));
+}
+async function findPlaces(q) {
+  const my = ++placeSeq;
+  let items = null, why = "";
+  if (placeRemote) {
+    try {
+      const r = await fetch("/api/places", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
+      if (r.status === 404) { placeRemote = false; why = "el servidor es de una versión anterior"; }   // la lista corta
+      else if (r.ok) { const d = await r.json(); if (d.ready !== false) items = d.items; else why = d.error || "no responde"; }
+      else why = `error ${r.status}`;
+    } catch { why = "sin conexión"; }
+  } else why = "el servidor es de una versión anterior";
+  if (my !== placeSeq || document.activeElement !== placeIn) return;
+  placeShort = items ? "" : `Solo la lista corta: el buscador de lugares (Open-Meteo) ${why.startsWith("el ") || why === "no responde" || why === "sin conexión" ? why : `falló (${why})`}.`;
+  placeItems = items || localPlaces(q);
+  placeSel = -1;
+  paintPlaces();
+}
+placeIn.addEventListener("input", () => {
+  $("#placePick").hidden = true;
+  const hit = PLACES.find((p) => placeLabel(p) === placeIn.value);      // lo que se escribió entero igual a uno de la lista corta
+  if (hit) { form.elements.lat.value = hit.lat; form.elements.lon.value = hit.lon; form.elements.tz.value = hit.tz; }
+  clearTimeout(placeTimer);
+  const q = placeIn.value.trim();
+  if (q.length < 2) { placeSeq++; closePlaces(); return; }
+  placeTimer = setTimeout(() => findPlaces(q), 160);
+});
+placeIn.addEventListener("keydown", (e) => {
+  if (placeList.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const n = placeItems.length;
+    placeSel = e.key === "ArrowDown" ? (placeSel + 1) % n : (placeSel <= 0 ? n - 1 : placeSel - 1);
+    paintPlaces();
+  } else if (e.key === "Enter") {
+    e.preventDefault();                                     // elegir, no enviar el formulario
+    setPlace(placeItems[Math.max(placeSel, 0)]);
+  } else if (e.key === "Escape") {
+    e.preventDefault(); e.stopPropagation();                // cierra la lista, no el formulario
+    closePlaces();
+  } else if (e.key === "Tab" && placeSel >= 0) {
+    setPlace(placeItems[placeSel]);
   }
 });
+placeIn.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== placeIn) { placeSeq++; closePlaces(); } }, 120));
 
 $("#manual").addEventListener("change", (e) => {
   $("#offsetField").hidden = !e.target.checked;
@@ -3970,7 +4067,6 @@ async function init() {
       saved.refresh(),
     ]);
     PLACES = places;
-    $("#places").replaceChildren(...places.map((p) => Object.assign(document.createElement("option"), { value: placeLabel(p) })));
     $("#tzs").replaceChildren(...tzs.map((z) => Object.assign(document.createElement("option"), { value: z })));
   } catch (err) {
     chartStarted = true;
