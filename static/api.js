@@ -28,13 +28,15 @@ export async function config() {
   if (cfg) return cfg;
   try {
     const j = await (await fetch("/api/ping")).json();
-    cfg = { public: !!j.public, sync: !!j.sync };
+    cfg = { public: !!j.public, sync: !!j.sync, images: !!j.images };
   } catch {
     return { public: false };       // sin servidor: no se recuerda, se vuelve a preguntar
   }
   return cfg;
 }
 export const isPublic = () => !!cfg?.public;
+/** ¿Hay imágenes propias? Solo en la versión local (y con un servidor que ya las conozca). */
+export const imagesOn = () => !!cfg?.images && !cfg?.public;
 
 const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
 
@@ -125,4 +127,14 @@ export const compute = {
   moon: (tz) => post("/api/moon", { tz }).catch(staleServer),
   moonMonth: (year, month, tz) => post("/api/moon-calendar", { year, month, tz }).catch(staleServer),
   calendar: (natal, start, months, scope) => post("/api/transit-calendar", { natal, start, months, scope }),
+};
+
+// Imágenes propias de cada carta: solo en la versión local; viven en la carpeta de datos de la Mac (no se sincronizan).
+export const images = {
+  list: () => call("/api/images").then((r) => r.images || []),
+  create: (body) => call("/api/images", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) }),
+  update: (id, body) => call(`/api/images/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) }),
+  remove: (id) => call(`/api/images/${id}`, { method: "DELETE" }),
+  removeChart: (chartId) => call(`/api/images/chart/${chartId}`, { method: "DELETE" }),
+  url: (id, thumb = false) => `/api/images/${id}/${thumb ? "thumb" : "full"}`,
 };

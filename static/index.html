@@ -26,12 +26,12 @@
         if (c.tint === false && c.gfx !== "classic") delete c.tint;
       }
       if (c.tint !== false) d.dataset.tint = "on";
-      if (c.look === "parch") { d.dataset.look = "parch"; d.dataset.theme = "light"; }     // pergamino: siempre claro
+      if (c.look !== "modern") { d.dataset.look = "parch"; d.dataset.theme = "light"; }    // pergamino (de fábrica): siempre claro
       var INTERP_ENABLED = false;            // lecturas apagadas a pedido; mismo valor que INTERP_ENABLED en settings.js
       if (!INTERP_ENABLED || c.interp === false) d.dataset.nointerp = "";
       var f = typeof c.font === "string" && /^[a-z]+$/.test(c.font) ? c.font : "rounded";
       if (f !== "system") d.dataset.font = f;
-      var nf = typeof c.noteFont === "string" && /^[a-z]+$/.test(c.noteFont) ? c.noteFont : "kalam";
+      var nf = typeof c.noteFont === "string" && /^[a-z]+$/.test(c.noteFont) ? c.noteFont : "pluma";
       d.dataset.nfont = nf;
       if (+c.fs > 0 && +c.fs !== 1) d.style.setProperty("--fs", Math.min(1.3, Math.max(0.85, +c.fs)));
       if (+c.wheel > 0 && +c.wheel !== 1) {
@@ -56,6 +56,7 @@
         <a href="#luna" id="navMoon">Luna</a>
         <a href="#carta" id="navChart">Carta<small id="navChartName"></small></a>
         <a href="#cartas" id="navCharts">Mis cartas<small id="navChartsN"></small></a>
+        <a href="#galeria" id="navGallery" hidden>Galería<small id="navGalleryN"></small></a>
         <a href="#combinar" id="navCombine" title="Combinar planetas (beta, en construcción)">Combinar<small>beta</small></a>
       </nav>
     </div>
@@ -152,8 +153,17 @@
           <button type="button" class="gchip gedit" id="mcGEdit" aria-label="Editar los grupos"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="ic-pencil"><path d="M4.5 19.5 5.4 15 15.8 4.6a1.8 1.8 0 0 1 2.6 0l1 1a1.8 1.8 0 0 1 0 2.6L9 18.6l-4.5.9Z"/><path d="m14 6.4 3.6 3.6"/></g><g class="ic-quill"><path d="M19.6 4.4a5.6 5.6 0 0 0-7.9 0L6.4 9.7a1.6 1.6 0 0 0-.5 1.2v7.2h7.2a1.6 1.6 0 0 0 1.2-.5l5.3-5.3a5.6 5.6 0 0 0 0-7.9Z"/><path d="M16 8 3 21"/><path d="M17.2 14.3H10"/></g></svg><span>Editar</span></button>
         </div>
         <div class="mc-row mc-row2">
-          <label class="mc-ini" id="mcIniBox"><span>Inicial:</span><select id="mcIni" aria-label="Por inicial"></select></label>
+          <div class="mc-iniwrap" id="mcIniBox">
+            <button type="button" class="mc-ini" id="mcIniBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="mcIniPop"><span>Inicial:</span><span class="mc-inicur" id="mcIniCur">Todas</span><span class="mc-inichev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></span></button>
+            <div class="mc-inipop" id="mcIniPop" role="dialog" aria-labelledby="mcIniH" hidden>
+              <p class="mc-inih" id="mcIniH">Filtrar por inicial</p>
+              <button type="button" class="mc-iniall" id="mcIniAll" data-l=""><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Todas las letras</button>
+              <div class="mc-inigrid" id="mcIniGrid" role="group" aria-label="Letras"></div>
+              <p class="mc-inifoot">Elegí una letra para filtrar tus cartas</p>
+            </div>
+          </div>
           <button type="button" class="mc-posbtn" id="mcPosBtn" aria-expanded="false" aria-controls="mcFilters"><svg class="mc-posic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Posiciones</span><span class="mc-posdot" id="mcPosDot" hidden></span><svg class="mc-poschev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+          <button type="button" class="home-tr-all mc-clear" id="mcClear" hidden>Limpiar filtros</button>
         </div>
       </div>
       <section class="mc-filters" id="mcFilters" aria-labelledby="mcFiltersTitle" hidden>
@@ -165,31 +175,68 @@
         <div class="mc-fcols">
           <fieldset class="mc-fcol">
             <legend>Planeta en signo / casa</legend>
-            <div class="mc-fgrid">
-              <label><span>Planeta</span><select id="mcPl"></select></label>
-              <label><span>Signo</span><select id="mcSign"></select></label>
-              <label><span>Casa</span><select id="mcHouse"></select></label>
-            </div>
+            <div class="pk-sec"><p class="pk-lab" id="mcPlLab">Planeta</p><div class="pk-row" id="mcPl" role="group" aria-labelledby="mcPlLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="mcSignLab">Signo</p><div class="pk-row" id="mcSign" role="group" aria-labelledby="mcSignLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="mcHouseLab">Casa</p><div class="pk-row pk-round" id="mcHouse" role="group" aria-labelledby="mcHouseLab"></div></div>
             <label class="mc-chk"><input type="checkbox" id="mcSpill">Entre casas <span class="mc-info" tabindex="0" role="note" aria-label="Con «Entre casas», un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (los orbes de Reglas avanzadas)." title="Un planeta cerca de la cúspide de la casa que sigue cuenta también en ella, o solo en ella si está en cúspide (orbes de Reglas avanzadas)">i</span></label>
           </fieldset>
           <fieldset class="mc-fcol">
             <legend>Planeta en aspecto duro</legend>
-            <div class="mc-fgrid">
-              <label><span>Planeta</span><select id="mcA"></select></label>
-              <label><span>Aspecto</span><select id="mcAsp"></select></label>
-              <label><span>Con planeta</span><select id="mcB"></select></label>
-            </div>
+            <div class="pk-sec"><p class="pk-lab" id="mcALab">Planeta</p><div class="pk-row" id="mcA" role="group" aria-labelledby="mcALab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="mcAspLab">Aspecto</p><div class="pk-row pk-big" id="mcAsp" role="group" aria-labelledby="mcAspLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="mcBLab">Con planeta</p><div class="pk-row" id="mcB" role="group" aria-labelledby="mcBLab"></div></div>
           </fieldset>
         </div>
+        <div class="pk-foot" id="mcActive" hidden><span class="pk-foot-lab">Filtros activos:</span><div class="pk-chips" id="mcActiveChips"></div><button type="button" class="pk-clear" id="mcPosClear">Limpiar filtros</button></div>
         <div class="mc-fact">
           <button type="button" class="home-continue" id="mcCalc" hidden></button>
           <span class="home-tr-prog" id="mcProg" role="status" aria-live="polite"></span>
         </div>
         <p class="mc-fnote" id="mcNote"></p>
       </section>
-      <div class="mc-countrow"><p class="mc-count" id="mcCount" role="status" aria-live="polite"></p><button type="button" class="home-tr-all" id="mcClear" hidden>Limpiar filtros</button></div>
+      <div class="mc-countrow"><p class="mc-count" id="mcCount" role="status" aria-live="polite"></p></div>
       <div class="hc-cards mc-list" id="mcList"></div>
       <nav class="mc-pages" id="mcPages" aria-label="Páginas"></nav>
+    </section>
+
+    <!-- Galería: las imágenes propias de todas las cartas (solo en la versión local), con un buscador por posición -->
+    <section id="gallery" class="page" aria-labelledby="galTitle" hidden>
+      <header class="head head-x">
+        <div class="head-t">
+          <h2 id="galTitle">Galería</h2>
+          <p id="galSub">Las imágenes de todas tus cartas. Viven en esta Mac: no se sincronizan.</p>
+        </div>
+      </header>
+      <div class="mc-panel gal-panel">
+        <div class="mc-row mc-row1">
+          <label class="hc-q mc-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="galQ" placeholder="Buscar en títulos y comentarios…" autocomplete="off" spellcheck="false" aria-label="Buscar en títulos y comentarios"></label>
+          <label class="mc-ini gal-chart"><span>Carta:</span><select id="galChart" aria-label="De qué carta"></select></label>
+          <button type="button" class="mc-posbtn gal-posbtn" id="galPosBtn" aria-expanded="false" aria-controls="galFilters"><svg class="mc-posic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Posiciones</span><span class="mc-posdot" id="galPosDot" hidden></span><svg class="mc-poschev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+        </div>
+      </div>
+      <section class="mc-filters gal-filters" id="galFilters" aria-labelledby="galFiltersTitle" hidden>
+        <div class="mc-fhead">
+          <h3 class="hbox-k" id="galFiltersTitle">Buscar por posición</h3>
+          <button type="button" class="mc-fclose" id="galFClose" aria-label="Cerrar la búsqueda por posición"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5"/></svg></button>
+        </div>
+        <div class="mc-fcols">
+          <fieldset class="mc-fcol">
+            <legend>Planeta en signo / casa</legend>
+            <div class="pk-sec"><p class="pk-lab" id="galPlLab">Planeta</p><div class="pk-row" id="galPl" role="group" aria-labelledby="galPlLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="galSignLab">Signo</p><div class="pk-row" id="galSign" role="group" aria-labelledby="galSignLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="galHouseLab">Casa</p><div class="pk-row pk-round" id="galHouse" role="group" aria-labelledby="galHouseLab"></div></div>
+          </fieldset>
+          <fieldset class="mc-fcol">
+            <legend>Aspecto</legend>
+            <div class="pk-sec"><p class="pk-lab" id="galALab">Planeta</p><div class="pk-row" id="galA" role="group" aria-labelledby="galALab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="galAspLab">Aspecto</p><div class="pk-row pk-big" id="galAsp" role="group" aria-labelledby="galAspLab"></div></div>
+            <div class="pk-sec"><p class="pk-lab" id="galBLab">Con planeta</p><div class="pk-row" id="galB" role="group" aria-labelledby="galBLab"></div></div>
+          </fieldset>
+        </div>
+        <div class="pk-foot" id="galActive" hidden><span class="pk-foot-lab">Filtros activos:</span><div class="pk-chips" id="galActiveChips"></div><button type="button" class="pk-clear" id="galPosClear">Limpiar filtros</button></div>
+      </section>
+      <div class="mc-countrow gal-countrow"><p class="mc-count" id="galCount" role="status" aria-live="polite"></p><button type="button" class="home-tr-all mc-clear" id="galClear" hidden>Limpiar filtros</button></div>
+      <div class="gal-grid" id="galGrid"></div>
     </section>
 
     <section id="combine" class="page" aria-labelledby="combineTitle" hidden>
@@ -435,8 +482,13 @@
             <button type="button" class="nadd" id="noteAdd">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nota
             </button>
+            <button type="button" class="nadd img-add" id="imgAdd" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Imagen
+            </button>
+            <input type="file" id="imgFile" accept="image/*" hidden>
           </div>
           <label class="check nmarks" id="noteMarksRow" hidden><input type="checkbox" id="noteMarks"><span>Marcar en el mandala lo que tiene notas</span></label>
+          <div class="istrip" id="imgStrip" hidden></div>
           <div class="nlist" id="noteList"></div>
         </div>
       </section>
@@ -568,6 +620,55 @@
     <button type="button" class="nadd" id="noteViewEdit">Editar</button>
   </div>
 </dialog>
+<!-- una imagen propia: grande, con su título, comentario y vínculos («Editar» la abre en el editor) -->
+<dialog id="imgView" class="pdlg iview" aria-labelledby="imgViewTitle">
+  <div class="pdl-head">
+    <div class="pdl-titles"><p class="pdl-ctx" id="imgViewCtx">Imagen</p><h2 id="imgViewTitle"></h2></div>
+    <button type="button" class="pdl-icon" id="imgViewX" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="iview-body">
+    <figure class="iview-fig"><img id="imgViewImg" alt=""></figure>
+    <div class="iview-text" id="imgViewText"></div>
+    <p class="noted-warn" id="imgViewWarn" hidden></p>
+  </div>
+  <div class="nview-foot">
+    <div class="nchips" id="imgViewRefs"></div>
+    <button type="button" class="ied-del" id="imgViewDel" hidden>Borrar imagen</button>
+    <button type="button" class="nlink-add" id="imgViewOpen" hidden>Abrir la carta</button>
+    <button type="button" class="nadd" id="imgViewEdit" hidden>Editar</button>
+  </div>
+</dialog>
+<!-- el editor de una imagen: título, comentario y vínculos (los mismos que las notas) -->
+<dialog id="imgEd" class="pdlg ied" aria-labelledby="imgEdTitle">
+  <div class="pdl-head">
+    <div class="pdl-titles"><p class="pdl-ctx" id="imgEdCtx">Imagen nueva</p><h2 id="imgEdTitle"></h2></div>
+    <button type="button" class="pdl-icon" id="imgEdX" aria-label="Cerrar sin guardar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="ied-body">
+    <figure class="ied-fig"><img id="imgEdImg" alt=""></figure>
+    <div class="ied-fields">
+      <label class="ied-lab"><span>Título</span><input type="text" id="imgEdName" maxlength="120" placeholder="Por ejemplo: «El Sol y la Luna en tensión»" autocomplete="off"></label>
+      <label class="ied-lab"><span>Comentario</span><textarea id="imgEdText" rows="3" maxlength="2000" placeholder="Qué representa, de dónde salió… (si nombrás planetas o aspectos, la app te propone vincularlos)"></textarea></label>
+      <div class="nrefs">
+        <p class="nref-lab">Vínculos</p>
+        <div class="nchips" id="imgRefs"></div>
+        <div id="imgSugRow" hidden>
+          <p class="nref-lab">Sugeridos por el texto</p>
+          <div class="nchips" id="imgSugs"></div>
+        </div>
+        <div class="nlink">
+          <button type="button" class="nlink-add" id="imgLink" aria-haspopup="menu" aria-expanded="false" aria-controls="imgLinkMenu">+ Vincular</button>
+          <div class="nmenu" id="imgLinkMenu" role="menu" hidden></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="noted-foot">
+    <button type="button" class="ied-del" id="imgEdDel" hidden>Borrar imagen</button>
+    <span id="imgEdStatus" role="status" aria-live="polite"></span>
+    <button type="button" class="nadd" id="imgEdSave">Guardar</button>
+  </div>
+</dialog>
 <dialog id="poemDlg" class="pdlg poemdlg" aria-labelledby="poemTitle">
   <div class="pdl-head">
     <span class="poem-ic" id="poemIc"></span>
@@ -651,7 +752,7 @@
 <script type="module" src="presence.js"></script>
 <!-- cambiar de carta: la lista de las guardadas, con buscador (la abren la lupa del nombre o el buscador de arriba) -->
 <div class="cpick" id="cpick" role="dialog" aria-label="Cambiar de carta" hidden>
-<input type="search" id="cpickQ" placeholder="Buscar carta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta">
+<input type="search" id="cpickQ" placeholder="Buscar por nombre o etiqueta…" autocomplete="off" spellcheck="false" aria-label="Buscar carta por nombre o etiqueta">
 <ul class="cpick-list" id="cpickList" aria-label="Cartas guardadas"></ul>
 <button type="button" class="cpick-new" id="cpickNew"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva carta</button>
 </div>
@@ -748,8 +849,8 @@
         <div class="cfgg-b">
           <div class="cfg-row"><span class="cfg-lab" id="cfgStyleLab">Estilo de la app</span>
             <div class="seg" id="cfgStyle" role="group" aria-labelledby="cfgStyleLab">
-              <button type="button" data-look="modern" aria-pressed="true">Moderno</button>
-              <button type="button" data-look="parch" aria-pressed="false">Pergamino</button>
+              <button type="button" data-look="parch" aria-pressed="true">Pergamino</button>
+              <button type="button" data-look="modern" aria-pressed="false">Moderno</button>
             </div>
           </div>
           <div class="cfg-row cfg-theme-row"><span class="cfg-lab" id="cfgThemeLab">Tema</span>
@@ -779,8 +880,8 @@
           </div>
           <div class="cfg-row"><span class="cfg-lab" id="cfgSkyLab">Cielo de hoy (inicio)</span>
             <div class="seg" id="cfgSky" role="group" aria-labelledby="cfgSkyLab">
-            <button type="button" data-sky="simple" aria-pressed="true">Simple</button>
-            <button type="button" data-sky="art" aria-pressed="false">Ilustrado</button>
+            <button type="button" data-sky="art" aria-pressed="true">Ilustrado</button>
+            <button type="button" data-sky="simple" aria-pressed="false">Simple</button>
             </div>
           </div>
           <details class="how"><summary>¿Cómo funciona?</summary>

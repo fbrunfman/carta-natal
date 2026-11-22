@@ -25,14 +25,18 @@ from presence import Presence
 from store import ChartStore, NotFound, StoreError, clean as clean_chart
 from sync import SyncError, SyncOff, SyncStore, db_url
 from places import Places, Unavailable
+from images import ImageStore
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 STORE = ChartStore()
 CHARTS_ROUTE = re.compile(r"^/api/charts(?:/([0-9a-f]{12}))?(/notes)?$")
+IMAGES = ImageStore()                # las imágenes propias de cada carta: solo local (ver images.py)
+IMAGES_ROUTE = re.compile(r"^/api/images(?:/(chart/)?([0-9a-f]{12})(?:/(full|thumb))?)?$")
 WINDOW_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 MAX_BODY = 64 * 1024
 MAX_BODY_NOTES = 2 * 1024 * 1024     # las notas de una carta, o un archivo importado con notas
 MAX_BODY_SYNC = 8 * 1024 * 1024      # la sincronización: varias cartas (cifradas) con sus notas
+MAX_BODY_IMAGE = 20 * 1024 * 1024    # una imagen (en base64) con su miniatura
 SYNC = None                          # SyncStore si hay una base de sincronización configurada (ver sync.py)
 PLACES = Places()                    # el buscador de «Lugar»: le pregunta a Open-Meteo (ver places.py)
 
@@ -209,7 +213,9 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._guard():
             return
         url = urlparse(self.path)
-        if PUBLIC and url.path in ("/api/charts", "/api/presence", "/defaults-local.js"):
+        if url.path.startswith("/api/images"):
+            self._images("get")
+        elif PUBLIC and url.path in ("/api/charts", "/api/presence", "/defaults-local.js"):
             self._json({"error": "No disponible en la versión pública."}, 404)
         elif PUBLIC and url.path == "/api/chart":
             self._json({"error": "Usá POST: los datos de nacimiento no viajan en la URL."}, 405)
@@ -230,7 +236,7 @@ class Handler(SimpleHTTPRequestHandler):
             if parse_qs(url.query).get("launcher"):
                 PRESENCE.touch()
             self._json({"app": "carta-natal", "idleExit": IDLE_EXIT, "windows": PRESENCE.windows, "public": PUBLIC,
-                        "sync": SYNC is not None})
+                        "sync": SYNC is not None, "images": not PUBLIC})
         elif url.path == "/api/presence":
             self._stream(parse_qs(url.query).get("id", [""])[0])
         else:
@@ -356,8 +362,61 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:  # no tirar el servidor por un caso raro
             self._json({"error": f"Error interno: {e}"}, 500)
 
+    def _images(self, action):
+        """Las imágenes propias de cada carta. Solo en la versión local: alojada no existe."""
+        if PUBLIC:
+            self._json({"error": "No disponible en la versión pública."}, 404)
+            return
+        if not self._guard(writing=action != "get"):
+            return
+        m = IMAGES_ROUTE.match(urlparse(self.path).path)
+        if not m:
+            self._json({"error": "No encontrado."}, 404)
+            return
+        by_chart, iid, part = bool(m.group(1)), m.group(2), m.group(3)
+        try:
+            if action == "get" and part and not by_chart:
+                f = IMAGES.file_of(iid, part == "thumb")
+                if not f:
+                    self._json({"error": "No encontrado."}, 404)
+                    return
+                body = f[0].read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", f[1])
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "private, max-age=31536000, immutable")     # cada id es una imagen que no cambia
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(body)
+            elif part:
+                self._json({"error": "Método no permitido."}, 405)
+            elif action == "get" and not iid:
+                self._json({"images": IMAGES.list()})
+            elif action == "create" and not iid:
+                self._json(IMAGES.create(self._read_json(MAX_BODY_IMAGE)), 201)
+            elif action == "update" and iid and not by_chart:
+                self._json(IMAGES.update(iid, self._read_json(MAX_BODY_NOTES)))
+            elif action == "delete" and iid and by_chart:
+                self._json({"deleted": IMAGES.delete_chart(iid)})
+            elif action == "delete" and iid:
+                IMAGES.delete(iid)
+                self._json({"ok": True})
+            else:
+                self._json({"error": "Método no permitido."}, 405)
+        except NotFound as e:
+            self._json({"error": str(e)}, 404)
+        except StoreError as e:
+            self._json({"error": str(e)}, 400)
+        except OSError as e:
+            self._json({"error": f"No se pudo escribir en {STORE.display_path()}: {e.strerror or e}"}, 500)
+        except Exception as e:  # no tirar el servidor por un caso raro
+            self._json({"error": f"Error interno: {e}"}, 500)
+
     def do_POST(self):
         path = urlparse(self.path).path
+        if path.startswith("/api/images"):
+            self._images("create")
+            return
         if path in COMPUTE:
             self._compute(COMPUTE[path], path)
         elif path in ("/api/sync/pull", "/api/sync/push"):
@@ -372,10 +431,16 @@ class Handler(SimpleHTTPRequestHandler):
             self._charts_write("create")
 
     def do_PUT(self):
-        self._charts_write("update")
+        if urlparse(self.path).path.startswith("/api/images"):
+            self._images("update")
+        else:
+            self._charts_write("update")
 
     def do_DELETE(self):
-        self._charts_write("delete")
+        if urlparse(self.path).path.startswith("/api/images"):
+            self._images("delete")
+        else:
+            self._charts_write("delete")
 
     def end_headers(self):
         if not self.path.startswith(("/api/", "/healthz")):

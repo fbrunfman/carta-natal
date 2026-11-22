@@ -15,7 +15,7 @@ fallo() { echo; echo "$1"; pausa; exit 1; }
 if [ "$(uname)" != "Darwin" ] && [ -z "$CARTA_INSTALL_ANYOS" ]; then
   fallo "Este instalador es para macOS."
 fi
-for f in app.py astro.py store.py sync.py places.py presence.py limits.py requirements.txt static/index.html assets/launcher.sh assets/AppIcon.icns; do
+for f in app.py astro.py store.py images.py sync.py places.py presence.py limits.py requirements.txt static/index.html assets/launcher.sh assets/AppIcon.icns; do
   [ -e "$f" ] || fallo "Falta «$f». Ejecutá este archivo desde la carpeta completa de Carta natal."
 done
 
@@ -43,7 +43,7 @@ echo "Creando $APP ..."
 case "$APP" in */"$NAME.app") ;; *) fallo "Ruta inesperada: $APP" ;; esac
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app" || fallo "No se pudo crear la carpeta de la app."
-cp app.py astro.py store.py sync.py places.py presence.py limits.py requirements.txt "$APP/Contents/Resources/app/"
+cp app.py astro.py store.py images.py sync.py places.py presence.py limits.py requirements.txt "$APP/Contents/Resources/app/"
 cp -R static "$APP/Contents/Resources/app/static"
 find "$APP" -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

@@ -114,15 +114,15 @@ const sameColors = (a, b) => JSON.stringify(cleanColors(a)) === JSON.stringify(c
 
 export const DEFAULTS = Object.freeze({
   gfx: "new",        // "new" | "classic"
-  sky: "simple",     // el cielo de hoy del inicio: "simple" | "art" (ilustrado, con static/cielo/)
-  look: "modern",    // el estilo de la app: "modern" | "parch" (pergamino: siempre claro, ver style.css)
+  sky: "art",        // el cielo de hoy del inicio: "simple" | "art" (ilustrado, con static/cielo/)
+  look: "parch",     // el estilo de la app: "parch" (pergamino, de fábrica: siempre claro, ver style.css) | "modern"
   tint: true,        // tinte por elemento en el anillo de signos
   font: "rounded",   // ver FONTS
-  noteFont: "kalam", // la letra de las notas: ver NOTE_FONTS
+  noteFont: "pluma", // la letra de las notas: ver NOTE_FONTS
   fs: 1,             // escala de la letra (0,85 – 1,3)
   wheel: 1,          // escala del mandala (0,6 – 1,4)
   aspOff: [],        // tipos de aspecto apagados (claves de ASPECT: "square", "sextile"…); [] = se muestran todos
-  cuspRing: true,    // anillo exterior de la rueda con los grados y el signo de cada cúspide
+  cuspRing: false,   // anillo exterior de la rueda con los grados y el signo de cada cúspide (de fábrica no: el pergamino los pone afuera)
   spill: false,      // carta natal: marcar los planetas que pasan a la casa que sigue o están en las dos
   orbs: ORB_DEFAULTS,   // orbes de los aspectos y de los planetas en las casas (ver más arriba)
   tripsOn: false,    // carta natal: dibujar en la rueda los viajes de los planetas por las casas
@@ -194,8 +194,8 @@ export function load() {
   }
   return {
     gfx: raw.gfx === "classic" ? "classic" : "new",
-    sky: raw.sky === "art" ? "art" : "simple",
-    look: raw.look === "parch" ? "parch" : "modern",
+    sky: raw.sky === "simple" ? "simple" : "art",
+    look: raw.look === "modern" ? "modern" : "parch",
     tint: typeof raw.tint === "boolean" ? raw.tint : DEFAULTS.tint,
     font: Object.hasOwn(FONTS, raw.font) ? raw.font : DEFAULTS.font,
     noteFont: Object.hasOwn(NOTE_FONTS, raw.noteFont) ? raw.noteFont : DEFAULTS.noteFont,
@@ -213,6 +213,8 @@ export function load() {
   };
 }
 /** Los grupos de fábrica (Amigos, Familia…) que se quitaron: nombres cortos, sin repetir. */
+/** El anillo de las cúspides de fábrica: con el pergamino no (los grados van afuera), con el moderno sí. */
+const ringDefault = (cfg) => cfg.look !== "modern" ? false : true;
 export function cleanGroupsOff(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
@@ -414,7 +416,7 @@ export function initSettings(onChange) {
     // cada grupo de Configuración tiene su «Restablecer»: apagado si ya está como viene de fábrica
     const D = DEFAULTS, O = ORB_DEFAULTS;
     el.resetLook.disabled = cfg.gfx === D.gfx && cfg.font === D.font && cfg.noteFont === D.noteFont && cfg.fs === D.fs;
-    el.resetWheel.disabled = cfg.wheel === D.wheel && cfg.cuspRing === D.cuspRing && cfg.tint === D.tint;
+    el.resetWheel.disabled = cfg.wheel === D.wheel && cfg.cuspRing === ringDefault(cfg) && cfg.tint === D.tint;
     el.resetAsp.disabled = !cfg.aspOff.length && JSON.stringify(cfg.orbs.asp) === JSON.stringify(cleanOrbs(null).asp);
     el.resetAdv.disabled = sameTrips(cfg.trips, TRIP_DEFAULTS) && cfg.orbs.cusp.join() === O.cusp.join() && cfg.orbs.span.join() === O.span.join();
   }
@@ -433,8 +435,8 @@ export function initSettings(onChange) {
   // pergamino: la rueda va con los grados de las cúspides afuera (sin el anillo), como en el diseño; se puede volver a prender
   for (const b of el.look) b.addEventListener("click", () => {
     if (b.dataset.look === cfg.look) return;
-    // pergamino: también el cielo ilustrado y la letra «Pluma» para las notas (todo se puede volver a cambiar)
-    change(b.dataset.look === "parch" ? { look: "parch", cuspRing: false, sky: "art", noteFont: "pluma" } : { look: "modern" }, "look");
+    // pergamino: también el cielo ilustrado y la letra «Pluma» para las notas; moderno: el cielo simple (todo se puede volver a cambiar)
+    change(b.dataset.look === "parch" ? { look: "parch", cuspRing: false, sky: "art", noteFont: "pluma" } : { look: "modern", sky: "simple" }, "look");
   });
   for (const b of el.sky) b.addEventListener("click", () => { if (b.dataset.sky !== cfg.sky) change({ sky: b.dataset.sky }, "sky"); });
   for (const b of el.interp) b.addEventListener("click", () => {
@@ -483,7 +485,7 @@ export function initSettings(onChange) {
   el.resetColors.addEventListener("click", () => change({ colors: cleanColors(null) }, "colors"));
   // «Restablecer» de cada grupo: lo de ese grupo vuelve a como viene de fábrica (los orbes obligan a recalcular las cartas)
   el.resetLook.addEventListener("click", () => change({ gfx: DEFAULTS.gfx, font: DEFAULTS.font, noteFont: DEFAULTS.noteFont, fs: DEFAULTS.fs }, "gfx"));
-  el.resetWheel.addEventListener("click", () => change({ wheel: DEFAULTS.wheel, cuspRing: DEFAULTS.cuspRing, tint: DEFAULTS.tint }, "cusp"));
+  el.resetWheel.addEventListener("click", () => change({ wheel: DEFAULTS.wheel, cuspRing: ringDefault(cfg), tint: DEFAULTS.tint }, "cusp"));
   el.resetAsp.addEventListener("click", () => {
     const orbs = { ...cfg.orbs, asp: cleanOrbs(null).asp };
     const orbsChanged = !sameOrbs(orbs, cfg.orbs);

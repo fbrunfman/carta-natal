@@ -3,7 +3,8 @@ import { renderWheel } from "./wheel.js";
 import { stairHTML, ORB_LEGEND, STAIR_HINT } from "./stair.js";
 import { elementsHTML } from "./elements.js";
 import { createSaved } from "./saved.js";
-import { charts, compute, config, isPublic } from "./api.js";
+import { charts, compute, config, isPublic, imagesOn, images } from "./api.js";
+import { prepImage, imageMatches } from "./images.js";
 import { setupPrint } from "./print.js";
 import { initSettings, load as loadSettings, ORB_DEFAULTS, ORBS_VERSION, sameOrbs, FONTS, FONT_FAMILY, FONT_NOTE, NOTE_FONT_FAMILY, syncedCfg, setSyncedCfg, setGroupsOff } from "./settings.js";
 import { initSync, syncNow, connect as syncConnect, join as syncJoin, disconnect as syncOff, newCode, state as syncState, normCode, codeProblem, codeOk } from "./sync.js";
@@ -490,19 +491,25 @@ function paintTitlePick() {                                  // (se llama tambi�
   paintPin();
   paintFind();
 }
+const foldTxt = (t) => String(t || "").toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 function fillCpick() {
-  const q = cpickQ.value.trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const items = saved.items.filter((it) => !q || it.name.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(q));
+  // por nombre o por etiqueta (grupo): «music» encuentra a los del grupo Músico; cada palabra tiene que estar en alguno
+  const words = foldTxt(cpickQ.value).trim().split(/\s+/).filter(Boolean);
+  const hay = (it) => [foldTxt(it.name), ...(it.groups || []).map(foldTxt)];
+  const items = saved.items.filter((it) => { const h = hay(it); return words.every((w) => h.some((x) => x.includes(w))); });
   cpickList.replaceChildren(...items.map((it) => {
     const li = document.createElement("li"), b = document.createElement("button");
     b.type = "button"; b.className = "cpick-it"; b.dataset.id = it.id;
     if (it.id === saved.activeId) b.setAttribute("aria-current", "true");
-    b.append(Object.assign(document.createElement("span"), { className: "cpick-nm", textContent: it.name }),
-      Object.assign(document.createElement("span"), { className: "cpick-d", textContent: dmy(it.date) }));
+    const nm = Object.assign(document.createElement("span"), { className: "cpick-nm", textContent: it.name });
+    // la etiqueta que coincide con lo buscado (si no es por el nombre), al lado del nombre
+    const tag = words.length ? (it.groups || []).find((g) => words.some((w) => foldTxt(g).includes(w))) : null;
+    if (tag) { const t = Object.assign(document.createElement("span"), { className: "cpick-tag", textContent: tag }); t.style.setProperty("--gh", groupHue(tag)); nm.append(t); }
+    b.append(nm, Object.assign(document.createElement("span"), { className: "cpick-d", textContent: dmy(it.date) }));
     li.append(b);
     return li;
   }));
-  if (!items.length) cpickList.append(Object.assign(document.createElement("li"), { className: "cpick-none", textContent: saved.items.length ? "Ninguna carta con ese nombre." : "Todavía no guardaste ninguna carta." }));
+  if (!items.length) cpickList.append(Object.assign(document.createElement("li"), { className: "cpick-none", textContent: saved.items.length ? "Ninguna carta con ese nombre o etiqueta." : "Todavía no guardaste ninguna carta." }));
   cpickQ.hidden = !saved.items.length;
 }
 function openCpick(btn = $("#titlePick")) {
@@ -711,6 +718,9 @@ $("#formDel").addEventListener("click", async () => {
 async function deleteChart(id, back = null) {
   const shown = back ? back.active : saved.activeId;
   await saved.remove(id);
+  if (imgsReady && imgs.some((i) => i.chart === id)) {          // sus imágenes propias también (las borró la persona)
+    images.removeChart(id).then(() => { imgs = imgs.filter((i) => i.chart !== id); paintGalleryN(); }).catch(() => {});
+  }
   if (isPinned(id)) setPinned(id, false);
   recentIds = recentIds.filter((x) => x !== id);
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch {}
@@ -1809,6 +1819,7 @@ const NOTE_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l
 const X_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
 const notesOn = () => mode === "natal" && !!chart && !shiftAt && !!saved.activeId && !!saved.find(saved.activeId);
 let notesPending = null, notesTimer = 0;
+let imgs = [], imgsReady = false;        // las imágenes propias (solo local): ver «imágenes propias de cada carta»
 const normCache = new WeakMap();
 /** Las notas de la carta abierta, como lista (con lo que se está escribiendo y todavía no se guardó). */
 function notesNow() {
@@ -2239,8 +2250,8 @@ $("#noteEdDel").addEventListener("click", async () => {
 addEventListener("beforeunload", (e) => { if (edDirty() && edNote.text.trim()) e.preventDefault(); });
 
 // «+ Vincular»: un planeta, una casa, el Ascendente, el Medio Cielo o un aspecto de los que tiene la carta
-function linkMenuHTML(view) {
-  const on = (key) => edNote?.refs.includes(key);
+function linkMenuHTML(view, has = (key) => !!edNote?.refs.includes(key)) {
+  const on = has;
   const item = (key, html, sub = "") => `<button type="button" role="menuitemcheckbox" aria-checked="${on(key)}" class="nmi${on(key) ? " has" : ""}" data-pick="${esc(key)}">${html}${sub ? `<small>${sub}</small>` : ""}</button>`;
   const back = `<button type="button" role="menuitem" class="nmi nback" data-view="main">‹ Volver</button>`;
   const asp = visAsp();
@@ -2294,14 +2305,16 @@ $("#noteLinkMenu").addEventListener("keydown", (e) => {
 let popKey = null, popAnchor = null;
 function openShortcut(key, anchor) {
   if (!notesOn()) return;
-  const list = touching(key);
-  if (!list.length) { openNote(null, anchor, [key]); return; }
+  const list = touching(key), ims = imgTouching(key);
+  if (!list.length && !ims.length) { openNote(null, anchor, [key]); return; }
   closeNote(false);
   popKey = key; popAnchor = anchor;
   const p = $("#notePop");
-  p.innerHTML = `<p class="npop-h">${refHTML(key)} <span>${list.length === 1 ? "1 nota" : `${list.length} notas`}</span></p>` +
+  p.innerHTML = `<p class="npop-h">${refHTML(key)} <span>${countWords(list.length, ims.length)}</span></p>` +
+    (ims.length ? `<div class="npop-imgs">${ims.slice().reverse().map(thumbBtn).join("")}</div>` : "") +
     list.slice().reverse().map((n) => `<button type="button" class="npop-i" data-open="${n.id}"><span class="npop-t"></span><small>${noteWhen(n.at)}</small></button>`).join("") +
-    `<button type="button" class="npop-new" data-new="${esc(key)}">+ Nota nueva sobre ${esc(refAbout(key))}</button>`;
+    `<button type="button" class="npop-new" data-new="${esc(key)}">+ Nota nueva sobre ${esc(refAbout(key))}</button>` +
+    (imgsOn() ? `<button type="button" class="npop-new" data-newimg="${esc(key)}">+ Imagen sobre ${esc(refAbout(key))}</button>` : "");
   const ts = p.querySelectorAll(".npop-t");
   list.slice().reverse().forEach((n, i) => { ts[i].textContent = n.text.trim().replace(/\s+/g, " "); });
   p.hidden = false;
@@ -2322,8 +2335,11 @@ function closePop(focusBack = false) {
 }
 $("#notePop").addEventListener("click", (e) => {
   const o = e.target.closest("[data-open]"), nw = e.target.closest("[data-new]");
+  const im = e.target.closest("[data-img]"), ni = e.target.closest("[data-newimg]");
   const a = popAnchor;
-  if (o) { closePop(); openView(o.dataset.open); }
+  if (im) { closePop(); openImgView(im.dataset.img); }
+  else if (ni) { closePop(); pickImage([ni.dataset.newimg]); }
+  else if (o) { closePop(); openView(o.dataset.open); }
   else if (nw) { closePop(); openNote(null, a?.closest?.("#wheel") ? null : a, [nw.dataset.new]); }
 });
 
@@ -2349,23 +2365,23 @@ for (const sel of ["#panel-pos", "#panel-asp", "#panel-casas"]) {
   }, true);
 }
 const noteBtn = (key, label) => {
-  const n = notesOn() ? touching(key).length : 0;
-  return `<button type="button" class="nbtn${n ? " has" : ""}" data-note="${esc(key)}" aria-label="${n ? `Notas (${n})` : "Escribir una nota"}: ${esc(label)}" title="${n ? (n === 1 ? "1 nota" : `${n} notas`) : "Nota"}">${NOTE_IC}</button>`;
+  const n = notesOn() ? touching(key).length : 0, m = notesOn() ? imgTouching(key).length : 0;
+  return `<button type="button" class="nbtn${n || m ? " has" : ""}" data-note="${esc(key)}" aria-label="${n || m ? countWords(n, m) : "Escribir una nota"}: ${esc(label)}" title="${n || m ? countWords(n, m) : "Nota"}">${NOTE_IC}</button>`;
 };
 
 /** Marca lo que tiene notas: los botones de las tablas y un puntito en la rueda (planetas, casas, ángulos, aspectos). */
 function paintNoteMarks() {
   const on = notesOn();
   for (const b of document.querySelectorAll(".nbtn[data-note]")) {
-    const n = on ? touching(b.dataset.note).length : 0;
-    b.classList.toggle("has", n > 0);
-    b.title = n ? (n === 1 ? "1 nota" : `${n} notas`) : "Nota";
+    const n = on ? touching(b.dataset.note).length : 0, m = on ? imgTouching(b.dataset.note).length : 0;
+    b.classList.toggle("has", n + m > 0);
+    b.title = n || m ? countWords(n, m) : "Nota";
   }
   const svg = $("#wheel");
   svg.querySelectorAll(".wnote").forEach((e) => e.remove());
   svg.querySelectorAll(".amark.noted-a").forEach((e) => e.classList.remove("noted-a"));
   if (on) {
-    const notes = notesNow();
+    const notes = [...notesNow(), ...chartImgs()];          // (las imágenes también llevan su puntito)
     const refs = new Set(notes.flatMap((n) => n.refs));
     const dot = (parent, x, y, r = 4.4) => {
       const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -2391,7 +2407,7 @@ function paintNoteMarks() {
     }
     for (const m of svg.querySelectorAll(".amark[data-a]")) if (refs.has(keyAsp(m.dataset.a, m.dataset.b))) m.classList.add("noted-a");
     // las casas y los ángulos que se pueden tocar para ver sus notas
-    for (const e of svg.querySelectorAll(".hwedge[data-h], .hnum[data-h]")) e.classList.toggle("nt", touching(keyHouse(+e.dataset.h)).length > 0);
+    for (const e of svg.querySelectorAll(".hwedge[data-h], .hnum[data-h]")) e.classList.toggle("nt", touching(keyHouse(+e.dataset.h)).length + imgTouching(keyHouse(+e.dataset.h)).length > 0);
     for (const e of svg.querySelectorAll(".axis-label[data-ax]")) e.classList.toggle("nt", (e.dataset.ax === "asc" || e.dataset.ax === "mc") && refs.has(e.dataset.ax));
   } else {
     svg.querySelectorAll(".nt").forEach((e) => e.classList.remove("nt"));
@@ -2406,7 +2422,7 @@ function paintNotesCount() {
   $("#notesCount").textContent = n;
   $("#notesBtn").title = n ? `Las notas de la carta (${n})` : "Las notas de la carta";
 }
-const countText = () => { const n = noteCount(notesNow()); return n === 0 ? "Sin notas" : n === 1 ? "1 nota" : `${n} notas`; };
+const countText = () => { const n = noteCount(notesNow()), m = chartImgs().length; return n || m ? countWords(n, m) : "Sin notas"; };
 
 // -- las marcas doradas en la rueda (lo que tiene notas): apagadas salvo que se pidan; se recuerda en este navegador
 let noteMarksOn = false;
@@ -2431,6 +2447,8 @@ function renderNotes() {
   if (!notesOn()) {
     $("#noteCount").textContent = "";
     $("#noteAdd").hidden = true;
+    $("#imgAdd").hidden = true;
+    $("#imgStrip").hidden = true;
     $("#noteFilter").hidden = true;
     $("#noteMarksRow").hidden = true;
     list.innerHTML = shiftAt
@@ -2439,12 +2457,13 @@ function renderNotes() {
     return;
   }
   $("#noteAdd").hidden = false;
+  $("#imgAdd").hidden = !imgsOn();
   $("#noteCount").textContent = countText();
-  const notes = notesNow();
-  $("#noteMarksRow").hidden = !notes.length;
-  // el filtro: lo que vinculan las notas (y los planetas de sus aspectos)
+  const notes = notesNow(), cimgs = chartImgs();
+  $("#noteMarksRow").hidden = !notes.length && !cimgs.length;
+  // el filtro: lo que vinculan las notas y las imágenes (y los planetas de sus aspectos)
   const keys = new Set();
-  for (const n of notes) for (const r of n.refs) {
+  for (const n of [...notes, ...cimgs]) for (const r of n.refs) {
     if (!refExists(r, chart, visAsp()) && !r.startsWith("asp:")) continue;
     keys.add(r);
     if (r.startsWith("asp:")) r.slice(4).split("|").forEach((id) => keys.add(keyPl(id)));
@@ -2453,7 +2472,8 @@ function renderNotes() {
   const f = $("#noteFilter");
   f.hidden = !keys.size;
   f.innerHTML = `<option value="">Todas</option>` + [...keys].sort(refSort)
-    .map((k) => `<option value="${esc(k)}"${k === noteFilter ? " selected" : ""}>${esc(refText(k))} (${notes.filter((n) => touches(n, k, chart)).length})</option>`).join("");
+    .map((k) => `<option value="${esc(k)}"${k === noteFilter ? " selected" : ""}>${esc(refText(k))} (${[...notes, ...cimgs].filter((n) => touches(n, k, chart)).length})</option>`).join("");
+  renderImgStrip(noteFilter);
   if (!notes.length) {
     list.innerHTML = `<p class="muted nempty">Todavía no hay notas. Tocá «+ Nota» y escribí: la app te propone qué vincular (planetas en su casa, casas, el Ascendente, el Medio Cielo, aspectos). También desde ${NOTE_IC.replace("<svg", '<svg class="nic-inline"')} en Posiciones, Casas o Aspectos.</p>`;
     return;
@@ -2567,7 +2587,7 @@ $("#wheel").addEventListener("click", (e) => {
   } else if (h) {
     key = keyHouse(+h.dataset.h); anchor = svg_hnum(h);
   }
-  if (!key || !touching(key).length) return;
+  if (!key || (!touching(key).length && !imgTouching(key).length)) return;
   e.stopPropagation();
   openShortcut(key, anchor);
 });
@@ -2579,14 +2599,19 @@ $("#noteLitX").addEventListener("click", () => { closeNote(false); lightNote(nul
 // tarjeta abajo de la pantalla. Se va al soltar el planeta (tocar afuera, de nuevo el mismo o la ×).
 /** En la ficha: las notas que nombran a ese planeta (tocarlas las abre) y empezar una nueva ya vinculada. */
 function pfiNotesHTML(bid) {
-  const list = touching(keyPl(bid)).slice().reverse();
+  const list = touching(keyPl(bid)).slice().reverse(), ims = imgTouching(keyPl(bid)).slice().reverse();
   return `<div class="pfi-nsec"><p class="pfi-nlab">${NOTE_IC} Notas${list.length ? ` <span class="pfi-ncount">${list.length}</span>` : ""}</p>` +
+    (ims.length ? `<div class="npop-imgs pfi-imgs">${ims.map(thumbBtn).join("")}</div>` : "") +
     list.map((n) => `<button type="button" class="pfi-ni" data-open="${n.id}">${esc(n.text.trim().replace(/\s+/g, " "))}</button>`).join("") +
-    `<button type="button" class="pfi-nnew" data-new="${keyPl(bid)}">+ Nota sobre ${esc(bodyName(bid))}</button></div>`;
+    `<button type="button" class="pfi-nnew" data-new="${keyPl(bid)}">+ Nota sobre ${esc(bodyName(bid))}</button>` +
+    (imgsOn() ? `<button type="button" class="pfi-nnew" data-newimg="${keyPl(bid)}">+ Imagen sobre ${esc(bodyName(bid))}</button>` : "") + `</div>`;
 }
 $("#pfi").addEventListener("click", (e) => {
   const o = e.target.closest("[data-open]"), nw = e.target.closest("[data-new]");
-  if (o) openView(o.dataset.open);
+  const im = e.target.closest("[data-img]"), ni = e.target.closest("[data-newimg]");
+  if (im) openImgView(im.dataset.img);
+  else if (ni) pickImage([ni.dataset.newimg]);
+  else if (o) openView(o.dataset.open);
   else if (nw) openNote(null, null, [nw.dataset.new]);
 });
 function hideFicha() {
@@ -2620,6 +2645,416 @@ function showFicha(id, note = "", trip = false) {
     (rows ? `<ul class="pfi-list" aria-label="Aspectos">${rows}</ul>` : `<p class="pfi-none">Sin aspectos en la rueda.</p>`);
   el.hidden = false;
 }
+
+// ---------- imágenes propias de cada carta (solo en la versión local, la de la Mac) -----------------------------------
+// Cada imagen es de una carta guardada y se vincula como las notas (planeta en su casa y signo, casa, Asc, MC, aspecto).
+// Se ven en la pestaña «Notas» (arriba de las notas, con el mismo filtro), en la ficha del planeta y al tocar en la rueda
+// lo que las tiene. La «Galería» junta las de todas las cartas, con un buscador por posición. Viven en la carpeta de datos
+// de la Mac (images.py): no se sincronizan ni van en «Exportar copia». En la versión pública no aparecen.
+const IMG_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4.5 17.5 5-5 3.5 3.5 2.5-2.5 4 4"/></svg>`;
+const imgsOn = () => imgsReady && notesOn();
+const chartImgs = () => (imgsOn() ? imgs.filter((i) => i.chart === saved.activeId) : []);
+const imgTouching = (key) => chartImgs().filter((i) => touches(i, key, chart));
+const imgById = (id) => imgs.find((i) => i.id === id) || null;
+const imgName = (i) => i.title || "Sin título";
+const thumbBtn = (i) => `<button type="button" class="ithumb" data-img="${i.id}" title="${esc(imgName(i))}"><img src="${images.url(i.id, true)}" alt="${esc(i.title || "Imagen")}" loading="lazy" decoding="async"></button>`;
+const countWords = (n, m) => [n ? (n === 1 ? "1 nota" : `${n} notas`) : "", m ? (m === 1 ? "1 imagen" : `${m} imágenes`) : ""].filter(Boolean).join(" · ");
+
+async function loadImages() {
+  try {
+    imgs = await images.list();
+    imgsReady = true;
+  } catch {
+    imgs = []; imgsReady = false;           // un servidor de una versión anterior: sin imágenes, sin aviso
+  }
+  $("#navGallery").hidden = !imgsReady;
+  paintGalleryN();
+  afterImgs();
+}
+function paintGalleryN() { $("#navGalleryN").textContent = imgs.length ? String(imgs.length) : ""; }
+function afterImgs() {
+  paintGalleryN();
+  if (page === "chart" && chart && mode === "natal") { renderNotes(); paintNoteMarks(); }
+  if (page === "gallery") renderGallery();
+}
+
+/** En la pestaña «Notas»: las imágenes de la carta (las más nuevas primero), con el mismo filtro que las notas. */
+function renderImgStrip(filter) {
+  const box = $("#imgStrip");
+  const all = chartImgs();
+  const list = all.filter((i) => !filter || touches(i, filter, chart)).reverse();
+  box.hidden = !all.length;
+  box.innerHTML = all.length
+    ? `<p class="istrip-h">${IMG_IC}<span>Imágenes</span> <span class="istrip-n">${list.length}${list.length !== all.length ? ` de ${all.length}` : ""}</span></p>` +
+      (list.length ? `<div class="istrip-row">${list.map(thumbBtn).join("")}</div>` : `<p class="muted istrip-none">Ninguna imagen nombra eso.</p>`)
+    : "";
+}
+$("#imgStrip").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-img]");
+  if (b) openImgView(b.dataset.img);
+});
+$("#imgStrip").addEventListener("mouseover", (e) => {          // con el mouse: ilumina en la rueda lo que vincula
+  const b = e.target.closest("[data-img]"), it = b && imgById(b.dataset.img);
+  if (it && !edNote && wheel?.note) wheel.note(it.refs.length ? litSel(it) : null);
+});
+$("#imgStrip").addEventListener("mouseleave", () => { if (!edNote) paintLit(); });
+
+// -- elegir una imagen: el selector de archivos; después, el editor (con lo que ya venía vinculado)
+let pickRefs = [];
+function pickImage(preRefs = []) {
+  if (!imgsOn()) return;
+  pickRefs = preRefs;
+  const f = $("#imgFile");
+  f.value = "";
+  f.click();
+}
+$("#imgAdd").addEventListener("click", () => pickImage([]));
+$("#imgFile").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || !imgsOn()) return;
+  openImgEd(null, pickRefs);
+  imgBusy = true; paintImgSave();
+  imgStatus("Preparando la imagen…");
+  try {
+    const p = await prepImage(file);
+    if (!edImg || edImg.id) { URL.revokeObjectURL(p.preview); return; }        // se cerró mientras tanto
+    edImg.payload = { data: p.data, thumb: p.thumb, w: p.w, h: p.h };
+    edImg.preview = p.preview;
+    $("#imgEdImg").src = p.preview;
+    if (!$("#imgEdName").value) $("#imgEdName").value = file.name.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[_-]+/g, " ").slice(0, 120);
+    imgStatus("");
+  } catch (err) {
+    imgStatus(err.message || "No se pudo abrir esa imagen.", true);
+  } finally {
+    imgBusy = false; paintImgSave();
+  }
+});
+
+// -- el editor: la imagen, su título, un comentario y los vínculos (sugeridos por el texto, o a mano con «+ Vincular»)
+let edImg = null, imgBusy = false;
+function openImgEd(id, preRefs = []) {
+  if (!imgsOn()) return;
+  const it = id ? imgById(id) : null;
+  if (id && !it) return;
+  closeImgView(); closePop(); hideFicha(); closeImgLink();
+  if (edImg?.preview) URL.revokeObjectURL(edImg.preview);
+  edImg = it ? { id, refs: [...it.refs], snap: { ...(it.snap || {}) } } : { id: null, refs: [], snap: {}, payload: null, preview: "" };
+  for (const r of preRefs) imgAddRef(r, false);
+  $("#imgEdCtx").textContent = it ? "Editar imagen" : "Imagen nueva";
+  $("#imgEdTitle").textContent = chart.input.name || "Carta natal";
+  $("#imgEdImg").src = it ? images.url(id) : "";
+  $("#imgEdImg").alt = it ? (it.title || "Imagen") : "";
+  $("#imgEdName").value = it?.title || "";
+  $("#imgEdText").value = it?.text || "";
+  $("#imgEdDel").hidden = !it;
+  imgDelArm(false);
+  imgStatus("");
+  paintImgEd();
+  const d = $("#imgEd");
+  if (!d.open) d.showModal();
+  d.querySelector(".ied-body").scrollTop = 0;
+}
+function closeImgEd() {
+  const d = $("#imgEd");
+  if (d.open) d.close();
+}
+$("#imgEd").addEventListener("close", () => {
+  closeImgLink();
+  if (edImg?.preview) URL.revokeObjectURL(edImg.preview);
+  edImg = null;
+  $("#imgEdImg").removeAttribute("src");
+});
+$("#imgEdX").addEventListener("click", closeImgEd);
+$("#imgEd").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeImgEd(); });
+function imgStatus(text, err = false) {
+  const el = $("#imgEdStatus");
+  el.textContent = text;
+  el.classList.toggle("err", err);
+}
+function paintImgSave() { $("#imgEdSave").disabled = imgBusy || !edImg || (!edImg.id && !edImg.payload); }
+function imgAddRef(key, paint = true) {
+  if (!edImg || edImg.refs.includes(key) || edImg.refs.length >= REF_MAX || !refExists(key, chart, visAsp())) return;
+  edImg.refs.push(key);
+  const s = snapOf(key, chart, visAsp());
+  if (Object.keys(s).length) edImg.snap[key] = s;
+  if (paint) paintImgEd();
+}
+function imgDropRef(key) {
+  if (!edImg) return;
+  edImg.refs = edImg.refs.filter((r) => r !== key);
+  delete edImg.snap[key];
+  paintImgEd();
+}
+function paintImgEd() {
+  if (!edImg) return;
+  const refs = edImg.refs;
+  $("#imgRefs").innerHTML = refs.length
+    ? [...refs].sort(refSort).map((r) => {
+      const w = refChange(r, edImg.snap[r]);
+      return `<span class="nchip on${w ? " warn" : ""}" data-ref="${esc(r)}"${w ? ` title="${esc(w)}"` : ""}>${refHTML(r)}` +
+        `<button type="button" class="nchip-x" data-drop="${esc(r)}" aria-label="Quitar el vínculo: ${esc(refText(r))}">${X_IC}</button></span>`;
+    }).join("")
+    : `<span class="nrefs-none">Sin vínculos: es sobre la carta en general.</span>`;
+  const txt = `${$("#imgEdName").value}\n${$("#imgEdText").value}`;
+  const sugs = detectRefs(txt, chart, visAsp(), DETECT_NAMES).filter((s) => !refs.includes(s.key));
+  $("#imgSugRow").hidden = !sugs.length;
+  $("#imgSugs").innerHTML = sugs.map((s) => `<button type="button" class="nchip sug${s.warn ? " warn" : ""}" data-add="${esc(s.key)}" ` +
+    `aria-label="Vincular: ${esc(refText(s.key))}"${s.warn ? ` title="Ojo: ${esc(s.warn)}"` : ""}><span class="nchip-plus" aria-hidden="true">+</span>${refHTML(s.key)}</button>`).join("");
+  $("#imgLink").disabled = refs.length >= REF_MAX;
+  paintImgSave();
+}
+let imgSugTimer = 0;
+for (const id of ["#imgEdName", "#imgEdText"]) $(id).addEventListener("input", () => { clearTimeout(imgSugTimer); imgSugTimer = setTimeout(paintImgEd, 250); });
+$("#imgEd").addEventListener("click", (e) => {
+  const d = e.target.closest("[data-drop]"), a = e.target.closest("[data-add]");
+  if (d) imgDropRef(d.dataset.drop);
+  else if (a) imgAddRef(a.dataset.add);
+});
+function openImgLink(view = "main") {
+  const m = $("#imgLinkMenu");
+  m.innerHTML = linkMenuHTML(view, (k) => !!edImg?.refs.includes(k));
+  m.hidden = false;
+  $("#imgLink").setAttribute("aria-expanded", "true");
+  m.querySelector("button:not([disabled])")?.focus({ preventScroll: true });
+}
+function closeImgLink(focusBtn = false) {
+  const m = $("#imgLinkMenu");
+  if (m.hidden) return;
+  m.hidden = true;
+  $("#imgLink").setAttribute("aria-expanded", "false");
+  if (focusBtn) $("#imgLink").focus({ preventScroll: true });
+}
+$("#imgLink").addEventListener("click", () => ($("#imgLinkMenu").hidden ? openImgLink() : closeImgLink()));
+$("#imgLinkMenu").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  e.stopPropagation();
+  if (b.dataset.view) { openImgLink(b.dataset.view); return; }
+  if (!b.dataset.pick) return;
+  if (edImg?.refs.includes(b.dataset.pick)) imgDropRef(b.dataset.pick); else imgAddRef(b.dataset.pick);
+  closeImgLink(true);
+});
+$("#imgLinkMenu").addEventListener("keydown", (e) => {
+  const items = [...$("#imgLinkMenu").querySelectorAll("button:not([disabled])")];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") { e.preventDefault(); (items[i + 1] || items[0])?.focus(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); (items[i - 1] || items[items.length - 1])?.focus(); }
+  else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeImgLink(true); }
+});
+document.addEventListener("pointerdown", (e) => {
+  if (!$("#imgLinkMenu").hidden && !$("#imgLinkMenu").contains(e.target) && !$("#imgLink").contains(e.target)) closeImgLink();
+}, true);
+$("#imgEdSave").addEventListener("click", async () => {
+  if (!edImg || imgBusy || !imgsOn()) return;
+  const body = { title: $("#imgEdName").value.trim(), text: $("#imgEdText").value.trim(), refs: [...edImg.refs], snap: { ...edImg.snap } };
+  imgBusy = true; paintImgSave();
+  imgStatus("Guardando…");
+  try {
+    const rec = edImg.id ? await images.update(edImg.id, body) : await images.create({ chart: saved.activeId, ...edImg.payload, ...body });
+    const i = imgs.findIndex((x) => x.id === rec.id);
+    if (i >= 0) imgs[i] = rec; else imgs.push(rec);
+    imgBusy = false;
+    closeImgEd();
+    afterImgs();
+  } catch (err) {
+    imgStatus(`No se pudo guardar: ${err.message}`, true);
+  } finally {
+    imgBusy = false; paintImgSave();
+  }
+});
+let imgDelTimer = 0;
+function imgDelArm(on) {
+  const b = $("#imgEdDel");
+  clearTimeout(imgDelTimer);
+  b.dataset.arm = on ? "1" : "";
+  b.textContent = on ? "¿Borrar? Tocá de nuevo" : "Borrar imagen";
+  if (on) imgDelTimer = setTimeout(() => imgDelArm(false), 4000);
+}
+async function deleteImg(id, from) {
+  try {
+    await images.remove(id);
+  } catch (err) {
+    if (err.status !== 404) throw err;           // (si ya no estaba, da igual)
+  }
+  imgs = imgs.filter((x) => x.id !== id);
+  if (from) from.close();
+  afterImgs();
+}
+$("#imgEdDel").addEventListener("click", async () => {
+  if (!edImg?.id) return;
+  if ($("#imgEdDel").dataset.arm !== "1") { imgDelArm(true); return; }
+  imgDelArm(false);
+  try { await deleteImg(edImg.id, $("#imgEd")); } catch (err) { imgStatus(`No se pudo borrar: ${err.message}`, true); }
+});
+
+// -- ver una imagen: grande, con su título, comentario y vínculos. En la carta abierta, «Editar»; desde la galería,
+// «Abrir la carta» (y si la carta se borró, «Borrar»)
+let viewImg = null;
+/** Un vínculo según la foto que se guardó (para la galería: ahí no está calculada cada carta). */
+function refSnapHTML(key, s = {}) {
+  const k = parseKey(key);
+  if (!k) return esc(key);
+  if (k.kind === "angle") return `${BODY[key].tag}${s.sign != null ? ` ${sgl(s.sign)}` : ""}`;
+  if (k.kind === "house") return `Casa ${roman(k.n)}`;
+  if (k.kind === "pl") return `${gl(k.ids[0])}${s.house ? ` en ${roman(s.house)}` : ""}${s.sign != null ? ` · ${sgl(s.sign)}` : ""}`;
+  const A = ASPECT[s.type], [x, y] = aspOrder(k.ids);
+  return A ? `${gl(x)}<span class="a-ic ${A.cls}" aria-hidden="true">${A.icon}</span>${gl(y)}` : `${gl(x)} ${gl(y)}`;
+}
+/** Los dos planetas de un aspecto en el orden de siempre (Sol, Luna, Mercurio…), no el alfabético del vínculo. */
+const aspOrder = (ids) => [...ids].sort((a, b) => REF_ORDER.indexOf(a) - REF_ORDER.indexOf(b));
+function refSnapText(key, s = {}) {
+  const k = parseKey(key);
+  if (!k) return key;
+  if (k.kind === "angle") return `${bodyName(key)}${s.sign != null ? ` en ${SIGNS[s.sign]}` : ""}`;
+  if (k.kind === "house") return `Casa ${roman(k.n)}${s.sign != null ? ` (cúspide en ${SIGNS[s.sign]})` : ""}`;
+  if (k.kind === "pl") return `${bodyName(k.ids[0])}${s.house ? ` en casa ${roman(s.house)}` : ""}${s.sign != null ? `, ${SIGNS[s.sign]}` : ""}`;
+  const [x, y] = aspOrder(k.ids);
+  return `${bodyName(x)} ${ASP_WORD[s.type] || "y"} ${bodyName(y)}`;
+}
+const snapChips = (it) => (it.refs.length
+  ? [...it.refs].sort(refSort).map((r) => `<span class="nchip" title="${esc(refSnapText(r, it.snap?.[r]))}">${refSnapHTML(r, it.snap?.[r])}</span>`).join("")
+  : `<span class="nchip gen">General</span>`);
+function openImgView(id, fromGallery = false) {
+  const it = imgById(id);
+  if (!it) return;
+  closePop(); hideFicha();
+  viewImg = id;
+  const here = !fromGallery && imgsOn() && it.chart === saved.activeId;
+  const owner = saved.find(it.chart);
+  $("#imgViewCtx").textContent = `${owner ? owner.name : "Carta borrada"} · ${noteWhen(it.at)}`;
+  $("#imgViewTitle").textContent = imgName(it);
+  const im = $("#imgViewImg");
+  im.src = images.url(id);
+  im.alt = it.title || "Imagen";
+  if (it.w && it.h) { im.width = it.w; im.height = it.h; } else { im.removeAttribute("width"); im.removeAttribute("height"); }
+  $("#imgViewText").textContent = it.text || "";
+  $("#imgViewText").hidden = !it.text;
+  const warns = here ? it.refs.map((r) => refChange(r, it.snap?.[r])).filter(Boolean) : [];
+  $("#imgViewWarn").hidden = !warns.length;
+  $("#imgViewWarn").textContent = warns.join(" ");
+  $("#imgViewRefs").innerHTML = here
+    ? (it.refs.length ? [...it.refs].sort(refSort).map((r) => { const w = refChange(r, it.snap?.[r]); return `<span class="nchip${w ? " warn" : ""}" title="${esc(w || refText(r))}">${refHTML(r)}</span>`; }).join("") : `<span class="nchip gen">General</span>`)
+    : snapChips(it);
+  $("#imgViewEdit").hidden = !here;
+  $("#imgViewOpen").hidden = here || !owner;
+  $("#imgViewDel").hidden = !!owner;
+  imgViewDelArm(false);
+  const d = $("#imgView");
+  if (!d.open) d.showModal();
+  d.querySelector(".iview-body").scrollTop = 0;
+}
+function closeImgView() {
+  const d = $("#imgView");
+  if (d.open) d.close();
+}
+$("#imgView").addEventListener("close", () => { viewImg = null; });
+$("#imgViewX").addEventListener("click", closeImgView);
+$("#imgView").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeImgView(); });
+$("#imgViewEdit").addEventListener("click", () => { const id = viewImg; closeImgView(); if (id) openImgEd(id); });
+$("#imgViewOpen").addEventListener("click", async () => {
+  const it = imgById(viewImg), owner = it && saved.find(it.chart);
+  closeImgView();
+  if (!owner) return;
+  if (mode !== "natal") { mode = "natal"; rememberView(); paintMode(); }      // las imágenes son de la carta natal
+  await openSaved(owner);
+  if (imgsOn() && saved.activeId === it.chart) openImgView(it.id);
+});
+let imgViewDelTimer = 0;
+function imgViewDelArm(on) {
+  const b = $("#imgViewDel");
+  clearTimeout(imgViewDelTimer);
+  b.dataset.arm = on ? "1" : "";
+  b.textContent = on ? "¿Borrar? Tocá de nuevo" : "Borrar imagen";
+  if (on) imgViewDelTimer = setTimeout(() => imgViewDelArm(false), 4000);
+}
+$("#imgViewDel").addEventListener("click", async () => {
+  if (!viewImg) return;
+  if ($("#imgViewDel").dataset.arm !== "1") { imgViewDelArm(true); return; }
+  imgViewDelArm(false);
+  try { await deleteImg(viewImg, $("#imgView")); } catch (err) { $("#imgViewWarn").hidden = false; $("#imgViewWarn").textContent = `No se pudo borrar: ${err.message}`; }
+});
+
+// -- la Galería: todas las imágenes de todas las cartas, con un buscador por posición (por la foto de cada vínculo)
+const gal = { q: "", chart: "", pl: "", sign: "", house: "", a: "", asp: "", b: "" };
+let galInit = false, galOpen = false;
+function initGallery() {
+  if (galInit) return;
+  galInit = true;
+  $("#galChart").addEventListener("change", (e) => { gal.chart = e.target.value; renderGallery(); });
+  galOpen = matchMedia("(min-width: 700px)").matches;         // en la compu, la búsqueda por posición arranca abierta
+  $("#galQ").addEventListener("input", (e) => { gal.q = e.target.value; renderGallery(); });
+  $("#galClear").addEventListener("click", () => {
+    for (const k of Object.keys(gal)) gal[k] = "";
+    $("#galQ").value = "";
+    renderGallery();
+  });
+  $("#galPosBtn").addEventListener("click", () => { galOpen = !galOpen; renderGallery(); });
+  $("#galFClose").addEventListener("click", () => { galOpen = false; renderGallery(); $("#galPosBtn").focus({ preventScroll: true }); });
+  $("#galPosClear").addEventListener("click", () => { Object.assign(gal, { pl: "", sign: "", house: "", a: "", asp: "", b: "" }); renderGallery(); });
+  $("#galActiveChips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-clear]");
+    if (!b) return;
+    Object.assign(gal, b.dataset.clear === "pos" ? { pl: "", sign: "", house: "" } : { a: "", asp: "", b: "" });
+    renderGallery();
+  });
+  $("#galGrid").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-img]");
+    if (b) openImgView(b.dataset.img, true);
+  });
+}
+function renderGallery() {
+  initGallery();
+  const opt = (v, t) => Object.assign(document.createElement("option"), { value: v, textContent: t });
+  // el filtro de carta: solo las que tienen imágenes (y «Cartas borradas» si quedó alguna suelta)
+  const per = new Map();
+  for (const i of imgs) per.set(i.chart, (per.get(i.chart) || 0) + 1);
+  const owners = [...per.keys()].map((id) => saved.find(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const gone = imgs.filter((i) => !saved.find(i.chart)).length;
+  if (gal.chart && gal.chart !== "gone" && !per.has(gal.chart)) gal.chart = "";
+  if (gal.chart === "gone" && !gone) gal.chart = "";
+  $("#galChart").replaceChildren(opt("", `todas (${owners.length})`), ...owners.map((c) => opt(c.id, `${c.name} (${per.get(c.id)})`)),
+    ...(gone ? [opt("gone", `cartas borradas (${gone})`)] : []));
+  $("#galChart").value = gal.chart;
+  // la búsqueda por posición: las mismas filas de símbolos que en Mis cartas
+  const angle = gal.pl === "asc" || gal.pl === "mc";
+  if (angle && gal.house) gal.house = "";
+  if (gal.a && gal.b === gal.a) gal.b = "";
+  const set = (k) => (v) => { gal[k] = v; renderGallery(); };
+  pkRow($("#galPl"), pkPlanets(["asc", "mc"]), gal.pl, "", set("pl"));
+  pkRow($("#galSign"), pkSigns(), gal.sign, "", set("sign"));
+  pkRow($("#galHouse"), pkHouses(angle), gal.house, "", set("house"));
+  pkRow($("#galA"), pkPlanets(), gal.a, "", set("a"));
+  pkRow($("#galAsp"), pkAsps(), gal.asp, "", set("asp"));
+  pkRow($("#galB"), pkPlanets().map((x) => [...x, x[0] === gal.a]), gal.b, "", set("b"));
+  const chips = pkChipsHTML(gal, "aspecto", true);
+  $("#galActiveChips").innerHTML = chips;
+  $("#galActive").hidden = !chips;
+  $("#galFilters").hidden = !galOpen;
+  $("#galPosBtn").setAttribute("aria-expanded", String(galOpen));
+  const posOn = !!(gal.pl || gal.sign || gal.house || gal.a || gal.asp || gal.b);
+  $("#galPosBtn").classList.toggle("on", posOn);
+  $("#galFilters").classList.toggle("on", posOn);
+  const on = Object.values(gal).some(Boolean);
+  const list = imgs.filter((i) => (gal.chart === "gone" ? !saved.find(i.chart) : true) &&
+    imageMatches(i, { ...gal, chart: gal.chart === "gone" ? "" : gal.chart })).reverse();
+  $("#galClear").hidden = !on;
+  $("#galPosDot").hidden = !posOn;
+  $("#galCount").textContent = !imgs.length ? "" : on ? `${list.length} de ${imgs.length === 1 ? "1 imagen" : `${imgs.length} imágenes`}` : (imgs.length === 1 ? "1 imagen" : `${imgs.length} imágenes`);
+  const grid = $("#galGrid");
+  if (!imgs.length) {
+    grid.innerHTML = `<p class="muted gal-empty">Todavía no hay imágenes. Abrí una carta guardada, andá a <strong>Notas</strong> y tocá <strong>+ Imagen</strong>: la podés vincular a un planeta, una casa o un aspecto, como las notas.</p>`;
+    return;
+  }
+  if (!list.length) { grid.innerHTML = `<p class="muted gal-empty">Ninguna imagen coincide con la búsqueda.</p>`; return; }
+  grid.innerHTML = list.map((i) => {
+    const owner = saved.find(i.chart);
+    return `<button type="button" class="gal-card" data-img="${i.id}" aria-label="${esc(`${imgName(i)}, de ${owner ? owner.name : "una carta borrada"}`)}">` +
+      `<span class="gal-im"><img src="${images.url(i.id, true)}" alt="" loading="lazy" decoding="async"></span>` +
+      `<span class="gal-cap"><strong class="gal-t">${esc(imgName(i))}</strong><small class="gal-who${owner ? "" : " gone"}">${esc(owner ? owner.name : "Carta borrada")}</small>` +
+      `<span class="nchips gal-refs">${snapChips(i)}</span></span></button>`;
+  }).join("");
+}
+config().then(() => { if (imagesOn()) loadImages(); });
 
 // -- celular: la barra de abajo. «Carta» es la rueda natal sola, «Tablas» las tablas de la carta natal; «Tránsitos» y
 // «Sinastría» son sus vistas (rueda y tablas). Reemplaza al selector Natal / Tránsitos / Sinastría de arriba.
@@ -2938,7 +3373,7 @@ document.querySelectorAll(".seg.orb button").forEach((b) => b.addEventListener("
 // tiene todo el alto. En el celular la barra es solo el botón del menú y el de la configuración.
 const root = document.documentElement;
 const appBtn = $("#appMenuBtn"), appMenu = $("#appMenu");
-const PAGE_NAME = { home: "Inicio", lunar: "Luna", chart: "Carta", charts: "Mis cartas", combine: "Combinar" };
+const PAGE_NAME = { home: "Inicio", lunar: "Luna", chart: "Carta", charts: "Mis cartas", gallery: "Galería", combine: "Combinar" };
 function setAppMenu(open, focus = false) {
   appMenu.hidden = !open;
   appBtn.setAttribute("aria-expanded", String(open));
@@ -3466,6 +3901,7 @@ function parseRoute() {
   if (h === "carta") return { page: "chart" };
   if (h === "combinar") return { page: "combine" };
   if (h === "cartas") return { page: "charts" };
+  if (h === "galeria") return { page: "gallery" };
   const m = /^luna(?:\/(.*))?$/.exec(h);
   if (m) {                                            // #luna/AAAA-M; con cualquier otra cosa, el mes actual
     const ym = /^(\d{4})-(\d{1,2})$/.exec(m[1] || "");
@@ -3481,10 +3917,11 @@ function setPage(r) {
   $("#lunar").hidden = page !== "lunar";
   $("#combine").hidden = page !== "combine";
   $("#charts").hidden = page !== "charts";
+  $("#gallery").hidden = page !== "gallery";
   $("#chartPage").hidden = page !== "chart";
   paintBar();
   if (page !== "chart") { hideFicha(); if ($("#notesDlg").open) closeNotes(true); }
-  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCharts", "charts"], ["navCombine", "combine"]]) {
+  for (const [id, p] of [["navHome", "home"], ["navMoon", "lunar"], ["navChart", "chart"], ["navCharts", "charts"], ["navGallery", "gallery"], ["navCombine", "combine"]]) {
     if (page === p) $("#" + id).setAttribute("aria-current", "page"); else $("#" + id).removeAttribute("aria-current");
   }
   $("#appMenuLabel").textContent = PAGE_NAME[page];
@@ -3502,6 +3939,7 @@ function setPage(r) {
   else if (page === "lunar") showLunar(r.y, r.m);
   else if (page === "combine") showCombine();
   else if (page === "charts") renderMyCharts();
+  else if (page === "gallery") renderGallery();
   else if (!chartStarted) startChart();
 }
 
@@ -3984,22 +4422,30 @@ const NO_GROUP = "\u0000sin";
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
 (() => {
-  const opt = (v, t) => Object.assign(document.createElement("option"), { value: v, textContent: t });
-  $("#mcPl").replaceChildren(opt("", "Elegí un planeta"), opt("any", "Cualquier planeta"), ...FIND_BODIES.map((b) => opt(b, BODY[b].name)));
-  $("#mcSign").replaceChildren(opt("all", "cualquier signo"), ...SIGNS.map((s, i) => opt(String(i), s)));
-  $("#mcHouse").replaceChildren(opt("all", "cualquier casa"), ...Array.from({ length: 12 }, (_, i) => opt(String(i + 1), `casa ${roman(i + 1)}`)));
-  $("#mcA").replaceChildren(opt("", "Elegí un planeta"), ...TRIP_PLANETS.map((b) => opt(b, BODY[b].name)));
-  $("#mcAsp").replaceChildren(opt("hard", "cualquier aspecto duro"), ...HARD.map((t) => opt(t, ASPECT[t].name.toLowerCase())));
-  $("#mcB").replaceChildren(opt("any", "cualquier planeta"), ...TRIP_PLANETS.map((b) => opt(b, BODY[b].name)));
-  for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) {
-    $(sel).addEventListener("change", (e) => { mc[key] = e.target.value; mc.page = 1; renderMyCharts(); });
-  }
   $("#mcQ").addEventListener("input", (e) => { mc.q = e.target.value; mc.page = 1; renderMyCharts(); });
   $("#mcSpill").addEventListener("change", (e) => { mc.spill = e.target.checked; mc.page = 1; renderMyCharts(); });
   $("#mcNew").addEventListener("click", () => openForm("new"));
   $("#homeNew").addEventListener("click", () => openForm("new"));
-  $("#mcIni").addEventListener("change", (e) => { mc.letter = e.target.value; mc.page = 1; renderMyCharts(); });
-  $("#mcPosBtn").addEventListener("click", () => { mc.posOpen = !mc.posOpen; renderMyCharts(); if (mc.posOpen) $("#mcPl").focus({ preventScroll: true }); });
+  // por inicial: un botón que abre la grilla de letras (las que no tienen cartas no se pueden elegir)
+  $("#mcIniBtn").addEventListener("click", () => setIniPop($("#mcIniPop").hidden));
+  $("#mcIniPop").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-l]");
+    if (!b || b.disabled) return;
+    mc.letter = b.dataset.l; mc.page = 1;
+    setIniPop(false, true);
+    renderMyCharts();
+  });
+  $("#mcIniPop").addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); setIniPop(false, true); } });
+  document.addEventListener("pointerdown", (e) => { if (!$("#mcIniPop").hidden && !$("#mcIniBox").contains(e.target)) setIniPop(false); }, true);
+  $("#mcPosBtn").addEventListener("click", () => { mc.posOpen = !mc.posOpen; renderMyCharts(); if (mc.posOpen) $("#mcPl button")?.focus({ preventScroll: true }); });
+  $("#mcPosClear").addEventListener("click", () => { Object.assign(mc, { pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 }); $("#mcSpill").checked = false; renderMyCharts(); });
+  $("#mcActiveChips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-clear]");
+    if (!b) return;
+    if (b.dataset.clear === "pos") Object.assign(mc, { pl: "", sign: "all", house: "all" });
+    else Object.assign(mc, { a: "", asp: "hard", b: "any" });
+    mc.page = 1; renderMyCharts();
+  });
   $("#mcFClose").addEventListener("click", () => { mc.posOpen = false; renderMyCharts(); $("#mcPosBtn").focus({ preventScroll: true }); });
   $("#mcGEdit").addEventListener("click", () => { mc.gEdit = !mc.gEdit; gArm = null; renderMyCharts(); });
   $("#mcGMore").addEventListener("click", () => { const g = $("#mcGroups"); g.scrollBy({ left: g.clientWidth * 0.7, behavior: "smooth" }); });
@@ -4010,7 +4456,6 @@ const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(
     Object.assign(mc, { q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 });
     $("#mcQ").value = "";
     $("#mcSpill").checked = false;
-    for (const [sel, key] of [["#mcPl", "pl"], ["#mcSign", "sign"], ["#mcHouse", "house"], ["#mcA", "a"], ["#mcAsp", "asp"], ["#mcB", "b"]]) $(sel).value = mc[key];
     renderMyCharts();
   });
 })();
@@ -4018,8 +4463,11 @@ const plTxt = (id) => `${mark(id)} ${esc(BODY[id].name)}`;
 const signTxt = (lon) => { const s = split(lon); return `<span class="g" aria-hidden="true">${signHTML(s.sign)}</span>${SIGNS[s.sign]} ${s.deg}°${String(s.min).padStart(2, "0")}′`; };
 /** ¿La carta cumple la búsqueda por posición? Devuelve lo encontrado (para mostrarlo en la tarjeta) o null. */
 function posHits(it) {
+  // sin planeta elegido, con signo o casa: cualquier planeta. En aspectos, si solo se eligió «con planeta», es ese.
+  const PL = mc.pl || (mc.sign !== "all" || mc.house !== "all" ? "any" : "");
+  const A = mc.a || (mc.b !== "any" ? mc.b : ""), B = mc.a ? mc.b : "any";
   // sin hora: no hay Ascendente, Medio Cielo ni casas (sí signos y aspectos entre planetas)
-  if (it.notime && mc.pl && (mc.pl === "asc" || mc.pl === "mc" || mc.house !== "all")) return null;
+  if (it.notime && PL && (PL === "asc" || PL === "mc" || mc.house !== "all")) return null;
   const hits = [];
   const P = find.pos.get(it.id);
   // las casas de un planeta: la suya o, con «Entre casas», también (o solo) la que sigue si está cerca de su cúspide
@@ -4032,9 +4480,9 @@ function posHits(it) {
     if (!r) return `casa ${roman(P.house[id])}`;
     return r[1] === "pass" ? `casa ${roman(r[0])} (en cúspide, desde la ${roman(P.house[id])})` : `casas ${roman(P.house[id])} y ${roman(r[0])}`;
   };
-  if (mc.pl) {
-    const angle = mc.pl === "asc" || mc.pl === "mc";
-    const bodies = mc.pl === "any" ? TRIP_PLANETS : [mc.pl];
+  if (PL && (mc.sign !== "all" || mc.house !== "all")) {
+    const angle = PL === "asc" || PL === "mc";
+    const bodies = PL === "any" ? TRIP_PLANETS : [PL];
     const ok = bodies.filter((id) => (mc.sign === "all" || split(P.lon[id]).sign === +mc.sign)
       && (mc.house === "all" || angle || housesOf(id).includes(+mc.house)));
     if (!ok.length) return null;
@@ -4042,13 +4490,13 @@ function posHits(it) {
       for (const id of ok) hits.push(`${plTxt(id)} · ${signTxt(P.lon[id])}${P.house?.[id] && !angle ? ` · ${houseTxt(id)}` : ""}`);
     }
   }
-  if (mc.a) {
+  if (A) {
     const types = mc.asp === "hard" ? curCfg?.trips?.asp?.length ? curCfg.trips.asp : ["conjunction", "opposition", "square"] : [mc.asp];
-    const ok = (P.asp || []).filter(([a, b, t]) => types.includes(t) && (a === mc.a || b === mc.a) && (mc.b === "any" || a === mc.b || b === mc.b));
+    const ok = (P.asp || []).filter(([a, b, t]) => types.includes(t) && (a === A || b === A) && (B === "any" || a === B || b === B));
     if (!ok.length) return null;
     for (const [a, b, t, orb] of ok) {
-      const o = a === mc.a ? b : a, A = ASPECT[t];
-      hits.push(`${mark(mc.a)}<span class="a-ic ${A.cls}" aria-hidden="true">${A.icon}</span>${mark(o)} ${esc(A.name.toLowerCase())} con ${esc(BODY[o].name)} <span class="hc-orb">${fmtOrb(orb)}</span>`);
+      const o = a === A ? b : a, X = ASPECT[t];
+      hits.push(`${mark(A)}<span class="a-ic ${X.cls}" aria-hidden="true">${X.icon}</span>${mark(o)} ${esc(X.name.toLowerCase())} con ${esc(BODY[o].name)} <span class="hc-orb">${fmtOrb(orb)}</span>`);
     }
   }
   return hits;
@@ -4208,6 +4656,71 @@ function paintGroupEdit(gBox, gCount) {
   gBox.replaceChildren(...chips, ...back);
   if (!chips.length && !back.length) gBox.append(elx("span", { className: "gnone", textContent: "No hay grupos." }));
 }
+// -- los filtros por posición (Mis cartas y la Galería): filas de botones con símbolos. Tocar uno lo elige; tocar el
+// elegido lo suelta. Sin planeta y con signo o casa, vale cualquier planeta.
+function pkRow(box, items, cur, none, pick) {
+  box.style.setProperty("--n", items.length);
+  box.innerHTML = items.map(([v, html, label, off]) => `<button type="button" class="pk" data-v="${esc(v)}" aria-pressed="${v === cur}" aria-label="${esc(label)}" title="${esc(label)}"${off ? " disabled" : ""}>${html}</button>`).join("");
+  box.onclick = (e) => {
+    const b = e.target.closest("button[data-v]");
+    if (!b || b.disabled) return;
+    const v = b.dataset.v, id = box.id;
+    pick(v === cur ? none : v);
+    document.querySelector(`#${id} [data-v="${v}"]`)?.focus({ preventScroll: true });       // (la fila se vuelve a dibujar)
+  };
+}
+const pkPlanets = (extra = []) => [...TRIP_PLANETS, ...extra].map((id) => [id,
+  id === "asc" || id === "mc" ? `<span class="pk-t">${BODY[id].tag}</span>` : `<span class="g" aria-hidden="true">${glyphHTML(id)}</span>`, BODY[id].name]);
+const pkSigns = () => SIGNS.map((n, i) => [String(i), `<span class="g" aria-hidden="true">${signHTML(i)}</span>`, n]);
+const pkHouses = (off = false) => Array.from({ length: 12 }, (_, i) => [String(i + 1), roman(i + 1), `Casa ${roman(i + 1)}`, off]);
+const PK_ASP = ["square", "opposition", "conjunction"];
+const pkAsps = () => PK_ASP.map((t) => [t, `<span class="a-ic" aria-hidden="true">${ASPECT[t].icon}</span><span class="pk-al">${ASPECT[t].name}</span>`, ASPECT[t].name]);
+/** «Filtros activos»: un chip por búsqueda (posición y aspecto); f con "" para «cualquiera». Tocar uno lo saca. */
+function pkChipsHTML(f, hardWord, aspAlone = false) {
+  const out = [];
+  const g = (id) => id === "asc" || id === "mc" ? `<span class="pk-t">${BODY[id].tag}</span>` : `<span class="g" aria-hidden="true">${glyphHTML(id)}</span>`;
+  const sg = (i) => `<span class="g" aria-hidden="true">${signHTML(+i)}</span>`;
+  const x = `<svg class="pk-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>`;
+  if (f.sign !== "" || f.house) {
+    const who = f.pl ? g(f.pl) : "Cualquier planeta";
+    const txt = `${f.pl ? BODY[f.pl].name : "Cualquier planeta"}${f.sign !== "" ? ` en ${SIGNS[+f.sign]}` : ""}${f.house ? `${f.sign !== "" ? "," : " en"} casa ${roman(+f.house)}` : ""}`;
+    out.push(`<button type="button" class="pk-chip" data-clear="pos" aria-label="Quitar: ${esc(txt)}">${who}${f.sign !== "" ? ` en ${sg(f.sign)}` : ""}${f.house ? `${f.sign !== "" ? " ·" : " en"} Casa ${roman(+f.house)}` : ""}${x}</button>`);
+  } else if (f.pl) {
+    out.push(`<button type="button" class="pk-chip pk-chip-wait" data-clear="pos" aria-label="Quitar: ${esc(BODY[f.pl].name)}">${g(f.pl)} <span>elegí un signo o una casa</span>${x}</button>`);
+  }
+  const A = f.a || f.b, B = f.a ? f.b : "";
+  if (A || f.asp) {
+    const ic = f.asp ? `<span class="a-ic ${ASPECT[f.asp].cls}" aria-hidden="true">${ASPECT[f.asp].icon}</span>` : `<span class="pk-w">${hardWord}</span>`;
+    const txt = `${A ? BODY[A].name : "Un planeta"} ${f.asp ? ASPECT[f.asp].name.toLowerCase() : hardWord} ${B ? `con ${BODY[B].name}` : "con cualquiera"}`;
+    out.push(A
+      ? `<button type="button" class="pk-chip" data-clear="asp" aria-label="Quitar: ${esc(txt)}">${g(A)}${ic}${B ? g(B) : `<span class="pk-w">cualquiera</span>`}${x}</button>`
+      : aspAlone      // (la galería busca también solo por el tipo de aspecto, entre cualquier par de planetas)
+        ? `<button type="button" class="pk-chip" data-clear="asp" aria-label="Quitar: ${esc(ASPECT[f.asp].name)}">${ic} <span class="pk-w">${esc(ASPECT[f.asp].name.toLowerCase())}, cualquier par</span>${x}</button>`
+        : `<button type="button" class="pk-chip pk-chip-wait" data-clear="asp" aria-label="Quitar: ${esc(ASPECT[f.asp].name)}">${ic} <span>elegí un planeta</span>${x}</button>`);
+  }
+  return out.join("");
+}
+function paintMcPickers(angle) {
+  const set = (k) => (v) => { mc[k] = v; mc.page = 1; renderMyCharts(); };
+  pkRow($("#mcPl"), pkPlanets(["asc", "mc"]), mc.pl, "", set("pl"));
+  pkRow($("#mcSign"), pkSigns(), mc.sign, "all", set("sign"));
+  pkRow($("#mcHouse"), pkHouses(angle), mc.house, "all", set("house"));
+  pkRow($("#mcA"), pkPlanets(), mc.a, "", set("a"));
+  pkRow($("#mcAsp"), pkAsps(), mc.asp, "hard", set("asp"));
+  pkRow($("#mcB"), pkPlanets().map((x) => [...x, x[0] === mc.a]), mc.b, "any", set("b"));
+  const chips = pkChipsHTML({ pl: mc.pl, sign: mc.sign === "all" ? "" : mc.sign, house: mc.house === "all" ? "" : mc.house,
+    a: mc.a, asp: mc.asp === "hard" ? "" : mc.asp, b: mc.b === "any" ? "" : mc.b }, "aspecto duro");
+  $("#mcActiveChips").innerHTML = chips;
+  $("#mcActive").hidden = !chips;
+}
+function setIniPop(open, focusBtn = false) {
+  const p = $("#mcIniPop");
+  if (p.hidden === !open) return;
+  p.hidden = !open;
+  $("#mcIniBtn").setAttribute("aria-expanded", String(open));
+  if (open) (p.querySelector("[aria-pressed=true]:not([disabled])") || p.querySelector("button"))?.focus({ preventScroll: true });
+  else if (focusBtn) $("#mcIniBtn").focus({ preventScroll: true });
+}
 function renderMyCharts() {
   const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
   $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta guardada" : "cartas guardadas"} · orden alfabético` : "";
@@ -4217,12 +4730,10 @@ function renderMyCharts() {
   const have = new Set(items.map((it) => initialOf(it.name)));
   const letters = ["", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), ...(have.has("#") ? ["#"] : [])];
   if (mc.letter && !have.has(mc.letter)) mc.letter = "";
-  const ini = $("#mcIni");
-  ini.replaceChildren(...letters.map((l) => {
-    const o = elx("option", { value: l, textContent: l ? (l === "#" ? "Otras" : l) : "Todas", disabled: !!l && !have.has(l) });
-    return o;
-  }));
-  ini.value = mc.letter;
+  $("#mcIniCur").textContent = mc.letter ? (mc.letter === "#" ? "Otras" : mc.letter) : "Todas";
+  $("#mcIniBtn").setAttribute("aria-label", `Inicial: ${mc.letter ? (mc.letter === "#" ? "otras" : mc.letter) : "todas"}`);
+  $("#mcIniAll").setAttribute("aria-pressed", String(!mc.letter));
+  $("#mcIniGrid").innerHTML = letters.filter(Boolean).map((l) => `<button type="button" data-l="${l}" aria-pressed="${l === mc.letter}"${have.has(l) ? "" : " disabled"}${l === "#" ? ' aria-label="Otras (no empiezan con letra)"' : ""}>${l}</button>`).join("");
   $("#mcIniBox").classList.toggle("on", !!mc.letter);
   $("#mcIniBox").hidden = items.length < 2;
   // por grupo: aparece cuando alguna carta tiene grupo
@@ -4263,11 +4774,12 @@ function renderMyCharts() {
   $("#mcPosBtn").setAttribute("aria-expanded", String(!!mc.posOpen && !!items.length));
   // casa y signo no se combinan con el Ascendente y el Medio Cielo (siempre están en la I y la X)
   const angle = mc.pl === "asc" || mc.pl === "mc";
-  $("#mcHouse").disabled = angle;
-  if (angle && mc.house !== "all") { mc.house = "all"; $("#mcHouse").value = "all"; }
+  if (angle && mc.house !== "all") mc.house = "all";
+  if (mc.a && mc.b === mc.a) mc.b = "any";
   $("#mcSpill").disabled = angle || mc.house === "all";
-  const posOn = !!mc.pl && (mc.sign !== "all" || mc.house !== "all") || !!mc.a;
-  const needFull = (!!mc.pl && mc.house !== "all") || !!mc.a;
+  paintMcPickers(angle);
+  const posOn = mc.sign !== "all" || mc.house !== "all" || !!mc.a || mc.b !== "any";
+  const needFull = mc.house !== "all" || !!mc.a || mc.b !== "any";
   const ready = needFull ? fullReady : posReady;
   const missing = posOn ? items.filter((it) => !ready(it)) : [];
   const failed = missing.filter((it) => find.errs.has(it.id));
@@ -4276,9 +4788,9 @@ function renderMyCharts() {
   calc.hidden = !posOn || find.running || !missing.length;
   calc.textContent = failed.length ? "Reintentar" : `Calcular posiciones (${missing.length} ${missing.length === 1 ? "carta" : "cartas"})`;
   $("#mcProg").textContent = find.running ? `Calculando posiciones: ${find.done} de ${find.total}` : "";
-  $("#mcNote").textContent = "Las posiciones y los aspectos usan los orbes de Configuración; «cualquier aspecto duro» son los de los viajes de planetas." +
+  $("#mcNote").textContent = "Las posiciones y los aspectos usan los orbes de Configuración; sin aspecto elegido, valen los aspectos duros de los viajes de planetas." +
     (isPublic() ? " Cada carta se calcula una vez: los datos de nacimiento se envían al servidor solo para eso; las posiciones quedan en este navegador." : "");
-  const anyFilter = !!(mc.q.trim() || mc.letter || mc.group || mc.pl || mc.a);
+  const anyFilter = !!(mc.q.trim() || mc.letter || mc.group || mc.pl || posOn || mc.asp !== "hard");
   $("#mcFiltersSum").textContent = posOn ? "Búsqueda activa" : "";
   $("#mcFilters").classList.toggle("on", posOn);
   $("#mcPosBtn").classList.toggle("on", posOn);

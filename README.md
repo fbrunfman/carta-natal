@@ -117,7 +117,7 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   - **Mis cartas** (`#cartas`): **todas las cartas, en orden alfabético, de a 24 por página** (‹ 1 2 … 9 ›), en **3
     columnas en la compu, 2 en el iPad y 1 en el celular**. Arriba, el título («37 cartas guardadas · orden alfabético»)
     y «+ Nueva carta»; debajo, **un panel con los filtros**: buscar, los grupos (una fila que se desliza, con la flecha ›
-    si hay más) y «Editar»; abajo, «Inicial» (un desplegable) y **«Posiciones»**, que abre la búsqueda por posición en un
+    si hay más) y «Editar»; abajo, «Inicial» (abre una grilla de letras) y **«Posiciones»**, que abre la búsqueda por posición en un
     cuadro aparte (dos columnas: *planeta en signo / casa* y *planeta en aspecto duro*; un punto en el botón avisa que hay
     una búsqueda activa). «Limpiar filtros» va al lado de la cuenta. **Las tarjetas** (las mismas en el inicio) llevan una
     rayita del color de su primer grupo (cada grupo tiene su color: los de fábrica fijos, los propios en orden
@@ -127,8 +127,12 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
     - **por grupo**: una fila con los grupos (con cuántas cartas tiene cada uno) y «Sin grupo»; aparece cuando alguna
       carta tiene grupo. Al final, **«Editar»** para quitar grupos. Ver «Grupos», abajo;
-    - **por inicial**: el desplegable «Inicial» (las letras sin cartas no se pueden elegir; «Ágata» va en la A);
-    - **por posición**: *planeta en signo / casa* (un planeta —o «cualquier planeta», el Ascendente o el Medio Cielo— en un
+    - **por inicial**: «Inicial: Todas» abre una grilla con las letras (las que no tienen cartas no se pueden elegir;
+      «Ágata» va en la A) y «Todas las letras» para volver;
+    - **por posición**, con **filas de botones con símbolos** (planetas, Asc y MC; los 12 signos; las casas I–XII;
+      Cuadratura / Oposición / Conjunción; tocar uno lo elige y tocar el elegido lo suelta) y abajo **«Filtros activos»**:
+      un chip por búsqueda (la × lo saca) y «Limpiar filtros». Sin planeta elegido, el signo o la casa valen para
+      cualquier planeta; sin aspecto elegido, valen los aspectos duros de los viajes. *Planeta en signo / casa* (un planeta —o cualquiera, el Ascendente o el Medio Cielo— en un
       signo, en una casa o en los dos; el Ascendente y el Medio Cielo solo con signo; con **«con Entre casas»** la casa se
       cuenta con la lógica del botón «Entre casas»: un planeta cerca de la cúspide de la casa que sigue cuenta también en
       ella, o solo en ella si está en cúspide, con los orbes de *Reglas avanzadas*, y la tarjeta lo dice: «casas X y XI» o
@@ -157,8 +161,9 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     son las de la zona horaria del navegador.
   - **Carta**: todo lo de abajo (natal, tránsitos, sinastría), como siempre. Si no hay ninguna carta abierta y hay
     guardadas, abre la primera. **Cambiar de carta**: la lupa
-    al lado del nombre abre la lista de las cartas guardadas (con su fecha y la abierta marcada) y un buscador (sin
-    importar mayúsculas ni tildes; Enter abre la primera, flechas para moverse, Esc cierra), más «Nueva carta». En
+    al lado del nombre abre la lista de las cartas guardadas (con su fecha y la abierta marcada) y un buscador **por nombre
+    o por etiqueta** («music» encuentra las del grupo Músico, con la etiqueta al lado; varias palabras se combinan: «music
+    bowie»), sin importar mayúsculas ni tildes; Enter abre la primera, flechas para moverse, Esc cierra), más «Nueva carta». En
     tránsitos o sinastría se queda en esa vista con la carta elegida. La lupa no agranda el renglón del título: la rueda
     mide lo mismo. Test: `e2e_cambiar`. **La rueda y su leyenda entran en la
     pantalla**: el encabezado es compacto (la equivalencia de la hora va como una línea gris más, sin recuadro) y la rueda
@@ -314,6 +319,24 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     versión anterior (una por cosa) pasan solas a la lista; una figura de tres queda como nota con sus tres aspectos. Hasta
     150 notas por carta, 24 vínculos por nota y 5000 caracteres. Solo carta natal y solo cartas guardadas. Lógica en
     `static/notes.js` (sin DOM). Tests: `test_notes.mjs`, `test_store_notes.py`, `e2e_notas`.
+- **Imágenes propias de cada carta** (solo en la **versión local**, la de la Mac): en **Notas**, **«+ Imagen»** elige un
+  archivo (JPG, PNG, WebP…); la app lo achica a 2000 px (WebP) y arma una miniatura antes de guardarlo. Cada imagen tiene
+  **título**, **comentario** y **vínculos**, igual que las notas (planeta en su casa y signo, casa, Asc, MC, aspecto; el
+  texto propone vínculos y «+ Vincular» los suma a mano), con la foto de cómo estaba la carta al vincular.
+  - En la carta: una **tira de miniaturas** arriba de las notas (con el mismo filtro; con el mouse, pasar por una ilumina
+    en la rueda lo que vincula), el **puntito** en la rueda, y al tocar un planeta, casa o aspecto que tiene imágenes
+    aparecen sus miniaturas (también en la ficha del planeta), con «+ Imagen sobre…». Tocar una la abre **grande**, con
+    su comentario, sus vínculos y «Editar» (ahí también se borra).
+  - **Galería** (en el menú de secciones, al lado de Mis cartas): las imágenes de **todas las cartas**, con buscador por
+    título/comentario, por carta y **por posición** (las mismas filas de símbolos y «Filtros activos» que Mis cartas; en el
+    celular se despliega con «Posiciones»): planeta en signo/casa (un planeta encuentra también sus aspectos) y
+    aspecto (planeta, tipo —o «conjunción, oposición o cuadratura»— y con qué planeta). Busca por la foto de cada vínculo,
+    sin recalcular las cartas. Tocar una la abre; «Abrir la carta» va a esa carta con la imagen abierta.
+  - Se guardan en la carpeta de datos, al lado de `cartas.json`: `imagenes/` (cada imagen y su miniatura) e
+    `imagenes.json` (el índice). **No se sincronizan** ni van en «Exportar cartas»: para respaldarlas, copiar esa carpeta.
+    Borrar una carta desde la app borra sus imágenes; si una carta se borra desde otro dispositivo (sincronización), sus
+    imágenes quedan en la Galería como «Carta borrada», para borrarlas a mano. En la versión pública no existe nada de esto
+    (`images.py`, `/api/images`; test `images_test`).
 - **Símbolo del aspecto sobre cada raya**: en el punto medio de cada línea de la rueda va el **símbolo del aspecto**
   (trígono △, cuadratura □, sextil ✱, semicuadratura ∠, sesquicuadratura, quincuncio, oposición) sobre un fondo del color del
   panel, para que se lea encima de las rayas. Siguen la paleta de la app: **rojo** los tensos (oposición, cuadratura,
@@ -422,8 +445,9 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   Ascendente queda marcado en su cuadrante si es un planeta personal; con la regencia moderna, Escorpio,
   Acuario y Piscis tienen regentes transpersonales (Plutón, Urano, Neptuno) y no se marca ninguno. Ya no hay
   opción de «regente tradicional» en esta pestaña (las profecciones siguen usando los regentes tradicionales).
-- **Estilo «Pergamino»** (Configuración → Apariencia → «Estilo de la app: Moderno / Pergamino»; viaja con la
-  sincronización): papel con textura, títulos y nombres en EB Garamond, botones en azul tinta con filete dorado. **No tiene
+- **Estilo «Pergamino»** — **el de fábrica** (Configuración → Apariencia → «Estilo de la app: Pergamino / Moderno»;
+  viaja con la sincronización; de fábrica también el cielo Ilustrado, la letra «Pluma» en las notas y la rueda sin el
+  anillo de las cúspides —«Restablecer» lo deja prendido con el estilo moderno y apagado con el pergamino—): papel con textura, títulos y nombres en EB Garamond, botones en azul tinta con filete dorado. **No tiene
   modo oscuro**: mientras está elegido la app va siempre clara (settings.js pone `data-theme="light"` sin tocar el tema
   guardado, que vuelve al pasar a «Moderno») y se esconden el botón de la luna y la opción «Tema». En la **carta**: en
   pantallas anchas la barra va en dos filas (el nombre y una constelación arriba; Natal / Tránsitos / Sinastría y los
@@ -432,8 +456,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
   adornos en las esquinas, la banda de los signos en **acuarela** (el filtro `#wcTex` que pone wheel.js), todo en Garamond
   y el cuadro de aspectos con grilla y el orbe como «6°49′» (aplicativo o separativo al pasar el cursor). Al elegirlo se
   apaga el anillo de las cúspides (los grados quedan afuera de la rueda, como en el diseño), el cielo de hoy pasa a
-  **Ilustrado** y las notas a la letra **«Pluma (antigua)»** (IM Fell English Italic, en `static/fonts`); todo se puede
-  volver a cambiar. La barra de la carta va en **una fila**, como en el estilo moderno (sin la constelación). En vez del
+  **Ilustrado** y las notas a la letra **«Pluma (antigua)»** (IM Fell English Italic, en `static/fonts`); al volver a
+  **Moderno**, el cielo de hoy pasa a **Simple**. Todo se puede volver a cambiar. La barra de la carta va en **una fila**, como en el estilo moderno (sin la constelación). En vez del
   lápiz, **una pluma** para editar (el SVG lleva los dos, `.ic-pencil` y `.ic-quill`). Las tarjetas y los cuadros llevan
   **ribetes**: doble filete dorado, rulos en las esquinas y un adorno arriba al medio. El **calendario lunar** (y todas
   las lunas que dibuja `moonIcon`) usa la Luna pintada con la sombra de la fase (`setMoonArt` en moon.js).
@@ -675,6 +699,8 @@ coordenadas) es la misma aunque traiga **otro nombre**: no se duplica, y se le *
 aviso dice cuántas cartas nuevas entraron, cuántas ya estaban y a cuántas se les sumaron notas. Es el mismo archivo de la
 versión pública, así que sirve para pasar cartas de una a la otra.
 Si el archivo se corrompe, la app lo aparta con otro nombre y empieza uno vacío en vez de pisarlo.
+Las **imágenes propias** (versión local) viven en la misma carpeta (`imagenes/` e `imagenes.json`) y no entran en la
+exportación: se respaldan copiando la carpeta.
 (En la versión pública es distinto: ver «Alojarla en internet».)
 
 ## Sincronizar entre dispositivos (opcional)
@@ -789,6 +815,7 @@ astro.py          motor: zona horaria → UTC, posiciones, casas, aspectos, trá
                   tránsitos destacados y próximos eventos (ingresos, estaciones, casas), y la Luna (signo, fase,
                   cambios de signo y fases principales del mes) y dónde están el Sol y los planetas ahora (el mapa del inicio)
 store.py          cartas guardadas: archivo JSON, validación, escritura atómica
+images.py         imágenes propias de cada carta (solo local): archivos e índice en la carpeta de datos
 sync.py           sincronizar entre dispositivos (opcional): Postgres/Neon, lo cifrado de cada dispositivo
 places.py         el buscador de «Lugar»: le pregunta a Open-Meteo (con abreviaturas, apodos, filtro y orden propios)
 sincronizar.command  conecta la app de la compu con la base de Neon (guarda la conexión e instala psycopg)
@@ -821,6 +848,7 @@ static/           interfaz
   fontpick.js                       el selector de letras con vista previa (cada opción con su letra)
   fonts/                            letras incluidas (OFL): Inter, Source Sans, Nunito, Atkinson, IBM Plex Sans, Lora, Source Serif, EB Garamond; Kalam, Patrick Hand, Mali, Shantell Sans; Plutón (⯓)
   notes.js                          notas de la carta: vínculos, leer el texto, qué cambió (sin DOM: se prueba con node)
+  images.js                         imágenes propias: achicarlas antes de guardar y el buscador de la Galería
   local-charts.js                   cartas guardadas en el navegador (versión pública), exportar e importar
                                     (en la versión local lo hace el servidor: POST /api/charts/import)
   defaults-local.js                 tu carta de arranque en la versión local (si lo borrás, el formulario arranca vacío)
