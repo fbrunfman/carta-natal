@@ -557,7 +557,9 @@ function paintFind() {
 
 // -- celular: el nombre en su renglón. Si no entra, primero se achica un poco y después se corta con «…»; la lupa y el
 // ícono de info van al lado o, si el nombre ocupa todo el ancho, arriba (style.css). Los datos de nacimiento, detrás de la info.
-const phoneBar = () => document.documentElement.hasAttribute("data-mbar") && matchMedia("(max-width: 640px)").matches;
+// el celular, y el iPad parado (se ve como el celular: la barra de abajo y el botón flotante); igual que en style.css
+const PHONE_MQ = "(max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px)";
+const phoneBar = () => document.documentElement.hasAttribute("data-mbar") && matchMedia(PHONE_MQ).matches;
 function fitTitle() {
   const t = $("#title");
   t.style.fontSize = "";
@@ -1223,7 +1225,7 @@ function setTripPop(on, focusBtn = false) {
 function placeTripPop() {
   const pop = $("#tripPick"), btn = $("#tripMore");
   pop.style.left = pop.style.top = "";
-  if (matchMedia("(max-width: 640px)").matches) return;           // en el celular, la hoja de abajo la ubica la CSS
+  if (matchMedia(PHONE_MQ).matches) return;           // en el celular, la hoja de abajo la ubica la CSS
   const par = pop.offsetParent?.getBoundingClientRect() || { left: 0 };     // que no se salga de la ventana (con la barra de arriba, puede pasar a la izquierda de los botones)
   const min = 8 - par.left, max = document.documentElement.clientWidth - 8 - par.left - pop.offsetWidth;
   pop.style.left = `${Math.round(Math.max(min, Math.min(btn.offsetLeft + btn.offsetWidth - pop.offsetWidth, max)))}px`;

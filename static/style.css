@@ -836,7 +836,7 @@ input[type="range"] { display: block; width: 100%; margin: 4px 0 0; accent-color
 .cinfo .cinfo-utc { margin-top: 6px; font-size: calc(13.5px * var(--fs)); color: var(--ink-2); }
 .cinfo #edit { margin-top: 12px; }
 .cinfo #edit[hidden] { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   /* el nombre y, al lado, la lupa y la info; si el nombre no entra con ellos, ellos pasan arriba (wrap-reverse) y el nombre
      usa todo el ancho: se achica un poco (app.js::fitTitle) y si igual no entra, termina en «…» */
   :root[data-mbar] #chartPage > .head h2 { display: flex; flex-wrap: wrap-reverse; align-items: center; column-gap: 12px; row-gap: 8px; }
@@ -939,7 +939,7 @@ tr:hover .nbtn, .nbtn:focus-visible { opacity: 1; }
 .npal button { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font-size: calc(13px * var(--fs)); cursor: pointer; }
 .npal button:hover, .npal button:focus-visible { border-color: var(--ink-2); }
 .npal button .g svg, .npal button .a-ic svg { width: 17px; height: 17px; }
-@media (max-width: 640px) { .npal-row > span { width: 100%; } .npal button { min-width: 34px; height: 34px; } }
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) { .npal-row > span { width: 100%; } .npal button { min-width: 34px; height: 34px; } }
 /* vínculos: chips */
 .nrefs { display: flex; flex-direction: column; gap: 6px; }
 .nref-lab { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 0; font: 600 calc(11.5px * var(--fs))/1.2 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
@@ -970,7 +970,7 @@ button.nchip:hover { background: var(--hover); }
 .nlink .nmenu { position: static; width: auto; margin-top: 6px; max-height: 260px; box-shadow: none; }
 .nlink-btn { padding: 0; border: 0; background: none; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .nlink-btn:hover { color: var(--ink); }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .noted { width: calc(100vw - 16px); padding: 12px; border-radius: 14px; }
   .noted textarea { min-height: 96px; }
 }
@@ -1012,7 +1012,7 @@ button.nchip:hover { background: var(--hover); }
 .nview-foot { flex: none; display: flex; align-items: flex-end; gap: 12px; padding: 12px 18px 16px 26px; border-top: 1px solid var(--line); }
 .nview-foot .nchips { flex: 1 1 auto; }
 .nview-foot .nadd { margin-left: auto; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .nview-body { padding: 14px 16px 6px; }
   .nview-text { font-size: calc(19px * var(--fs)); }
   .nview-foot { padding: 10px 12px 12px 16px; flex-wrap: wrap; }
@@ -1033,7 +1033,7 @@ button.nchip:hover { background: var(--hover); }
 .npop-new:hover { background: var(--hover); }
 /* celular: la nota iluminada en la rueda */
 .nlit { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .nlit:not([hidden]) {
     position: fixed; z-index: 43; left: 8px; right: 8px; bottom: calc(74px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 12px;
     border: 1px solid var(--note); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); font-size: calc(13.5px * var(--fs));
@@ -1085,12 +1085,12 @@ button.nchip:hover { background: var(--hover); }
 /* ---------- celular: barra de abajo (Carta · Tablas · Tránsitos · Sinastría), encabezado compacto y pestañas pegadas ---------- */
 .mbar, .fab, .tpill { display: none; }
 .tsheet-head { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   :root[data-mbar] .tsheet-head { display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: calc(14px * var(--fs)); }
   .tsheet-x { padding: 4px; }
   .tsheet-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   :root[data-mbar] .mbar {
     display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
     padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
@@ -1330,7 +1330,7 @@ button.nchip:hover { background: var(--hover); }
 .mc-pages button:disabled { opacity: .35; cursor: default; }
 .mc-pages button[aria-current="page"] { opacity: 1; background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); font-weight: 700; }
 .mc-gap { padding: 0 4px; color: var(--ink-2); }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .mc-flab { flex-basis: 100%; }
   .mc-frow select { flex: 1 1 8em; min-width: 0; }
   .mc-w { display: none; }
@@ -1359,7 +1359,7 @@ button.nchip:hover { background: var(--hover); }
 .hc-new { align-items: center; justify-content: center; flex-direction: row; gap: 8px; min-height: 84px; border-style: dashed; background: none; color: var(--ink-2); font-weight: 600; font-size: calc(14.5px * var(--fs)); }
 .hc-new:hover { color: var(--ink); background: var(--hover); }
 .hc-new svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .hc-cards { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .hc-card { padding: 11px 14px 12px; }
   .hc-nm { font-size: calc(17px * var(--fs)); }
@@ -1704,7 +1704,7 @@ button.nchip:hover { background: var(--hover); }
 .md-sgl .g { font-family: var(--glyph); font-size: 1.05em; }
 .mcal td.today { background: var(--hover); box-shadow: inset 0 0 0 2px var(--focus); }
 .mcal td.has-phase .md-ic .mo-ring { stroke: var(--ink); stroke-width: 3; opacity: .9; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .mcal td.mday { height: 84px; padding: 3px; }
   .md-n { right: 4px; top: 4px; }
   .md-ph { display: none; }
@@ -1815,8 +1815,8 @@ button.nchip:hover { background: var(--hover); }
   :root[data-tbmerge] .modeacts .nb-count, :root[data-tbmerge] .modeacts .tp-count { font-size: calc(11.5px * var(--fs)); }
 }
 
-/* celular: la barra es solo el botón de las secciones (el ícono) y el de la configuración; se va con el scroll */
-@media (max-width: 640px) {
+/* celular (y el iPad parado: se ve como el celular): la barra es solo el botón de las secciones (el ícono) y el de la configuración; se va con el scroll */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .topbar { position: absolute; height: 56px; padding: 0 12px; background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
   .topbar > * { pointer-events: auto; }
   .tb-brand, #tbFind, #theme { display: none; }
@@ -1886,7 +1886,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 }
 .cfg-reset:hover:not(:disabled) { color: var(--ink); }
 .cfg-reset:disabled { opacity: .45; cursor: default; text-decoration: none; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .cfgp { width: 100vw; border-left: 0; }
   .cfgg-b { padding-left: 8px; }
 }
@@ -1963,7 +1963,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .mc-filters > summary svg { align-self: center; margin-left: auto; width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
 .mc-filters[open] > summary svg { transform: rotate(180deg); }
 .mc-fb { padding: 2px 16px 14px; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .tb-logo { width: 36px; height: 40px; }
   .tb-logo svg { width: 30px; height: 30px; }
 }
@@ -2023,7 +2023,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .notesdlg .pdl-head { padding-top: calc(16px + env(safe-area-inset-top)); }
 .notesdlg .pdl-body { flex: 1 1 auto; padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 .notesdlg #panel-notas .nlist { margin-top: 10px; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .notesdlg { width: 100vw; border-left: 0; box-shadow: none; }
 }
 /* compu: el drawer va al costado, debajo de la barra y en el lugar de las tablas, sin oscurecer nada: la rueda queda a la
@@ -2193,7 +2193,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .tpop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink); font-size: calc(14px * var(--fs)); }
 .tpop-x { padding: 4px; }
 .tpop-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .tpop { position: fixed; z-index: 43; left: 8px; right: 8px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom)); max-height: 62vh; overflow-y: auto; overscroll-behavior: contain; border-radius: 16px; }
   :root[data-mbar] .tpop { bottom: calc(74px + env(safe-area-inset-bottom)); }
   :root[data-mbar][data-mode="natal"][data-mview="tablas"] #tripMore { display: none; }
@@ -2313,7 +2313,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 /* ---------- inicio sin cartas (con sincronización): dos caminos ---------- */
 .hw-lead { margin: 0 0 12px; color: var(--ink-2); font-size: calc(14.5px * var(--fs)); }
 .hw-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; }
-@media (max-width: 640px) { .hw-paths { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) { .hw-paths { grid-template-columns: minmax(0, 1fr); } }
 .hw-opt {
   display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 4px 12px; padding: 16px 18px; text-align: left;
   border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); cursor: pointer;
@@ -2381,7 +2381,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .hd-dot { fill: var(--ink-2); opacity: .6; }
 .head-new { flex: none; height: 46px; padding: 0 22px; font-size: calc(15.5px * var(--fs)); }
 .head-new svg { width: 18px; height: 18px; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .head.head-x { align-items: flex-start; }
   .head-t { flex: 1 1 auto; }
   .head-deco { display: none; }
@@ -2777,7 +2777,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 :root[data-look="parch"] .stage .wheel-fig > #wheel { position: relative; z-index: 1; }
 :root[data-look="parch"] .stage .wheel-fig { padding: 18px 18px 14px; margin: 0; }
 :root[data-look="parch"] .stage .data { padding: 18px 24px 22px; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   :root[data-look="parch"] .stage .wheel-fig { padding: 10px 8px 10px; }
   :root[data-look="parch"] .stage .data { padding: 12px 12px 16px; }
 }
@@ -2916,7 +2916,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .ied-del { padding: 2px 0; border: 0; background: none; color: var(--hard); font-size: calc(12.5px * var(--fs)); text-decoration: underline; text-underline-offset: 2px; }
 .ied-del[hidden] { display: none; }
 .ied-del[data-arm="1"] { font-weight: 700; }
-@media (max-width: 640px) {
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .ied-body { grid-template-columns: 1fr; padding: 12px 14px 8px; }
   .ied-fig img { max-height: 34vh; }
   .iview-body { padding: 12px 12px 6px; }
@@ -2938,7 +2938,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .gal-refs { margin-top: 5px; }
 .gal-refs .nchip { font-size: calc(12px * var(--fs)); }
 .gal-empty { grid-column: 1 / -1; padding: 22px 4px; max-width: 60ch; }
-@media (max-width: 640px) { .gal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .gal-cap { padding: 8px 9px 10px; } }
+@media (max-width: 640px), (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) { .gal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .gal-cap { padding: 8px 9px 10px; } }
 .mc-panel.gal-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .gal-panel .mc-q { flex: 1 1 260px; max-width: 420px; }
 .gal-panel .gal-chart { flex: 0 1 320px; min-width: 200px; }
@@ -3131,6 +3131,10 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 /* — contraste: los textos secundarios del pergamino, un poco más oscuros — */
 :root[data-look="parch"] { --ink-2: #57452C; }
 }
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 640px), screen and (hover: none) and (pointer: coarse) and (orientation: portrait) and (max-width: 1100px) {
   .wheel-fig .legend { border-radius: 14px; }
+}
+/* el iPad parado se ve como el celular: las tablas usan todo el ancho (en la tablet de antes iban en 560 px, centradas) */
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) and (min-width: 641px) and (max-width: 1100px) {
+  :root[data-mbar] .stage .data { max-width: none; }
 }

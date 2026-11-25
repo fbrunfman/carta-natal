@@ -189,7 +189,8 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     **Los símbolos de la rueda son ≈ 15 % más grandes** (los círculos de los planetas 27,5 en vez de 24, los signos de la
     pila y del anillo, y los grados, minutos, «R», números de casa y Asc/MC); la pila se reacomodó entre el zodíaco y el
     círculo de las casas y los planetas juntos se separan 7° en vez de 6,2° (`layout.js::SEP`).
-    **En el celular (hasta 640 px de ancho)**, con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
+    **En el celular (hasta 640 px de ancho) y en el iPad parado** (pantalla táctil vertical de hasta 1100 px: se ve igual que
+    el celular, con las tablas a todo el ancho; `PHONE_MQ` en app.js y la misma consulta en style.css), con una carta abierta, abajo hay una **barra fija: Carta · Tablas ·
     Tránsitos · Sinastría** que reemplaza al selector Natal / Tránsitos / Sinastría de arriba. «Carta» es la rueda natal
     sola (con el encabezado más chico entra entera en la primera pantalla); «Tablas», las tablas de la carta natal solas;
     «Tránsitos» y «Sinastría», sus vistas de siempre (rueda doble y tablas). Arriba, el nombre con la lupa y un **ícono de info** al lado: los
