@@ -164,6 +164,8 @@
           </div>
           <button type="button" class="mc-posbtn" id="mcPosBtn" aria-expanded="false" aria-controls="mcFilters"><svg class="mc-posic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Posiciones</span><span class="mc-posdot" id="mcPosDot" hidden></span><svg class="mc-poschev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
           <button type="button" class="home-tr-all mc-clear" id="mcClear" hidden>Limpiar filtros</button>
+          <p class="mc-stat" id="mcStat" role="status" aria-live="polite"></p>
+          <label class="mc-order"><span>Orden:</span><select id="mcOrder" aria-label="Orden de las cartas"><option value="az">A–Z</option><option value="birth">Nacimiento</option><option value="recent">Recientes</option></select></label>
         </div>
       </div>
       <section class="mc-filters" id="mcFilters" aria-labelledby="mcFiltersTitle" hidden>
@@ -196,7 +198,7 @@
       </section>
       <div class="mc-countrow"><p class="mc-count" id="mcCount" role="status" aria-live="polite"></p></div>
       <div class="hc-cards mc-list" id="mcList"></div>
-      <nav class="mc-pages" id="mcPages" aria-label="Páginas"></nav>
+      <div class="mc-pagebar" id="mcPageBar" hidden><p class="mc-pageinfo" id="mcPageInfo"></p><nav class="mc-pages" id="mcPages" aria-label="Páginas"></nav></div>
     </section>
 
     <!-- Galería: las imágenes propias de todas las cartas (solo en la versión local), con un buscador por posición -->
@@ -286,10 +288,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.6"/><path d="M12 9.2V12l1.8 1.2"/><path d="M4.2 9.5 2.5 12l1.7 2.5M19.8 9.5l1.7 2.5-1.7 2.5"/></svg>Mover la hora
         </button>
         <button type="button" id="notesBtn" class="secondary compact with-ic" aria-pressed="false" aria-controls="panel-notas" hidden title="Las notas de la carta">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg>Notas<span class="nb-count" id="notesCount" hidden></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4V19.5H5Z"/><path d="M15 4.5v4h4"/><path d="M8.5 12.5h7M8.5 16h5"/></svg><span class="mb-t">Notas</span><span class="nb-count" id="notesCount" hidden></span>
         </button>
         <button type="button" id="printBtn" class="secondary compact with-ic" hidden title="Imprimir la carta o guardarla como PDF" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg>Imprimir
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4.5h10V9"/><path d="M7 17.5H5.5a1.5 1.5 0 0 1-1.5-1.5v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5H17"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg><span class="mb-t">Imprimir</span>
         </button>
       </div>
       <!-- el filtro de los viajes: no ocupa lugar arriba de la rueda; se abre con la flechita de «Viajes» (en el celular, desde abajo) -->

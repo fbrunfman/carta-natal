@@ -119,10 +119,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     y «+ Nueva carta»; debajo, **un panel con los filtros**: buscar, los grupos (una fila que se desliza, con la flecha ›
     si hay más) y «Editar»; abajo, «Inicial» (abre una grilla de letras) y **«Posiciones»**, que abre la búsqueda por posición en un
     cuadro aparte (dos columnas: *planeta en signo / casa* y *planeta en aspecto duro*; un punto en el botón avisa que hay
-    una búsqueda activa). «Limpiar filtros» va al lado de la cuenta. **Las tarjetas** (las mismas en el inicio) llevan una
+    una búsqueda activa) y «Limpiar filtros»; a la derecha, **«40 guardadas · 30 resultados»** y **«Orden»** (A–Z, por fecha
+    de nacimiento o las abiertas más recientes; se recuerda en ese navegador). Abajo de la lista, **«Página 1 de 2 · mostrando
+    1–24 de 40 cartas»** al lado de los números de página; la línea de la cuenta queda solo para avisos (ninguna cumple,
+    faltan calcular). **Las tarjetas** (las mismas en el inicio) llevan una
     rayita del color de su primer grupo (cada grupo tiene su color: los de fábrica fijos, los propios en orden
-    alfabético; el filtro muestra el mismo color en un puntito), los grupos, **☉ ♓ Piscis · ☾ ♋ Cáncer · Asc ♍ Virgo**
-    (en la versión local se calculan solas), el lápiz para **editar** y **«⋮»** con **«Fijar en el inicio»** (o
+    alfabético; el filtro muestra el mismo color en un puntito), **el grupo como antetítulo** («MÚSICO», en su color)
+    arriba del nombre, la fecha, y debajo de una raya **☉ ♓ Piscis · ☾ ♋ Cáncer · Asc ♍ Virgo**
+    (en la versión local se calculan solas); en pergamino, solo las esquinas chicas (el adorno de arriba queda para los
+    cuadros grandes). El lápiz para **editar** y **«⋮»** (más grandes, con fondo) con **«Fijar en el inicio»** (o
     «Quitar del inicio»; las fijadas muestran el marcador) y **«Eliminar»** (dos toques). Se buscan:
     - **por nombre** (sin importar mayúsculas ni tildes: «agata» encuentra «Ágata»);
     - **por grupo**: una fila con los grupos (con cuántas cartas tiene cada uno) y «Sin grupo»; aparece cuando alguna
@@ -171,11 +176,15 @@ de Terminal. Esta forma no cierra el servidor sola (eso lo hace `Carta natal.app
     bajar de 440 px (`app.js::fitWheel` → `--wheel-room`; con el mandala agrandado en Configuración manda ese tamaño). **Las
     pestañas de las tablas van siempre en una fila**: si no entran (celular, letra grande) se deslizan de costado, el borde
     que corta se esfuma y la elegida queda a la vista. **En escritorio la rueda crece**: el encabezado va en la barra de
-    arriba (ver «La barra de arriba») y, si la leyenda entra en una columna en
-    el rincón de abajo a la izquierda sin tocar la rueda (la rueda es redonda: su esquina queda vacía; se mide con la
-    rueda del tamaño que tendría), pasa ahí y la rueda usa también ese alto
-    (en una pantalla de 1904 × 1015 pasa de unos 670 a 880 px). El tope de la rueda es 1100 px (antes 920).
-    El panel de la derecha queda del mismo ancho. `fitWheel` pone `data-headrow` y `data-legend-side` en `<html>`.
+    arriba (ver «La barra de arriba»); la leyenda va en **una banda justo debajo de la rueda** (antes, si entraba, iba al
+    rincón de abajo a la izquierda). El tope de la rueda es 1100 px. `fitWheel` pone `data-headrow` en `<html>`. Sin el
+    anillo de las cúspides, **la línea de cada casa sigue un poco por fuera del zodíaco** hasta su grado (`.cusp-x`), así se
+    ve que ese grado es el de la cúspide; el **MC y el IC** van siempre con el grado del lado de la rueda y el rótulo más
+    afuera, separados del mandala. **El cuadro de aspectos** resalta, al pasar el cursor por una celda, su fila, su columna y
+    los dos planetas de la diagonal; los símbolos y los orbes crecen con el ancho. Arriba, **tres niveles**: Natal /
+    Tránsitos / Sinastría más grandes; Entre casas, Viajes y Mover la hora como botones secundarios (en pergamino, sin
+    relleno); Notas e Imprimir solo con ícono, separados por una rayita (Notas con su numerito). En pergamino, la pestaña
+    elegida lleva un fondo suave en vez de la raya, con más aire cuando la columna es ancha.
     Test: `e2e_escritorio`.
     **Los símbolos de la rueda son ≈ 15 % más grandes** (los círculos de los planetas 27,5 en vez de 24, los signos de la
     pila y del anillo, y los grados, minutos, «R», números de casa y Asc/MC); la pila se reacomodó entre el zodíaco y el

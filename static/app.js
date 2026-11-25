@@ -1281,22 +1281,10 @@ function fitWheel() {
   root.toggleAttribute("data-headrow", deskWide.matches && $("#chartPage").clientWidth >= 1080);
   paintMerge();
   const top = svg.getBoundingClientRect().top + scrollY;
-  const free = innerHeight - top - 16, colW = fig.clientWidth;
-  // ¿la leyenda entra en el rincón de abajo a la izquierda sin tocar la rueda? La rueda es redonda: su esquina queda vacía.
-  // Se mide con la leyenda ya en columna y la rueda del tamaño que tendría (sin la leyenda abajo), centrada en su lugar.
-  let side = false;
-  if (legend && deskWide.matches && !root.hasAttribute("data-big")) {
-    root.setAttribute("data-legend-side", "");
-    const scale = Math.min(1, parseFloat(getComputedStyle(root).getPropertyValue("--wheel")) || 1);
-    const D = Math.min(colW * scale, 1100, Math.max(440, free)), r = D / 2 + 6;
-    const sTop = svg.getBoundingClientRect().top - fig.getBoundingClientRect().top;
-    const cx = colW / 2, cy = sTop + D / 2;
-    const x1 = legend.offsetWidth, y1 = sTop + D, y0 = y1 - legend.offsetHeight;
-    const nx = Math.min(Math.max(cx, 0), x1), ny = Math.min(Math.max(cy, y0), y1);
-    side = Math.hypot(nx - cx, ny - cy) >= r && y0 > sTop;
-  }
-  root.toggleAttribute("data-legend-side", side);
-  const room = Math.max(440, Math.floor(side || !legend ? free : free - legend.offsetHeight - 8));
+  const free = innerHeight - top - 16;
+  // la leyenda va siempre en una banda justo debajo de la rueda (antes, si entraba, iba al rincón de abajo a la izquierda)
+  root.removeAttribute("data-legend-side");
+  const room = Math.max(440, Math.floor(!legend ? free : free - legend.offsetHeight - 8));
   if (room !== fitWheel.room) { fitWheel.room = room; root.style.setProperty("--wheel-room", `${room}px`); }
 }
 /**
@@ -3270,6 +3258,22 @@ for (const sel of ["#aspTable", "#gridTable", "#stairTable"]) {
   });
 }
 
+// el cuadro de aspectos: al pasar por una celda se resaltan su fila y su columna, y los dos planetas de la diagonal
+function stairCross(cell) {
+  const t = $("#stairTable");
+  t.querySelectorAll(".sx, .s-on, .sd-on").forEach((x) => x.classList.remove("sx", "s-on", "sd-on"));
+  if (!cell) return;
+  const rows = [...t.querySelectorAll(".srow")];
+  const r = rows.indexOf(cell.parentElement), c = [...cell.parentElement.children].indexOf(cell);
+  if (r < 0 || c < 0) return;
+  [...rows[r].children].forEach((x, i) => { if (i <= r) x.classList.add(i === r ? "sd-on" : "sx"); });
+  rows.forEach((row, i) => { if (i >= c) row.children[c]?.classList.add(i === c ? "sd-on" : "sx"); });
+  cell.classList.remove("sx");
+  cell.classList.add("s-on");
+}
+$("#stairTable").addEventListener("mouseover", (e) => stairCross(e.target.closest(".sc.hit")));
+$("#stairTable").addEventListener("mouseleave", () => stairCross(null));
+
 // ---------- pestañas, modos y filtro -------------------------------------
 const tabs = [...document.querySelectorAll("[role=tab]")];
 const lastTab = { natal: "tab-stair", transit: "tab-sum", syn: "tab-asp" };    // en la carta natal se abre en el Cuadro
@@ -4417,12 +4421,22 @@ function paintFindState() {
 // -- Mis cartas: todas las cartas, en orden alfabético y de a páginas. Se buscan por nombre, por inicial y por posición:
 // un planeta en un signo, en una casa o en los dos, y un planeta en aspecto duro con otro (con los orbes de Configuración).
 const MC_PAGE = 24;
-const mc = { gEdit: false, posOpen: false, q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1 };
+const mc = { gEdit: false, posOpen: false, q: "", letter: "", group: "", pl: "", sign: "all", house: "all", spill: false, a: "", asp: "hard", b: "any", page: 1, order: "az" };
+// el orden de la lista se recuerda en este navegador: A–Z, por fecha de nacimiento o las últimas abiertas
+const MC_ORDER_KEY = "carta:mcorder";
+try { const o = localStorage.getItem(MC_ORDER_KEY); if (o === "birth" || o === "recent") mc.order = o; } catch { /* sin almacenamiento */ }
+const ORDER_WORDS = { az: "orden alfabético", birth: "por fecha de nacimiento", recent: "las últimas abiertas primero" };
 const NO_GROUP = "\u0000sin";
 const fold = (t) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
 const initialOf = (name) => { const c = fold(name.trim()).charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
 (() => {
   $("#mcQ").addEventListener("input", (e) => { mc.q = e.target.value; mc.page = 1; renderMyCharts(); });
+  $("#mcOrder").value = mc.order;
+  $("#mcOrder").addEventListener("change", (e) => {
+    mc.order = e.target.value; mc.page = 1;
+    try { localStorage.setItem(MC_ORDER_KEY, mc.order); } catch { /* sin almacenamiento */ }
+    renderMyCharts();
+  });
   $("#mcSpill").addEventListener("change", (e) => { mc.spill = e.target.checked; mc.page = 1; renderMyCharts(); });
   $("#mcNew").addEventListener("click", () => openForm("new"));
   $("#homeNew").addEventListener("click", () => openForm("new"));
@@ -4722,8 +4736,10 @@ function setIniPop(open, focusBtn = false) {
   else if (focusBtn) $("#mcIniBtn").focus({ preventScroll: true });
 }
 function renderMyCharts() {
-  const items = [...saved.items].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-  $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta guardada" : "cartas guardadas"} · orden alfabético` : "";
+  const az = (a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+  const items = mc.order === "recent" ? byRecent(saved.items)
+    : [...saved.items].sort(mc.order === "birth" ? (a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`) || az(a, b) : az);
+  $("#chartsSub").textContent = items.length ? `${items.length} ${items.length === 1 ? "carta guardada" : "cartas guardadas"} · ${ORDER_WORDS[mc.order]}` : "";
   $("#navChartsN").textContent = items.length ? String(items.length) : "";
   if (cardMenu.open && !cardMenu.open.isConnected) closeCardMenu(false);
   // por inicial: un desplegable; las letras sin cartas no se pueden elegir
@@ -4813,20 +4829,27 @@ function renderMyCharts() {
   const pages = Math.max(1, Math.ceil(list.length / MC_PAGE));
   mc.page = Math.min(Math.max(1, mc.page), pages);
   const shown = list.slice((mc.page - 1) * MC_PAGE, mc.page * MC_PAGE);
+  // arriba, en la segunda fila: cuántas hay guardadas y cuántas cumplen la búsqueda; abajo, la página. La fila de la cuenta
+  // queda solo para los avisos (ninguna cumple, faltan calcular, no se pudo calcular).
+  $("#mcStat").innerHTML = items.length ? `<span><b>${items.length}</b> ${items.length === 1 ? "guardada" : "guardadas"}</span>` +
+    (anyFilter ? `<span class="mc-stat-sep" aria-hidden="true"></span><span><b>${list.length}</b> ${list.length === 1 ? "resultado" : "resultados"}</span>` : "") : "";
   const count = $("#mcCount");
-  if (!items.length) count.textContent = "Todavía no guardaste ninguna carta.";
-  else if (!list.length) count.textContent = posOn && missing.length === items.length ? "Para buscar por posición hace falta calcular las posiciones." : "Ninguna carta cumple la búsqueda.";
-  else count.textContent = (anyFilter ? `${list.length} de ${items.length} ${items.length === 1 ? "carta" : "cartas"}` : `${list.length} ${list.length === 1 ? "carta" : "cartas"}`) +
-    (pages > 1 ? ` · página ${mc.page} de ${pages}` : "") + (posOn && missing.length && !find.running ? ` · faltan calcular ${missing.length}` : "");
+  const msgs = [];
+  if (!items.length) msgs.push("Todavía no guardaste ninguna carta.");
+  else if (!list.length) msgs.push(posOn && missing.length === items.length ? "Para buscar por posición hace falta calcular las posiciones." : "Ninguna carta cumple la búsqueda.");
+  if (items.length && posOn && missing.length && !find.running) msgs.push(`Faltan calcular ${missing.length} ${missing.length === 1 ? "carta" : "cartas"}.`);
+  count.textContent = msgs.join(" ");
+  const from = (mc.page - 1) * MC_PAGE + 1, to = Math.min(list.length, mc.page * MC_PAGE);
+  $("#mcPageBar").hidden = pages < 2;
+  $("#mcPageInfo").innerHTML = pages > 1 ? `Página <b>${mc.page}</b> de <b>${pages}</b> · mostrando ${from}–${to} de ${list.length} ${list.length === 1 ? "carta" : "cartas"}` : "";
   $("#mcList").replaceChildren(...shown.map((it) => listItem(it, { hits: hitsOf.get(it.id) || [] })));
   // en la versión local las posiciones (Sol, Luna y Ascendente de las tarjetas) se calculan solas
   if (!isPublic() && !find.running && shown.some((it) => !posReady(it) && !find.errs.has(it.id))) runFind(false);
   if (failed.length && !find.running) {
-    count.textContent += ` · No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
+    count.textContent += `${count.textContent ? " " : ""}No se pudo calcular ${failed.map((it) => it.name).join(", ")}${[...find.errs.values()].some((e) => e instanceof TypeError) ? " (sin conexión con el servidor)" : ""}.`;
   }
   // páginas: ‹ 1 2 … 9 ›
   const nav = $("#mcPages");
-  nav.hidden = pages < 2;
   if (pages >= 2) {
     const nums = [...new Set([1, mc.page - 1, mc.page, mc.page + 1, pages].filter((n) => n >= 1 && n <= pages))].sort((a, b) => a - b);
     const btn = (label, n, cur = false, aria = "") => {

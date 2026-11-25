@@ -288,7 +288,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* anillo exterior de las cúspides: el borde de cada casa salta el anillo de signos y sigue por la banda (con un hueco donde
    va el signo); los grados y los minutos acompañan al signo, que lleva el color de su elemento */
-.wheel .cusp-o, .wheel .cusp-b { fill: none; }
+.wheel .cusp-o, .wheel .cusp-b, .wheel .cusp-x { fill: none; }
+.wheel .cusp-x { stroke: var(--ink-2); stroke-width: 1; opacity: .85; }
+.wheel .cusp-x.axis { stroke: var(--ink); stroke-width: 1.7; opacity: 1; }
 .wheel .cusp-o { stroke: var(--line-strong); stroke-width: .8; opacity: .3; }
 .wheel .cusp-o.axis { stroke: var(--ink); stroke-width: 1.2; opacity: .45; }
 .wheel .cusp-b { stroke: var(--ink-2); stroke-width: .9; opacity: .75; }
@@ -2622,7 +2624,7 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
 .check.notime-chk { flex-wrap: wrap; row-gap: 2px; margin: -4px 0 14px; }
 .check.notime-chk small { flex-basis: 100%; padding-left: 24px; color: var(--ink-2); font-size: calc(12.5px * var(--fs)); }
 .field.off input { opacity: .45; }
-:root[data-notime] #wheel :is(.cusp, .cusp-in, .cusp-o, .cusp-b, .hnum, .cuspl, .cuspt, .cusplbl, .axis-label) { display: none; }
+:root[data-notime] #wheel :is(.cusp, .cusp-in, .cusp-o, .cusp-b, .cusp-x, .hnum, .cuspl, .cuspt, .cusplbl, .axis-label) { display: none; }
 :root[data-notime] .hcol { display: none; }
 .notime-bar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line-strong);
@@ -3042,4 +3044,93 @@ details.how > .fine { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; ba
   .mc-iniwrap { flex: 1 1 170px; min-width: 170px; }
   .mc-iniwrap .mc-ini { width: 100%; justify-content: flex-start; }
   .mc-iniwrap .mc-inichev { margin-left: auto; }
+}
+
+/* ===================== revisión de diseño (nov. 2026) ===================== */
+@media screen {
+/* — Mis cartas: estado y orden en la segunda fila; la página abajo — */
+.mc-panel .mc-row2 { flex-wrap: wrap; row-gap: 8px; }
+.mc-stat { display: flex; align-items: center; gap: 10px; margin: 0 0 0 auto; font-size: calc(14px * var(--fs)); color: var(--ink-2); white-space: nowrap; }
+.mc-stat:empty { display: none; }
+.mc-stat b { color: var(--ink); font-weight: 700; }
+.mc-stat-sep { width: 1px; height: 18px; background: var(--line-strong); }
+.mc-order { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 40px; padding-left: 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--field); color: var(--ink-2); font-size: calc(14px * var(--fs)); }
+.mc-stat:empty + .mc-order { margin-left: auto; }
+.mc-order select { width: auto; min-width: 0; height: 38px; padding: 0 30px 0 4px; border: 0; background-color: transparent; color: var(--ink); font-weight: 700; box-shadow: none; }
+.mc-order select:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-radius: 8px; }
+#charts .mc-countrow:has(#mcCount:empty) { display: none; }
+#charts .mc-countrow { border-bottom: 0; padding-bottom: 0; }
+#mcList { margin-top: 18px; }
+.mc-pagebar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin: 24px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.mc-pagebar[hidden] { display: none; }
+.mc-pagebar .mc-pages { margin: 0; }
+.mc-pageinfo { margin: 0; font-size: calc(14px * var(--fs)); color: var(--ink-2); }
+.mc-pageinfo b { color: var(--ink); }
+@container (max-width: 639px) {
+  .mc-stat { margin-left: 0; flex: 1 1 auto; }
+  .mc-pagebar { justify-content: center; }
+}
+/* — las tarjetas: el grupo como antetítulo, más aire, las posiciones separadas y los botones más visibles — */
+.hc-card { gap: 0; }
+.hc-card .hc-groups { order: -1; display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0 0 3px; }
+.hc-card .hc-g {
+  padding: 0; border: 0; background: none; text-transform: uppercase; letter-spacing: .09em; font: 700 calc(11px * var(--fs))/1.3 var(--sans);
+  color: color-mix(in srgb, hsl(var(--gh, 30) 55% 42%) 78%, var(--ink));
+}
+.hc-card .hc-nm { font-size: calc(21px * var(--fs)); }
+.hc-card .hc-sub { margin-top: 3px; font-size: calc(13.5px * var(--fs)); }
+.hc-card .hc-trio { width: 100%; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.hc-card .hc-trio:empty { display: none; }
+.hc-act { height: 34px; min-width: 34px; border-color: var(--line); background: color-mix(in srgb, var(--field) 70%, transparent); color: var(--ink); }
+.hc-act svg { width: 19px; height: 19px; stroke-width: 1.9; }
+.hc-acts { gap: 6px; }
+:root[data-look="parch"] .hc-card { --rb-f: 0px; --rb-c: 16px; padding: 16px 18px 15px; }
+:root[data-look="parch"] .hc-act { border-color: rgba(168, 131, 71, .3); }
+/* — la carta: los modos al frente; las herramientas, secundarias; Notas e Imprimir, solo con ícono — */
+@media (min-width: 821px) {
+  :root .modeacts :is(#notesBtn, #printBtn) { font-size: 0; gap: 0; width: 38px; padding: 0; justify-content: center; position: relative; }
+  :root .modeacts :is(#notesBtn, #printBtn) svg { margin: 0; width: 18px; height: 18px; }
+  :root .modeacts :is(#notesBtn:not([hidden]), #notesBtn[hidden] + #printBtn) { margin-left: 12px; }
+  :root .modeacts :is(#notesBtn:not([hidden]), #notesBtn[hidden] + #printBtn)::before {
+    content: ""; position: absolute; left: -11px; top: 7px; bottom: 7px; width: 1px; background: var(--line-strong);
+  }
+  :root .modeacts #notesBtn .nb-count { position: absolute; top: -5px; right: -7px; font-size: calc(11px * var(--fs)); }
+  :root[data-look="parch"] .modeacts :is(#notesBtn, #printBtn) { border-radius: 50%; }
+}
+:root[data-look="parch"] .seg.modes button { font-size: calc(19px * var(--fs)); padding-inline: 18px; }
+:root[data-look="parch"][data-tbmerge] .seg.modes button { padding: 7px 18px; }
+:root[data-look="parch"] .modeacts :is(#spillBtn, #tripBtn, #shiftBtn, #tripMore):not([aria-pressed="true"]) { background: transparent; border-color: rgba(168, 131, 71, .5); box-shadow: none; }
+:root[data-look="parch"] .modeacts .with-ic:not(#notesBtn):not(#printBtn) { font-size: calc(15.5px * var(--fs)); }
+/* — pestañas: la elegida con fondo suave; más aire cuando la columna es ancha — */
+.stage .data { container: data / inline-size; }
+:root[data-look="parch"] .tabs { gap: 2px; padding-bottom: 6px; }
+:root[data-look="parch"] .tabs button { padding: 6px 5px; border-radius: 9px; font-size: calc(18px * var(--fs)); }
+:root[data-look="parch"] .tabs button[aria-selected="true"] { background: rgba(30, 58, 120, .1); }
+:root[data-look="parch"] .tabs button[aria-selected="true"]::after { display: none; }
+@container data (min-width: 560px) {
+  :root[data-look="parch"] .tabs { gap: 6px; }
+  :root[data-look="parch"] .tabs button { padding: 8px 12px; font-size: calc(19px * var(--fs)); }
+  .tabs { gap: 0 18px; }
+}
+/* el orbe: el elegido y los otros, bien distintos */
+:root[data-look="parch"] .seg.orb { box-shadow: 0 0 0 1px #C4A872; border-radius: 10px; }
+:root[data-look="parch"] .seg.orb button:not([aria-pressed="true"]) { background: #FFFBF1; color: #57452C; }
+/* — el cuadro de aspectos: más grande (crece con la columna), más contraste y la fila y la columna al pasar el cursor — */
+.stair .a-ic { font-size: clamp(11px, calc(100cqw / var(--n) * .42), 30px); }
+.stair .a-or { font-size: clamp(7.5px, calc(100cqw / var(--n) * .19), 14px); }
+:root[data-look="parch"] #panel-stair .a-or2 { font-size: clamp(11px, calc(100cqw / var(--n) * .25), 18px); }
+:root[data-look="parch"] #panel-stair .a-ic.soft { color: #1F4FA0; }
+:root[data-look="parch"] #panel-stair .a-ic.hard, :root[data-look="parch"] #panel-stair .a-ic.neutral { color: #B0261C; }
+#stairTable .sc.sx { background: color-mix(in srgb, var(--accent-2) 9%, var(--surface)); }
+#stairTable .sc.s-on { background: color-mix(in srgb, var(--accent-2) 20%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--accent-2); }
+#stairTable .sc.sd-on .pb { box-shadow: 0 0 0 2.5px var(--accent-2); border-radius: 50%; }
+/* — la leyenda: una banda justo debajo de la rueda — */
+.wheel-fig .legend { width: fit-content; max-width: 100%; box-sizing: border-box; margin: 4px auto 0; padding: 6px 18px; gap: 6px 20px; border: 1px solid var(--line); border-radius: 99px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.wheel-fig .legend .key { white-space: nowrap; }
+:root[data-look="parch"] .wheel-fig .legend { padding: 7px 20px; border-color: rgba(168, 131, 71, .4); background: rgba(255, 251, 241, .7); }
+/* — contraste: los textos secundarios del pergamino, un poco más oscuros — */
+:root[data-look="parch"] { --ink-2: #57452C; }
+}
+@media screen and (max-width: 640px) {
+  .wheel-fig .legend { border-radius: 14px; }
 }

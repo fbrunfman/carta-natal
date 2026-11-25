@@ -266,6 +266,14 @@ export function renderWheel(svg, chart, hooks = {}) {
     const axes = [["Asc", 0], ["MC", mcPhi], ["Dsc", 180], ["IC", norm360(mcPhi + 180)]];
     const rl = outer ? OUT.label : R.label;
     const gap = (x, y) => ((x - y + 540) % 360) - 180;                 // diferencia con signo, de -180 a 180
+    // la línea de cada casa sigue un poco por fuera del zodíaco (o del anillo de tránsitos), hasta su grado: así se ve que
+    // ese grado es el de la cúspide. Arriba y abajo los rótulos se corren un poco más afuera para no tocar esa rayita.
+    const edge = outer ? OUT.edge : R.out, TICK = 8;
+    cusps.forEach((c, i) => {
+      const a = phi(c), axis = i % 3 === 0;
+      s += `<path class="cusp-x${axis ? " axis" : ""}" data-cusp="${i + 1}" d="M${pt(edge + 1, a).join(" ")}L${pt(edge + TICK, a).join(" ")}"/>`;
+    });
+    const lpt = (r, a, extra = 9) => pt(r + extra * Math.abs(Math.sin(rad(a))), a);    // (sin = cuánto mira hacia arriba o abajo)
     const axisDeg = {};                                                // índice de eje → texto del grado
     const loose = [];                                                  // cúspides que no coinciden con ningún eje
     cusps.forEach((c, i) => {
@@ -279,12 +287,13 @@ export function renderWheel(svg, chart, hooks = {}) {
         const d = gap(l.a, ang);
         if (Math.abs(d) < 6.5) l.a = ang + (d < 0 ? -6.5 : 6.5);      // lejos del rótulo del eje
       }
-      const [lx, ly] = pt(rl, l.a);
+      const [lx, ly] = lpt(rl, l.a);
       const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
       s += `<text class="cusplbl" data-cusp="${l.i + 1}" x="${lx}" y="${ly}" dy=".35em" text-anchor="${anchor}">${l.text}</text>`;
     }
     axes.forEach(([text, a], k) => {
-      const [lx, ly] = pt(rl, a);
+      const vert = k === 1 || k === 3;                                 // MC e IC: más afuera, para no tocar el mandala
+      const [lx, ly] = vert ? lpt(rl, a, 12) : pt(rl, a);
       const anchor = lx < -12 ? "end" : lx > 12 ? "start" : "middle";
       // Asc y MC se pueden tocar para ver su lectura; Dsc e IC son solo rótulos
       const pick = (text === "Asc" || text === "MC") && !!hooks.onPick;
@@ -298,7 +307,8 @@ export function renderWheel(svg, chart, hooks = {}) {
       // del anillo y el rótulo más afuera
       const line = (t, x, y, cls = "") => `<tspan${cls ? ` class="${cls}"` : ""} x="${x}" y="${y}" dy=".35em">${t}</tspan>`;
       const deg = (x, y) => line(axisDeg[k], x, y, "cusplbl").replace("<tspan ", `<tspan data-cusp-axis="${text.toLowerCase()}" `);
-      if (Math.abs(lx) < 12) {
+      if (Math.abs(lx) < 12 || vert) {
+        // arriba o abajo (y siempre el MC y el IC): el grado del lado del anillo y el rótulo más afuera
         const off = ly < 0 ? -12 : 12;
         s += `<text ${attrs} x="${lx}" y="${ly}">${deg(lx, ly)}${line(text, lx, ly + off)}</text>`;
       } else {
